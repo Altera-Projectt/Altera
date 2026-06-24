@@ -80,4 +80,57 @@ const getUserDesigns = async (userId, { page = 1, limit = 10 }) => {
   };
 };
 
-module.exports = { createDesign, getDesignById, getUserDesigns };
+/**
+ * Update design
+ */
+const updateDesign = async (designId, userId, role, updateData, files = {}) => {
+  const design = await getDesignById(designId, userId, role);
+
+  if (role !== 'ADMIN' && design.userId._id.toString() !== userId.toString()) {
+    const error = new Error('Access denied. You can only update your own designs.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // Allowed fields to update
+  const allowedFields = ['shirtColor', 'customText', 'fontSize', 'textColor', 'textPosition'];
+  
+  allowedFields.forEach((field) => {
+    if (updateData[field] !== undefined) {
+      design[field] = updateData[field];
+    }
+  });
+
+  // Update custom image if provided
+  if (files.customImage) {
+    const uploaded = await uploadImage(files.customImage[0].path, 'designs/custom');
+    design.customImage = uploaded.url;
+  }
+
+  // Update preview image if provided
+  if (files.previewImage) {
+    const uploaded = await uploadImage(files.previewImage[0].path, 'designs/previews');
+    design.previewImage = uploaded.url;
+  }
+
+  await design.save();
+  return design;
+};
+
+/**
+ * Delete design
+ */
+const deleteDesign = async (designId, userId, role) => {
+  const design = await getDesignById(designId, userId, role);
+
+  if (role !== 'ADMIN' && design.userId._id.toString() !== userId.toString()) {
+    const error = new Error('Access denied. You can only delete your own designs.');
+    error.statusCode = 403;
+    throw error;
+  }
+
+  await Design.findByIdAndDelete(designId);
+  return { message: 'Design deleted successfully' };
+};
+
+module.exports = { createDesign, getDesignById, getUserDesigns, updateDesign, deleteDesign };

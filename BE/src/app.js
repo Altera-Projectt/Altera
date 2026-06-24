@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
+const swaggerSpec = require('./config/swagger');
 
 const { notFound, errorHandler } = require('./middlewares/error.middleware');
 
@@ -13,6 +15,7 @@ const designRoutes = require('./routes/design.routes');
 const outfitRoutes = require('./routes/outfit.routes');
 const orderRoutes = require('./routes/order.routes');
 const cartRoutes = require('./routes/cart.routes');
+const chatRoutes = require('./routes/chat.routes');
 
 const app = express();
 
@@ -28,6 +31,14 @@ app.get('/health', (req, res) => {
   res.status(200).json({ success: true, message: 'Server is running', timestamp: new Date().toISOString() });
 });
 
+// ─── Swagger Documentation ───────────────────────────────────────────────────
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', swaggerUi.setup(swaggerSpec, { 
+  swaggerOptions: { 
+    persistAuthorization: true 
+  } 
+}));
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 const API = '/api/v1';
 app.use(`${API}/auth`, authRoutes);
@@ -36,6 +47,7 @@ app.use(`${API}/products`, productRoutes);
 app.use(`${API}/designs`, designRoutes);
 app.use(`${API}/outfits`, outfitRoutes);
 app.use(`${API}/orders`, orderRoutes);
+app.use(`${API}/chats`, chatRoutes);
 app.use(`${API}`, cartRoutes); // /api/v1/cart & /api/v1/wishlist
 
 // ─── Error Handling ───────────────────────────────────────────────────────────

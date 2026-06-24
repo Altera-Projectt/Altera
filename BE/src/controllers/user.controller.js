@@ -60,4 +60,21 @@ const getAllUsers = async (req, res, next) => {
   }
 };
 
-module.exports = { getProfile, updateProfile, getAllUsers };
+const deleteAccount = async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndDelete(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Account deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getProfile, updateProfile, getAllUsers, deleteAccount };
