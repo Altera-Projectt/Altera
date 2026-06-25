@@ -16,6 +16,10 @@ const options = {
         url: process.env.SWAGGER_SERVER_URL || 'http://localhost:5000',
         description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Development Server',
       },
+      {
+        url: 'http://localhost:5000',
+        description: 'Local Development Server',
+      },
     ],
     components: {
       securitySchemes: {
