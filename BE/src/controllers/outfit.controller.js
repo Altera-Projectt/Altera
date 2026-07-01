@@ -76,7 +76,7 @@ const generatePrint = async (req, res, next) => {
       promptPieces.push(`Text overlay suggestion: ${textOverlay}.`);
     }
 
-    promptPieces.push('Return only the base64 encoded PNG image data without additional explanation.');
+    promptPieces.push('Generate a PNG image only. Do not include explanatory text.');
 
     const imageResult = await generatePrintImage(promptPieces.join(' '));
 

@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildCatalogPromptSection, normalizeOutfitHistoryEntry } = require('../src/services/ai.service');
+const {
+  buildCatalogPromptSection,
+  buildGeminiImageRequest,
+  extractGeminiImageData,
+  normalizeOutfitHistoryEntry,
+} = require('../src/services/ai.service');
 
 test('buildCatalogPromptSection returns product catalog context', () => {
   const products = [
@@ -25,4 +30,27 @@ test('normalizeOutfitHistoryEntry exposes suggestion for FE compatibility', () =
   assert.equal(entry.suggestion, 'Great look');
   assert.equal(entry.aiSuggestion, 'Great look');
   assert.equal(entry.products.length, 1);
+});
+
+test('buildGeminiImageRequest targets Gemini image generation', () => {
+  const request = buildGeminiImageRequest('floral shirt print');
+
+  assert.equal(request.model, process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image');
+  assert.deepEqual(request.input, [{ type: 'text', text: 'floral shirt print' }]);
+  assert.equal(request.response_format.type, 'image');
+  assert.equal(request.response_format.mime_type, 'image/png');
+});
+
+test('extractGeminiImageData reads image output payloads', () => {
+  const image = extractGeminiImageData({
+    output_image: {
+      mime_type: 'image/png',
+      data: 'abc123',
+    },
+  });
+
+  assert.deepEqual(image, {
+    mimeType: 'image/png',
+    data: 'abc123',
+  });
 });

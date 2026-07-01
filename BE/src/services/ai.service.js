@@ -2,7 +2,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GEMINI_API_KEY } = require('../config/env');
 const logger = require('../utils/logger');
 
-const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-1.5-image';
+const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
+const GEMINI_IMAGE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 let genAI = null;
 
 const getGenAI = () => {
@@ -105,36 +106,70 @@ Respond in this exact JSON format:
   }
 };
 
+const buildGeminiImageRequest = (prompt) => ({
+  model: GEMINI_IMAGE_MODEL,
+  input: [{ type: 'text', text: prompt }],
+  response_format: {
+    type: 'image',
+    mime_type: 'image/png',
+  },
+});
+
+const extractGeminiImageData = (payload) => {
+  const directImage = payload?.output_image || payload?.outputImage;
+  if (directImage?.data) {
+    return {
+      mimeType: directImage.mime_type || directImage.mimeType || 'image/png',
+      data: directImage.data,
+    };
+  }
+
+  const blocks = payload?.output || payload?.content || payload?.response?.candidates?.[0]?.content?.parts || [];
+  const imageBlock = Array.isArray(blocks)
+    ? blocks.find((block) => block?.type === 'image' || block?.inlineData || block?.inline_data)
+    : null;
+
+  const inlineData = imageBlock?.inlineData || imageBlock?.inline_data || imageBlock;
+  if (inlineData?.data) {
+    return {
+      mimeType: inlineData.mime_type || inlineData.mimeType || 'image/png',
+      data: inlineData.data,
+    };
+  }
+
+  return null;
+};
+
 const generatePrintImage = async (prompt) => {
-  const client = getGenAI();
-  if (!client) {
+  if (!GEMINI_API_KEY) {
     logger.warn('Gemini API key not configured. Print image generation unavailable.');
     throw new Error('Gemini API key not configured.');
   }
 
   try {
-    const model = client.getGenerativeModel({ model: GEMINI_IMAGE_MODEL });
-    const result = await model.generateContent(prompt);
-    const candidate = result?.response?.candidates?.[0];
-    const parts = candidate?.content?.parts || [];
-
-    const inlineDataPart = parts.find((part) => part.inlineData);
-    if (inlineDataPart && inlineDataPart.inlineData) {
-      return {
-        mimeType: inlineDataPart.inlineData.mimeType || 'image/png',
-        data: inlineDataPart.inlineData.data,
-      };
+    if (typeof fetch !== 'function') {
+      throw new Error('Global fetch is not available. Please run the backend on Node.js 18 or newer.');
     }
 
-    const textPart = parts.find((part) => part.text && part.text.trim().length > 0);
-    if (textPart && textPart.text) {
-      const base64Match = textPart.text.match(/([A-Za-z0-9+/=\r\n]+)/);
-      if (base64Match) {
-        return {
-          mimeType: 'image/png',
-          data: base64Match[0].replace(/\s+/g, ''),
-        };
-      }
+    const response = await fetch(GEMINI_IMAGE_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
+      },
+      body: JSON.stringify(buildGeminiImageRequest(prompt)),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const message = payload?.error?.message || `Gemini image request failed with status ${response.status}`;
+      throw new Error(message);
+    }
+
+    const imageData = extractGeminiImageData(payload);
+    if (imageData?.data) {
+      return imageData;
     }
 
     throw new Error('No image data returned from Gemini model.');
@@ -178,5 +213,7 @@ module.exports = {
   generateOutfitRecommendation,
   generatePrintImage,
   buildCatalogPromptSection,
+  buildGeminiImageRequest,
+  extractGeminiImageData,
   normalizeOutfitHistoryEntry,
 };
