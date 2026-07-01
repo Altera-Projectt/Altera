@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { recommend, getHistory } = require('../controllers/outfit.controller');
+const { recommend, getHistory, generatePrint } = require('../controllers/outfit.controller');
 const { protect } = require('../middlewares/auth.middleware');
 
 router.use(protect);
