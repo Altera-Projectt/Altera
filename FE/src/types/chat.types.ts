@@ -1,7 +1,9 @@
 export interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
+  _id?: string
+  sender: 'USER' | 'AI'
+  text: string
   createdAt?: string
+  updatedAt?: string
 }
 
 export interface Chat {
@@ -24,5 +26,10 @@ export interface CreateChatPayload {
 }
 
 export interface SendMessagePayload {
-  content: string
+  message: string
+}
+
+export interface SendMessageResponse {
+  userMessage: ChatMessage
+  aiMessage: ChatMessage
 }

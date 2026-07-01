@@ -13,12 +13,18 @@ import { ProductDetailPage } from '@/pages/products/ProductDetailPage'
 import { OutfitPage } from '@/pages/outfit/OutfitPage'
 import { DesignStudioPage } from '@/pages/design/DesignStudioPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
+import { AboutPage } from '@/pages/about/AboutPage'
+import { MembershipPage } from '@/pages/membership/MembershipPage'
 
 // Protected Pages
 import { OrdersPage } from '@/pages/orders/OrdersPage'
+import { OrderSuccessPage } from '@/pages/orders/OrderSuccessPage'
 import { ProfilePage } from '@/pages/profile/ProfilePage'
 import { CartPage } from '@/pages/cart/CartPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
+import { CheckoutPage } from '@/pages/checkout/CheckoutPage'
+import { WishlistPage } from '@/pages/wishlist/WishlistPage'
+import { MyDesignsPage } from '@/pages/design/MyDesignsPage'
 
 // Admin Pages
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
@@ -37,6 +43,8 @@ export const router = createBrowserRouter([
       { path: 'products/:id', element: <ProductDetailPage /> },
       { path: 'outfit', element: <OutfitPage /> },
       { path: 'design', element: <DesignStudioPage /> },
+      { path: 'about', element: <AboutPage /> },
+      { path: 'membership', element: <MembershipPage /> },
       {
         path: 'auth',
         children: [
@@ -49,9 +57,13 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: 'orders', element: <OrdersPage /> },
+          { path: 'orders/success/:id', element: <OrderSuccessPage /> },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'cart', element: <CartPage /> },
           { path: 'chat', element: <ChatPage /> },
+          { path: 'checkout', element: <CheckoutPage /> },
+          { path: 'wishlist', element: <WishlistPage /> },
+          { path: 'designs', element: <MyDesignsPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },
@@ -75,3 +87,4 @@ export const router = createBrowserRouter([
     ],
   },
 ])
+

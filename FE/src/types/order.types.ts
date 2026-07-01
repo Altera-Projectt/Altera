@@ -4,14 +4,20 @@ export interface OrderItem {
 }
 
 export interface ShippingAddress {
-  street: string
+  fullName?: string
+  phone?: string
+  address?: string
+  street?: string
   city: string
-  country: string
+  country?: string
 }
+
+export type PaymentMethod = 'COD' | 'BANK_TRANSFER'
 
 export interface CreateOrderPayload {
   items: OrderItem[]
   shippingAddress: ShippingAddress
+  paymentMethod?: PaymentMethod
 }
 
 export interface Order {

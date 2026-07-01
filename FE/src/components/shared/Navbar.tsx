@@ -11,6 +11,8 @@ import {
   Sparkles,
   LogOut,
   LayoutDashboard,
+  Crown,
+  Palette,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -30,6 +32,8 @@ const NAV_LINKS: NavItem[] = [
   { label: 'Collection', href: '/products' },
   { label: 'AI Stylist', href: '/outfit' },
   { label: 'Design Studio', href: '/design' },
+  { label: 'Membership', href: '/membership' },
+  { label: 'Về ALTERA', href: '/about' },
 ]
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -138,8 +142,13 @@ export function Navbar() {
                 </Button>
               )}
               <Button variant="ghost" size="icon" asChild aria-label="Wishlist">
-                <Link to="/profile">
+                <Link to="/wishlist">
                   <Heart className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="ghost" size="icon" asChild aria-label="My Designs">
+                <Link to="/designs">
+                  <Palette className="h-4 w-4" />
                 </Link>
               </Button>
               <Button variant="ghost" size="icon" asChild aria-label={`Profile — ${user?.name}`}>
@@ -221,6 +230,42 @@ export function Navbar() {
                   Try AI Stylist
                 </Link>
               </div>
+
+              {/* New pages quick links */}
+              {isAuthenticated && (
+                <div className="flex flex-col gap-1">
+                  <NavLink
+                    to="/wishlist"
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2 h-10 px-3 rounded-[var(--radius-md)] text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-[var(--color-neutral)] text-[var(--color-foreground)]'
+                          : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-neutral)] hover:text-[var(--color-foreground)]',
+                      )
+                    }
+                  >
+                    <Heart className="h-4 w-4" />
+                    Yêu thích
+                  </NavLink>
+                  <NavLink
+                    to="/designs"
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2 h-10 px-3 rounded-[var(--radius-md)] text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-[var(--color-neutral)] text-[var(--color-foreground)]'
+                          : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-neutral)] hover:text-[var(--color-foreground)]',
+                      )
+                    }
+                  >
+                    <Palette className="h-4 w-4" />
+                    Thiết kế của tôi
+                  </NavLink>
+                </div>
+              )}
 
               {/* Auth buttons */}
               <div className="flex flex-col gap-2 pt-2 border-t border-[var(--color-border)]">
