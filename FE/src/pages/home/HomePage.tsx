@@ -1,64 +1,60 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Sparkles, Cpu, ShieldCheck, Leaf } from 'lucide-react'
+import {
+  ArrowRight,
+  Sparkles,
+  Cpu,
+  ShieldCheck,
+  Leaf,
+  Heart,
+  Crown,
+  Palette,
+  Info,
+  ShoppingBag,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/Button'
 import { ProductCard } from '@/components/fashion'
 import { ProductService } from '@/services/product.api'
 import type { Product } from '@/types/product.types'
 
-// Mock products to display as fallback if the backend is down or empty
-// const MOCK_PRODUCTS: Product[] = [
-//   {
-//     _id: 'mock-1',
-//     name: 'Classic Wool Trench Coat',
-//     description: 'A timeless double-breasted trench coat crafted from premium wool blend.',
-//     price: 3450000,
-//     category: 'SHIRT',
-//     imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800&auto=format&fit=crop&q=80',
-//     stock: 50,
-//     isActive: true,
-//     createdAt: new Date().toISOString(),
-//     updatedAt: new Date().toISOString()
-//   },
-//   {
-//     _id: 'mock-2',
-//     name: 'Oversized Organic Cotton Tee',
-//     description: 'Breathable, minimal t-shirt made from 100% organic cotton.',
-//     price: 490000,
-//     category: 'SHIRT',
-//     imageUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=800&auto=format&fit=crop&q=80',
-//     stock: 50,
-//     isActive: true,
-//     createdAt: new Date().toISOString(),
-//     updatedAt: new Date().toISOString()
-//   },
-//   {
-//     _id: 'mock-3',
-//     name: 'Minimalist Leather Boots',
-//     description: 'Handcrafted leather boots with lightweight sole.',
-//     price: 2890000,
-//     category: 'SHOES',
-//     imageUrl: 'https://images.unsplash.com/photo-1520639888713-7851133b1ed0?w=800&auto=format&fit=crop&q=80',
-//     stock: 50,
-//     isActive: true,
-//     createdAt: new Date().toISOString(),
-//     updatedAt: new Date().toISOString()
-//   },
-//   {
-//     _id: 'mock-4',
-//     name: 'Signature Canvas Tote Bag',
-//     description: 'Durable canvas tote bag with leather straps and raw accents.',
-//     price: 750000,
-//     category: 'ACCESSORY',
-//     imageUrl: 'https://images.unsplash.com/photo-1544816155-12df9643f363?w=800&auto=format&fit=crop&q=80',
-//     stock: 50,
-//     isActive: true,
-//     createdAt: new Date().toISOString(),
-//     updatedAt: new Date().toISOString()
-//   }
-// ]
+// ── Quick-nav cards for newly added pages ─────────────────────────────────
+
+const NEW_PAGES = [
+  {
+    to: '/wishlist',
+    icon: Heart,
+    label: 'Yêu thích',
+    description: 'Sản phẩm đã lưu của bạn',
+    accent: '#e11d48',
+    bg: '#fff1f2',
+  },
+  {
+    to: '/designs',
+    icon: Palette,
+    label: 'Thiết kế của tôi',
+    description: 'Xem & quản lý thiết kế đã lưu',
+    accent: '#6366f1',
+    bg: '#eef2ff',
+  },
+  {
+    to: '/membership',
+    icon: Crown,
+    label: 'Membership',
+    description: 'Nâng cấp trải nghiệm ALTERA',
+    accent: '#000000',
+    bg: '#f5f5f5',
+  },
+  {
+    to: '/about',
+    icon: Info,
+    label: 'Về ALTERA',
+    description: 'Câu chuyện & giá trị thương hiệu',
+    accent: '#059669',
+    bg: '#ecfdf5',
+  },
+]
 
 export function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -71,11 +67,11 @@ export function HomePage() {
         if (response.data?.data?.products && response.data.data.products.length > 0) {
           setProducts(response.data.data.products)
         } else {
-          setProducts(MOCK_PRODUCTS)
+          setProducts([])
         }
       } catch (err) {
-        console.warn('Backend offline or empty, falling back to mock products.', err)
-        setProducts(MOCK_PRODUCTS)
+        console.warn('Backend offline or empty.', err)
+        setProducts([])
       } finally {
         setIsLoading(false)
       }
@@ -135,11 +131,55 @@ export function HomePage() {
                 3D Studio <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
+            <Button asChild variant="ghost" size="lg" className="text-white/70 hover:text-white hover:bg-white/10 uppercase font-semibold tracking-wider px-8">
+              <Link to="/membership" className="flex items-center gap-2">
+                <Crown className="h-4 w-4" /> Membership
+              </Link>
+            </Button>
           </motion.div>
         </div>
       </section>
 
-      {/* 2. Sustainable Fashion Section */}
+      {/* 2. Quick Navigate — New Pages */}
+      <section className="py-16 border-b border-[var(--color-border)]">
+        <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
+          <div className="text-center mb-10">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted-foreground)]">
+              Khám phá thêm
+            </span>
+            <h2 className="mt-2 font-heading text-2xl font-bold uppercase tracking-wide">
+              Tính năng mới
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {NEW_PAGES.map(({ to, icon: Icon, label, description, accent, bg }) => (
+              <Link
+                key={to}
+                to={to}
+                className="group flex flex-col items-center gap-3 p-6 rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-background)] text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-transparent"
+                style={{ ['--hover-bg' as any]: bg }}
+              >
+                <div
+                  className="h-12 w-12 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                  style={{ backgroundColor: bg, color: accent }}
+                >
+                  <Icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <p className="font-heading font-bold text-sm">{label}</p>
+                  <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5 leading-snug">{description}</p>
+                </div>
+                <ArrowRight
+                  className="h-4 w-4 text-[var(--color-muted-foreground)] transition-all duration-300 group-hover:translate-x-1"
+                  style={{ color: accent }}
+                />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. Sustainable Fashion Section */}
       <section className="py-24 border-b border-[var(--color-border)]">
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
@@ -148,7 +188,7 @@ export function HomePage() {
                 <Leaf className="h-5 w-5" />
               </div>
               <h2 className="mt-4 font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
-                Eco-Friendly & Sustainable
+                Eco-Friendly &amp; Sustainable
               </h2>
               <p className="mt-6 text-sm text-[var(--color-muted-foreground)] leading-relaxed">
                 ALTERA is committed to reducing environmental impact. Our custom studio generates patterns directly for production, ensuring zero inventory waste. We prioritize organic materials, ethical labor, and circular design principles.
@@ -163,6 +203,13 @@ export function HomePage() {
                   <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">On-demand production prints only what is needed</p>
                 </div>
               </div>
+              <div className="mt-8">
+                <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
+                  <Link to="/about" className="flex items-center gap-2">
+                    Tìm hiểu thêm về ALTERA <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
             </div>
             <div className="aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-muted)]">
               <img
@@ -176,7 +223,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 3. AI Stylist Section */}
+      {/* 4. AI Stylist Section */}
       <section className="bg-zinc-950 py-24 text-white">
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
@@ -198,10 +245,15 @@ export function HomePage() {
               <p className="mt-6 text-sm text-zinc-400 leading-relaxed">
                 Unsure how to match colors or layers? Chat with our AI Stylist. It analyzes your aesthetic preference, weather conditions, and body fit to generate custom lookbook recommendations that coordinate seamlessly.
               </p>
-              <div className="mt-8">
+              <div className="mt-8 flex flex-wrap gap-3">
                 <Button asChild variant="accent" className="uppercase font-semibold tracking-wider">
                   <Link to="/outfit" className="flex items-center gap-2">
                     Try AI Stylist <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 uppercase font-semibold tracking-wider">
+                  <Link to="/chat" className="flex items-center gap-2">
+                    AI Chat
                   </Link>
                 </Button>
               </div>
@@ -210,7 +262,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 4. Custom Design Studio Section */}
+      {/* 5. Custom Design Studio Section */}
       <section className="py-24 border-b border-[var(--color-border)]">
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
@@ -224,10 +276,15 @@ export function HomePage() {
               <p className="mt-6 text-sm text-[var(--color-muted-foreground)] leading-relaxed">
                 Take complete creative control. Upload your own PNG/SVG graphic artworks, select premium base fabrics, apply dynamic patterns, and preview your custom streetwear apparel in full 3D.
               </p>
-              <div className="mt-8">
+              <div className="mt-8 flex flex-wrap gap-3">
                 <Button asChild variant="primary" className="uppercase font-semibold tracking-wider">
                   <Link to="/design" className="flex items-center gap-2">
                     Launch 3D Studio <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
+                  <Link to="/designs" className="flex items-center gap-2">
+                    <Palette className="h-4 w-4" /> My Designs
                   </Link>
                 </Button>
               </div>
@@ -244,7 +301,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 5. Featured Products */}
+      {/* 6. Featured Products */}
       <section className="py-24 bg-[var(--color-neutral)]">
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
@@ -256,9 +313,16 @@ export function HomePage() {
                 Our latest trend-setting minimalist essentials
               </p>
             </div>
-            <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
-              <Link to="/products">View All Products</Link>
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button asChild variant="ghost" className="uppercase font-semibold tracking-wider">
+                <Link to="/wishlist" className="flex items-center gap-2">
+                  <Heart className="h-4 w-4" /> Wishlist
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
+                <Link to="/products">View All Products</Link>
+              </Button>
+            </div>
           </div>
 
           <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -270,14 +334,56 @@ export function HomePage() {
                   <div className="h-4 w-1/3 animate-pulse bg-zinc-300 dark:bg-zinc-800" />
                 </div>
               ))
-              : products.map((product) => (
-                <ProductCard key={product._id} product={product} />
-              ))}
+              : products.length > 0
+                ? products.map((product) => (
+                  <ProductCard key={product._id} product={product} />
+                ))
+                : (
+                  <div className="col-span-4 text-center py-12 text-[var(--color-muted-foreground)]">
+                    <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">Catalog đang được cập nhật...</p>
+                    <Button asChild variant="outline" size="sm" className="mt-4">
+                      <Link to="/products">Xem tất cả sản phẩm</Link>
+                    </Button>
+                  </div>
+                )
+            }
           </div>
         </div>
       </section>
 
-      {/* 6. Testimonials */}
+      {/* 7. Membership CTA Banner */}
+      <section className="py-20 bg-gradient-to-r from-zinc-900 via-zinc-800 to-zinc-900 text-white">
+        <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center text-center md:text-left">
+            <div className="md:col-span-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-semibold uppercase tracking-wider mb-4">
+                <Crown className="h-3.5 w-3.5 text-yellow-400" />
+                ALTERA Membership
+              </div>
+              <h2 className="font-heading text-3xl font-bold uppercase tracking-wide">
+                Nâng cấp trải nghiệm của bạn
+              </h2>
+              <p className="mt-3 text-sm text-zinc-400 leading-relaxed max-w-lg">
+                Từ gói FREE đến PRO — mở khóa outfit AI không giới hạn, thiết kế độc quyền, và ưu đãi mua sắm mỗi tháng.
+              </p>
+            </div>
+            <div className="flex flex-col items-center md:items-end gap-3">
+              <Button asChild variant="accent" size="lg" className="uppercase font-semibold tracking-wider w-full md:w-auto">
+                <Link to="/membership" className="flex items-center gap-2">
+                  <Crown className="h-4 w-4" />
+                  Xem các gói
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="md" className="text-zinc-400 hover:text-white uppercase font-semibold tracking-wider w-full md:w-auto">
+                <Link to="/about">Tìm hiểu về ALTERA</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. Testimonials */}
       <section className="py-24 border-b border-[var(--color-border)]">
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 text-center">
           <h2 className="font-heading text-3xl font-bold uppercase tracking-wide">
@@ -315,7 +421,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* 7. CTA Section */}
+      {/* 9. CTA Section */}
       <section className="bg-[var(--color-foreground)] text-[var(--color-background)] py-24">
         <div className="mx-auto max-w-2xl px-6 text-center">
           <h2 className="font-heading text-3xl font-black uppercase tracking-wider sm:text-4xl">
@@ -335,12 +441,20 @@ export function HomePage() {
               Subscribe
             </Button>
           </form>
-          <div className="mt-6 flex items-center justify-center gap-6 text-xs opacity-60">
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-xs opacity-60">
             <span className="flex items-center gap-1">
               <ShieldCheck className="h-4 w-4" /> Secure checkout
             </span>
             <span>•</span>
             <span>Easy returns</span>
+            <span>•</span>
+            <Link to="/about" className="hover:opacity-100 underline underline-offset-2 transition-opacity">
+              Về ALTERA
+            </Link>
+            <span>•</span>
+            <Link to="/membership" className="hover:opacity-100 underline underline-offset-2 transition-opacity">
+              Membership
+            </Link>
           </div>
         </div>
       </section>

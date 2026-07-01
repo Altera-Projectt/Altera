@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CartService } from '@/services/cart.api'
@@ -8,6 +8,7 @@ import { formatPrice } from '@/utils/format'
 
 export function CartPage() {
   const { cart, fetchCart, loading } = useCartStore()
+  const navigate = useNavigate()
   const [updating, setUpdating] = useState<string | null>(null)
   
   // Refetch cart on mount
@@ -198,7 +199,7 @@ export function CartPage() {
               </div>
             </div>
 
-            <Button size="lg" className="w-full uppercase font-semibold tracking-wider h-14">
+            <Button size="lg" className="w-full uppercase font-semibold tracking-wider h-14" onClick={() => navigate('/checkout')}>
               Proceed to Checkout
             </Button>
           </div>

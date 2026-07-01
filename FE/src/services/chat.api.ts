@@ -5,6 +5,7 @@ import type {
   ChatsResponse,
   CreateChatPayload,
   SendMessagePayload,
+  SendMessageResponse,
 } from '@/types/chat.types'
 
 export const ChatService = {
@@ -18,7 +19,7 @@ export const ChatService = {
     api.get<ApiResponse<{ chat: Chat }>>(`/chats/${id}`),
 
   sendMessage: (id: string, payload: SendMessagePayload) =>
-    api.post<ApiResponse<{ chat: Chat }>>(`/chats/${id}/message`, payload),
+    api.post<ApiResponse<SendMessageResponse>>(`/chats/${id}/message`, payload),
 
   deleteChat: (id: string) =>
     api.delete<ApiResponse<void>>(`/chats/${id}`),

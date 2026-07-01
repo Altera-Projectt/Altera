@@ -4,9 +4,12 @@ import { ProductService } from '@/services/product.api'
 import type { Product } from '@/types/product.types'
 import { Button } from '@/components/ui/Button'
 import { formatPrice } from '@/utils/format'
-import { ArrowLeft, ShoppingBag } from 'lucide-react'
+import { ArrowLeft, ShoppingBag, Heart } from 'lucide-react'
 import { CartService } from '@/services/cart.api'
+import { WishlistService } from '@/services/wishlist.api'
 import { useCartStore } from '@/store/cartStore'
+import { useAuthStore } from '@/store/authStore'
+import { cn } from '@/utils/cn'
 import { toast } from 'sonner'
 
 export function ProductDetailPage() {
@@ -14,10 +17,13 @@ export function ProductDetailPage() {
   const navigate = useNavigate()
   
   const { fetchCart } = useCartStore()
+  const { isAuthenticated } = useAuthStore()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [wishlisting, setWishlisting] = useState(false)
+  const [isWishlisted, setIsWishlisted] = useState(false)
 
   const handleAddToCart = async () => {
     if (adding || !product || product.stock === 0) return
@@ -31,6 +37,30 @@ export function ProductDetailPage() {
       toast.error(err?.response?.data?.message || 'Failed to add to cart')
     } finally {
       setAdding(false)
+    }
+  }
+
+  const handleWishlist = async () => {
+    if (!isAuthenticated) {
+      navigate('/auth/login')
+      return
+    }
+    if (wishlisting || !product) return
+    try {
+      setWishlisting(true)
+      if (isWishlisted) {
+        await WishlistService.removeFromWishlist(product._id)
+        setIsWishlisted(false)
+        toast.success('Đã xóa khỏi danh sách yêu thích')
+      } else {
+        await WishlistService.addToWishlist(product._id)
+        setIsWishlisted(true)
+        toast.success('Đã thêm vào danh sách yêu thích')
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Thao tác thất bại')
+    } finally {
+      setWishlisting(false)
     }
   }
 
@@ -129,7 +159,7 @@ export function ProductDetailPage() {
           </div>
 
           {/* Action */}
-          <div className="mt-10">
+          <div className="mt-10 flex flex-col gap-3">
             <Button size="lg" className="w-full uppercase font-semibold tracking-wider h-14" disabled={product.stock === 0 || adding} onClick={handleAddToCart}>
               {adding ? (
                 <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
@@ -137,6 +167,20 @@ export function ProductDetailPage() {
                 <ShoppingBag className="mr-2 h-5 w-5" />
               )}
               {product.stock > 0 ? (adding ? 'Adding...' : 'Add to Cart') : 'Out of Stock'}
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full h-14 font-semibold"
+              disabled={wishlisting}
+              onClick={handleWishlist}
+            >
+              {wishlisting ? (
+                <div className="h-5 w-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Heart className={cn('h-5 w-5', isWishlisted ? 'fill-rose-500 text-rose-500' : '')} />
+              )}
+              {isWishlisted ? 'Đã yêu thích' : 'Thêm vào yêu thích'}
             </Button>
           </div>
         </div>

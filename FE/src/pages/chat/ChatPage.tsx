@@ -3,6 +3,8 @@ import { ChatService } from '@/services/chat.api'
 import type { Chat, ChatMessage } from '@/types/chat.types'
 import type { AxiosError } from 'axios'
 import type { ApiError } from '@/types/api.types'
+import { Sparkles, MessageSquare, Plus, X, Menu, Trash2, Send, AlertCircle, ShoppingBag, User } from 'lucide-react'
+import { cn } from '@/utils/cn'
 
 export function ChatPage() {
   // ── State ─────────────────────────────────────────────────────────────────
@@ -107,20 +109,31 @@ export function ChatPage() {
     setInput('')
 
     // Optimistically append user message
-    const optimistic: ChatMessage = { role: 'user', content, createdAt: new Date().toISOString() }
+    const optimistic: ChatMessage = { sender: 'USER', text: content, createdAt: new Date().toISOString() }
     setMessages((prev) => [...prev, optimistic])
     setSending(true)
 
     try {
-      const res = await ChatService.sendMessage(selectedChat._id, { content })
-      const updatedChat = res.data.data.chat
-      setMessages(updatedChat.messages ?? [])
-      // Update title in sidebar if changed
-      setChats((prev) =>
-        prev.map((c) =>
-          c._id === updatedChat._id ? { ...c, title: updatedChat.title, updatedAt: updatedChat.updatedAt } : c,
-        ),
-      )
+      const res = await ChatService.sendMessage(selectedChat._id, { message: content })
+      const { userMessage, aiMessage } = res.data.data
+      
+      // Thay optimistic bằng response thật, thêm aiMessage vào
+      setMessages((prev) => [
+        ...prev.filter((m) => m !== optimistic),
+        userMessage,
+        aiMessage,
+      ])
+      
+      // Cập nhật title trong sidebar nếu đây là tin nhắn đầu tiên:
+      if (messages.length === 0) {
+        setChats((prev) =>
+          prev.map((c) =>
+            c._id === selectedChat._id
+              ? { ...c, title: content.substring(0, 50) }
+              : c
+          )
+        )
+      }
     } catch (err) {
       const axiosErr = err as AxiosError<ApiError>
       const msg = axiosErr.response?.data?.message ?? 'Gửi tin nhắn thất bại. Vui lòng thử lại.'
@@ -142,281 +155,146 @@ export function ChatPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div
-      style={{
-        display: 'flex',
-        height: 'calc(100vh - 72px)',
-        background: '#080808',
-        overflow: 'hidden',
-      }}
-    >
+    <div className="flex h-[calc(100vh-var(--spacing-navbar,72px))] bg-[var(--color-background)] overflow-hidden">
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside
-        style={{
-          width: sidebarOpen ? '280px' : '0',
-          minWidth: sidebarOpen ? '280px' : '0',
-          flexShrink: 0,
-          background: '#0d0d0d',
-          borderRight: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          transition: 'min-width 0.3s ease, width 0.3s ease',
-        }}
+        className={cn(
+          "flex-shrink-0 flex-col overflow-hidden transition-all duration-300 ease-in-out border-r border-[var(--color-border)] bg-[var(--color-neutral)]",
+          sidebarOpen ? "w-[280px]" : "w-0"
+        )}
       >
-        {/* Sidebar header */}
-        <div
-          style={{
-            padding: '20px 16px 12px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            flexShrink: 0,
-          }}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div
-                style={{
-                  width: 28, height: 28, borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #e11d48, #9333ea)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '14px',
-                }}
-              >
-                💬
+        <div className="flex flex-col h-full w-[280px]">
+          {/* Sidebar header */}
+          <div className="p-5 pb-4 border-b border-[var(--color-border)] shrink-0">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <span className="text-[var(--color-foreground)] font-bold text-sm tracking-wide uppercase">AI Chat</span>
               </div>
-              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px' }}>AI Chat</span>
             </div>
+
+            <button
+              id="chat-btn-new"
+              onClick={handleNewChat}
+              disabled={creatingChat}
+              className="w-full py-2.5 px-4 rounded-[var(--radius-md)] border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 text-[var(--color-accent)] font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors hover:bg-[var(--color-accent)]/15 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {creatingChat ? <MiniSpinner /> : <Plus className="w-4 h-4" />}
+              New Chat
+            </button>
           </div>
 
-          <button
-            id="chat-btn-new"
-            onClick={handleNewChat}
-            disabled={creatingChat}
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              borderRadius: '10px',
-              border: '1px solid rgba(225,29,72,0.3)',
-              background: 'rgba(225,29,72,0.08)',
-              color: creatingChat ? 'rgba(255,255,255,0.3)' : '#e11d48',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: creatingChat ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              if (!creatingChat) {
-                ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(225,29,72,0.15)'
-              }
-            }}
-            onMouseLeave={(e) => {
-              ;(e.currentTarget as HTMLButtonElement).style.background = 'rgba(225,29,72,0.08)'
-            }}
-          >
-            {creatingChat ? <MiniSpinner /> : '+'}
-            New Chat
-          </button>
-        </div>
-
-        {/* Chat list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-          {chatsLoading && (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '32px 0' }}>
-              <MiniSpinner />
-            </div>
-          )}
-          {chatsError && (
-            <p style={{ color: '#fca5a5', fontSize: '13px', textAlign: 'center', padding: '24px 12px' }}>
-              {chatsError}
-            </p>
-          )}
-          {!chatsLoading && chats.length === 0 && (
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '13px', textAlign: 'center', padding: '32px 12px' }}>
-              Chưa có cuộc trò chuyện nào.
-              <br />
-              Tạo mới để bắt đầu!
-            </p>
-          )}
-          {chats.map((chat) => (
-            <div
-              key={chat._id}
-              id={`chat-item-${chat._id}`}
-              onClick={() => selectChat(chat)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '10px 12px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                marginBottom: '2px',
-                background:
-                  selectedChat?._id === chat._id
-                    ? 'rgba(225,29,72,0.1)'
-                    : 'transparent',
-                border: selectedChat?._id === chat._id
-                  ? '1px solid rgba(225,29,72,0.2)'
-                  : '1px solid transparent',
-                transition: 'all 0.15s',
-                position: 'relative',
-              }}
-              onMouseEnter={(e) => {
-                if (selectedChat?._id !== chat._id) {
-                  ;(e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.04)'
-                }
-                ;(e.currentTarget as HTMLDivElement).querySelector<HTMLButtonElement>('.delete-btn')!.style.opacity = '1'
-              }}
-              onMouseLeave={(e) => {
-                if (selectedChat?._id !== chat._id) {
-                  ;(e.currentTarget as HTMLDivElement).style.background = 'transparent'
-                }
-                ;(e.currentTarget as HTMLDivElement).querySelector<HTMLButtonElement>('.delete-btn')!.style.opacity = '0'
-              }}
-            >
-              <div
-                style={{
-                  width: 32, height: 32, borderRadius: '8px', flexShrink: 0,
-                  background: selectedChat?._id === chat._id
-                    ? 'rgba(225,29,72,0.15)'
-                    : 'rgba(255,255,255,0.05)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '14px',
-                }}
-              >
-                💬
+          {/* Chat list */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-1">
+            {chatsLoading && (
+              <div className="flex justify-center py-8">
+                <MiniSpinner className="text-[var(--color-muted-foreground)]" />
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p
-                  style={{
-                    color: selectedChat?._id === chat._id ? '#fff' : 'rgba(255,255,255,0.7)',
-                    fontSize: '13px',
-                    fontWeight: selectedChat?._id === chat._id ? 600 : 400,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
+            )}
+            {chatsError && (
+              <p className="text-[var(--color-error)] text-sm text-center py-6 px-3">
+                {chatsError}
+              </p>
+            )}
+            {!chatsLoading && chats.length === 0 && (
+              <div className="text-[var(--color-muted-foreground)] text-sm text-center py-8 px-3">
+                Chưa có cuộc trò chuyện nào.
+                <br />
+                Tạo mới để bắt đầu!
+              </div>
+            )}
+            {chats.map((chat) => {
+              const isSelected = selectedChat?._id === chat._id
+              return (
+                <div
+                  key={chat._id}
+                  id={`chat-item-${chat._id}`}
+                  onClick={() => selectChat(chat)}
+                  className={cn(
+                    "group flex items-center gap-3 p-3 rounded-[var(--radius-md)] cursor-pointer transition-all relative border",
+                    isSelected
+                      ? "bg-[var(--color-accent)]/10 border-[var(--color-accent)]/20"
+                      : "bg-transparent border-transparent hover:bg-[var(--color-muted)]"
+                  )}
                 >
-                  {chat.title}
-                </p>
-                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px', marginTop: '1px' }}>
-                  {new Date(chat.updatedAt).toLocaleDateString('vi-VN')}
-                </p>
-              </div>
-              <button
-                className="delete-btn"
-                onClick={(e) => handleDeleteChat(chat._id, e)}
-                disabled={deletingId === chat._id}
-                style={{
-                  opacity: 0,
-                  background: 'none',
-                  border: 'none',
-                  color: 'rgba(255,255,255,0.4)',
-                  padding: '4px',
-                  cursor: 'pointer',
-                  borderRadius: '6px',
-                  flexShrink: 0,
-                  transition: 'opacity 0.15s, color 0.15s',
-                  fontSize: '14px',
-                }}
-                onMouseEnter={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.color = '#ef4444'
-                }}
-                onMouseLeave={(e) => {
-                  ;(e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.4)'
-                }}
-              >
-                {deletingId === chat._id ? <MiniSpinner /> : '×'}
-              </button>
-            </div>
-          ))}
+                  <div className={cn(
+                    "w-8 h-8 rounded-[var(--radius-md)] flex-shrink-0 flex items-center justify-center",
+                    isSelected ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]" : "bg-[var(--color-background)] text-[var(--color-muted-foreground)]"
+                  )}>
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "text-sm truncate",
+                      isSelected ? "text-[var(--color-foreground)] font-semibold" : "text-[var(--color-muted-foreground)] font-medium"
+                    )}>
+                      {chat.title}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-muted-foreground)]/70 mt-0.5">
+                      {new Date(chat.updatedAt).toLocaleDateString('vi-VN')}
+                    </p>
+                  </div>
+                  <button
+                    className="delete-btn opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-all focus:opacity-100 disabled:opacity-50"
+                    onClick={(e) => handleDeleteChat(chat._id, e)}
+                    disabled={deletingId === chat._id}
+                    title="Xóa cuộc trò chuyện"
+                  >
+                    {deletingId === chat._id ? <MiniSpinner className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
         </div>
       </aside>
 
       {/* ── Main chat area ────────────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-background)]">
         {/* Top bar */}
-        <div
-          style={{
-            padding: '0 20px',
-            height: '60px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            flexShrink: 0,
-            background: 'rgba(8,8,8,0.95)',
-            backdropFilter: 'blur(20px)',
-          }}
-        >
+        <div className="h-[60px] px-5 border-b border-[var(--color-border)] flex items-center gap-4 shrink-0 bg-[var(--color-background)]/80 backdrop-blur-md">
           <button
             id="chat-btn-toggle-sidebar"
             onClick={() => setSidebarOpen((o) => !o)}
-            style={{
-              background: 'none', border: 'none',
-              color: 'rgba(255,255,255,0.5)',
-              cursor: 'pointer', padding: '6px', borderRadius: '8px',
-              display: 'flex', alignItems: 'center', transition: 'color 0.15s',
-            }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = '#fff')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.5)')}
+            className="p-2 -ml-2 rounded-[var(--radius-md)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="3" y1="6" x2="21" y2="6" />
-              <line x1="3" y1="12" x2="21" y2="12" />
-              <line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
+            <Menu className="w-5 h-5" />
           </button>
+          
           {selectedChat ? (
-            <>
-              <div
-                style={{
-                  width: 32, height: 32, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #e11d48, #9333ea)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '14px', flexShrink: 0,
-                }}
-              >
-                ✨
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center shrink-0">
+                <Sparkles className="w-4 h-4" />
               </div>
               <div>
-                <p style={{ color: '#fff', fontWeight: 600, fontSize: '14px' }}>{selectedChat.title}</p>
+                <p className="text-[var(--color-foreground)] font-semibold text-sm">{selectedChat.title}</p>
                 {selectedChat.topic && (
-                  <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '12px' }}>{selectedChat.topic}</p>
+                  <p className="text-[var(--color-muted-foreground)] text-[12px] truncate max-w-xs">{selectedChat.topic}</p>
                 )}
               </div>
-            </>
+            </div>
           ) : (
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>ALTERA AI Chat</p>
+            <p className="text-[var(--color-muted-foreground)] text-sm font-medium">ALTERA AI Chat</p>
           )}
         </div>
 
         {/* Messages area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px' }}>
+        <div className="flex-1 overflow-y-auto p-6 lg:p-8">
           {!selectedChat ? (
             <ChatEmptyState onNewChat={handleNewChat} creating={creatingChat} />
           ) : messages.length === 0 ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                height: '100%',
-                gap: '12px',
-              }}
-            >
-              <div style={{ fontSize: '48px', opacity: 0.6 }}>💬</div>
-              <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
+              <div className="w-16 h-16 rounded-full bg-[var(--color-muted)] flex items-center justify-center text-[var(--color-muted-foreground)]">
+                <MessageSquare className="w-8 h-8 opacity-50" />
+              </div>
+              <p className="text-[var(--color-muted-foreground)] text-sm max-w-sm">
                 Bắt đầu cuộc trò chuyện bằng cách gửi tin nhắn bên dưới.
               </p>
             </div>
           ) : (
-            <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="max-w-3xl mx-auto flex flex-col gap-6 pb-4">
               {messages.map((msg, i) => (
                 <MessageBubble key={i} message={msg} />
               ))}
@@ -428,108 +306,49 @@ export function ChatPage() {
 
         {/* Input area */}
         {selectedChat && (
-          <div
-            style={{
-              padding: '16px 20px',
-              borderTop: '1px solid rgba(255,255,255,0.06)',
-              flexShrink: 0,
-              background: '#0d0d0d',
-            }}
-          >
-            {sendError && (
-              <div
-                style={{
-                  background: 'rgba(239,68,68,0.1)',
-                  border: '1px solid rgba(239,68,68,0.2)',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  marginBottom: '10px',
-                  color: '#fca5a5',
-                  fontSize: '13px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-              >
-                ⚠️ {sendError}
+          <div className="p-4 lg:p-6 border-t border-[var(--color-border)] shrink-0 bg-[var(--color-neutral)]">
+            <div className="max-w-3xl mx-auto">
+              {sendError && (
+                <div className="flex items-center gap-2 mb-3 p-3 rounded-[var(--radius-md)] bg-red-50 text-[var(--color-error)] border border-[var(--color-error)]/20 text-sm">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  {sendError}
+                </div>
+              )}
+              
+              <div className="flex items-end gap-3 bg-[var(--color-background)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)]/50 focus-within:ring-1 focus-within:ring-[var(--color-accent)]/50 rounded-[var(--radius-lg)] p-2 transition-all">
+                <textarea
+                  id="chat-input-message"
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Nhắn tin với AI... (Enter để gửi, Shift+Enter xuống dòng)"
+                  rows={1}
+                  disabled={sending}
+                  className="flex-1 bg-transparent border-none text-[var(--color-foreground)] text-sm p-3 outline-none resize-none max-h-[200px] font-sans placeholder:text-[var(--color-muted-foreground)]"
+                  onInput={(e) => {
+                    const el = e.currentTarget
+                    el.style.height = 'auto'
+                    el.style.height = Math.min(el.scrollHeight, 200) + 'px'
+                  }}
+                />
+                <button
+                  id="chat-btn-send"
+                  onClick={handleSend}
+                  disabled={sending || !input.trim()}
+                  className="w-11 h-11 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)] flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 mb-0.5 mr-0.5"
+                >
+                  {sending ? (
+                    <MiniSpinner />
+                  ) : (
+                    <Send className="w-5 h-5 ml-[-2px] mb-[-2px]" />
+                  )}
+                </button>
               </div>
-            )}
-            <div
-              style={{
-                maxWidth: '800px',
-                margin: '0 auto',
-                display: 'flex',
-                gap: '10px',
-                alignItems: 'flex-end',
-              }}
-            >
-              <textarea
-                id="chat-input-message"
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Nhắn tin với AI... (Enter để gửi, Shift+Enter xuống dòng)"
-                rows={1}
-                disabled={sending}
-                style={{
-                  flex: 1,
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '12px',
-                  padding: '12px 16px',
-                  color: '#fff',
-                  fontSize: '14px',
-                  outline: 'none',
-                  resize: 'none',
-                  lineHeight: 1.6,
-                  maxHeight: '200px',
-                  overflowY: 'auto',
-                  transition: 'border-color 0.2s',
-                  fontFamily: 'inherit',
-                }}
-                onFocus={(e) => (e.target.style.borderColor = 'rgba(225,29,72,0.4)')}
-                onBlur={(e) => (e.target.style.borderColor = 'rgba(255,255,255,0.1)')}
-                onInput={(e) => {
-                  const el = e.currentTarget
-                  el.style.height = 'auto'
-                  el.style.height = Math.min(el.scrollHeight, 200) + 'px'
-                }}
-              />
-              <button
-                id="chat-btn-send"
-                onClick={handleSend}
-                disabled={sending || !input.trim()}
-                style={{
-                  width: 44, height: 44, flexShrink: 0,
-                  borderRadius: '12px',
-                  border: 'none',
-                  background:
-                    sending || !input.trim()
-                      ? 'rgba(255,255,255,0.06)'
-                      : 'linear-gradient(135deg, #e11d48, #9333ea)',
-                  color: sending || !input.trim() ? 'rgba(255,255,255,0.3)' : '#fff',
-                  cursor: sending || !input.trim() ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.2s',
-                  flexDirection: 'column',
-                }}
-              >
-                {sending ? (
-                  <MiniSpinner />
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                )}
-              </button>
+              <p className="text-[11px] text-[var(--color-muted-foreground)] text-center mt-3">
+                AI có thể mắc sai sót. Luôn kiểm tra thông tin quan trọng.
+              </p>
             </div>
-            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', textAlign: 'center', marginTop: '8px', maxWidth: '800px', margin: '8px auto 0' }}>
-              AI có thể mắc sai sót. Luôn kiểm tra thông tin quan trọng.
-            </p>
           </div>
         )}
       </div>
@@ -540,64 +359,32 @@ export function ChatPage() {
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function MessageBubble({ message }: { message: ChatMessage }) {
-  const isUser = message.role === 'user'
+  const isUser = message.sender === 'USER'
   return (
-    <div
-      style={{
-        display: 'flex',
-        gap: '12px',
-        flexDirection: isUser ? 'row-reverse' : 'row',
-        alignItems: 'flex-start',
-      }}
-    >
+    <div className={cn("flex gap-4 items-start", isUser ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
-      <div
-        style={{
-          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-          background: isUser
-            ? 'rgba(255,255,255,0.1)'
-            : 'linear-gradient(135deg, #e11d48, #9333ea)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '14px',
-        }}
-      >
-        {isUser ? '👤' : '✨'}
+      <div className={cn(
+        "w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1",
+        isUser ? "bg-[var(--color-muted)] text-[var(--color-foreground)]" : "bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
+      )}>
+        {isUser ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
       </div>
 
       {/* Bubble */}
-      <div
-        style={{
-          maxWidth: '70%',
-          background: isUser
-            ? 'rgba(255,255,255,0.07)'
-            : 'rgba(225,29,72,0.06)',
-          border: isUser
-            ? '1px solid rgba(255,255,255,0.1)'
-            : '1px solid rgba(225,29,72,0.15)',
-          borderRadius: isUser ? '16px 4px 16px 16px' : '4px 16px 16px 16px',
-          padding: '12px 16px',
-        }}
-      >
-        <p
-          style={{
-            color: isUser ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.9)',
-            fontSize: '14px',
-            lineHeight: 1.7,
-            whiteSpace: 'pre-wrap',
-            margin: 0,
-          }}
-        >
-          {message.content}
+      <div className={cn(
+        "max-w-[80%] rounded-2xl p-4",
+        isUser 
+          ? "bg-[var(--color-muted)] text-[var(--color-foreground)] rounded-tr-sm" 
+          : "bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/10 text-[var(--color-foreground)] rounded-tl-sm"
+      )}>
+        <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+          {message.text}
         </p>
         {message.createdAt && (
-          <p
-            style={{
-              color: 'rgba(255,255,255,0.25)',
-              fontSize: '11px',
-              marginTop: '6px',
-              textAlign: isUser ? 'right' : 'left',
-            }}
-          >
+          <p className={cn(
+            "text-[11px] mt-2",
+            isUser ? "text-[var(--color-muted-foreground)] text-right" : "text-[var(--color-muted-foreground)] text-left"
+          )}>
             {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           </p>
         )}
@@ -608,36 +395,16 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 function TypingIndicator() {
   return (
-    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-      <div
-        style={{
-          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-          background: 'linear-gradient(135deg, #e11d48, #9333ea)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '14px',
-        }}
-      >
-        ✨
+    <div className="flex gap-4 items-start">
+      <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1 bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
+        <Sparkles className="w-4 h-4" />
       </div>
-      <div
-        style={{
-          background: 'rgba(225,29,72,0.06)',
-          border: '1px solid rgba(225,29,72,0.15)',
-          borderRadius: '4px 16px 16px 16px',
-          padding: '14px 20px',
-          display: 'flex',
-          gap: '5px',
-          alignItems: 'center',
-        }}
-      >
+      <div className="bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/10 rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            style={{
-              width: 7, height: 7, borderRadius: '50%',
-              background: '#e11d48',
-              animation: `dot-bounce 1.4s ${i * 0.2}s infinite ease-in-out`,
-            }}
+            className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]"
+            style={{ animation: `dot-bounce 1.4s ${i * 0.2}s infinite ease-in-out` }}
           />
         ))}
         <style>{`
@@ -653,77 +420,44 @@ function TypingIndicator() {
 
 function ChatEmptyState({ onNewChat, creating }: { onNewChat: () => void; creating: boolean }) {
   return (
-    <div
-      style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', height: '100%', gap: '20px', textAlign: 'center',
-        padding: '40px 24px',
-      }}
-    >
-      <div
-        style={{
-          width: 80, height: 80, borderRadius: '24px',
-          background: 'linear-gradient(135deg, rgba(225,29,72,0.15), rgba(147,51,234,0.15))',
-          border: '1px solid rgba(225,29,72,0.2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '36px',
-        }}
-      >
-        💬
+    <div className="flex flex-col items-center justify-center h-full gap-8 text-center px-6 max-w-2xl mx-auto">
+      <div className="w-20 h-20 rounded-[1.5rem] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 flex items-center justify-center text-[var(--color-accent)]">
+        <Sparkles className="w-10 h-10" />
       </div>
+      
       <div>
-        <h2 style={{ color: '#fff', fontWeight: 700, fontSize: '22px', marginBottom: '8px' }}>
+        <h2 className="font-heading font-bold text-2xl text-[var(--color-foreground)] mb-3">
           Chào mừng đến ALTERA AI Chat
         </h2>
-        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', maxWidth: '380px', lineHeight: 1.7 }}>
+        <p className="text-[var(--color-muted-foreground)] text-sm max-w-md mx-auto leading-relaxed">
           Trợ lý thời trang AI của bạn. Hỏi bất kỳ điều gì về phong cách, outfit, xu hướng thời trang và nhiều hơn nữa.
         </p>
       </div>
+      
       <button
         id="chat-btn-empty-new"
         onClick={onNewChat}
         disabled={creating}
-        style={{
-          padding: '12px 28px',
-          borderRadius: '12px',
-          border: 'none',
-          background: creating ? 'rgba(225,29,72,0.3)' : 'linear-gradient(135deg, #e11d48, #9333ea)',
-          color: '#fff',
-          fontWeight: 700,
-          fontSize: '14px',
-          cursor: creating ? 'not-allowed' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          transition: 'opacity 0.2s',
-        }}
+        className="px-6 py-3 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)] font-semibold text-sm flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 shadow-sm"
       >
-        {creating ? <MiniSpinner /> : null}
-        + Tạo cuộc trò chuyện mới
+        {creating ? <MiniSpinner /> : <Plus className="w-4 h-4" />}
+        Tạo cuộc trò chuyện mới
       </button>
-      <div
-        style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px',
-          maxWidth: '500px', marginTop: '8px',
-        }}
-      >
+      
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-6">
         {[
-          { icon: '👗', label: 'Gợi ý outfit' },
-          { icon: '🛍', label: 'Tư vấn mua sắm' },
-          { icon: '✨', label: 'Xu hướng thời trang' },
+          { icon: Sparkles, label: 'Gợi ý outfit' },
+          { icon: ShoppingBag, label: 'Tư vấn mua sắm' },
+          { icon: MessageSquare, label: 'Xu hướng thời trang' },
         ].map((item) => (
           <div
             key={item.label}
-            style={{
-              padding: '16px 12px',
-              borderRadius: '12px',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              textAlign: 'center',
-            }}
+            className="p-5 rounded-[var(--radius-lg)] bg-[var(--color-neutral)] border border-[var(--color-border)] text-center flex flex-col items-center gap-3"
           >
-            <div style={{ fontSize: '24px', marginBottom: '8px' }}>{item.icon}</div>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '12px' }}>{item.label}</p>
+            <div className="w-10 h-10 rounded-full bg-[var(--color-background)] flex items-center justify-center text-[var(--color-foreground)] shadow-sm">
+              <item.icon className="w-5 h-5" />
+            </div>
+            <p className="text-[var(--color-muted-foreground)] text-xs font-medium">{item.label}</p>
           </div>
         ))}
       </div>
@@ -731,15 +465,15 @@ function ChatEmptyState({ onNewChat, creating }: { onNewChat: () => void; creati
   )
 }
 
-function MiniSpinner() {
+function MiniSpinner({ className }: { className?: string }) {
   return (
     <svg
-      width="14" height="14" viewBox="0 0 24 24"
+      className={cn("w-4 h-4 animate-spin", className)}
+      viewBox="0 0 24 24"
       fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-      style={{ animation: 'spin 0.8s linear infinite' }}
     >
       <path d="M12 2a10 10 0 0 1 10 10" />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </svg>
   )
 }
+

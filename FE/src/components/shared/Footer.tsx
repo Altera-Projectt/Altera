@@ -11,22 +11,22 @@ const FOOTER_LINKS = [
       { label: 'New Arrivals', href: '/products?sort=newest' },
       { label: 'T-Shirts', href: '/products?category=T-SHIRT' },
       { label: 'Jackets', href: '/products?category=JACKET' },
-      { label: 'Accessories', href: '/products?category=ACCESSORIES' },
+      { label: 'Wishlist', href: '/wishlist' },
     ],
   },
   {
     heading: 'Studio',
     links: [
       { label: 'Design Studio', href: '/design' },
+      { label: 'My Designs', href: '/designs' },
       { label: 'AI Stylist', href: '/outfit' },
-      { label: 'Lookbook', href: '/lookbook' },
     ],
   },
   {
     heading: 'Support',
     links: [
-      { label: 'Size Guide', href: '/size-guide' },
-      { label: 'Shipping & Returns', href: '/shipping' },
+      { label: 'Membership', href: '/membership' },
+      { label: 'About Us', href: '/about' },
       { label: 'Contact', href: '/contact' },
     ],
   },
