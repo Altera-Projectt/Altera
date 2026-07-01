@@ -41,6 +41,10 @@ router.get('/', getChats);
  *               title:
  *                 type: string
  *                 example: "My Chat"
+ *               topic:
+ *                 type: string
+ *                 enum: [fashion, outfit, style, general]
+ *                 example: "outfit"
  *     responses:
  *       201:
  *         description: Chat created successfully
@@ -96,9 +100,9 @@ router.get('/:id', getChatById);
  *           schema:
  *             type: object
  *             required:
- *               - content
+ *               - message
  *             properties:
- *               content:
+ *               message:
  *                 type: string
  *                 example: "Gợi ý outfit cho mùa hè"
  *     responses:

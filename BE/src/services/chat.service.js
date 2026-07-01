@@ -71,25 +71,21 @@ const getChatById = async (chatId, userId) => {
 /**
  * Send message and get AI response
  */
-const sendMessage = async (chatId, userId, userMessage) => {
+const sendMessage = async (chatId, userId, userMessage, options = {}) => {
   const chat = await getChatById(chatId, userId);
 
-  // Add user message
   chat.messages.push({
     sender: 'USER',
     text: userMessage,
   });
 
-  // Generate AI response
-  const aiResponse = await generateAIResponse(userMessage, chat.messages, chat.topic);
+  const aiResponse = await generateAIResponse(userMessage, chat.messages, chat.topic, options);
 
-  // Add AI message
   chat.messages.push({
     sender: 'AI',
     text: aiResponse,
   });
 
-  // Update chat title if first message
   if (chat.messages.length === 2) {
     const title = userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : '');
     chat.title = title;
@@ -105,7 +101,7 @@ const sendMessage = async (chatId, userId, userMessage) => {
 /**
  * Generate AI response using Gemini API
  */
-const generateAIResponse = async (userMessage, messageHistory, topic = 'general') => {
+const generateAIResponse = async (userMessage, messageHistory, topic = 'general', options = {}) => {
   const client = getGenAI();
 
   if (!client) {
@@ -116,9 +112,8 @@ const generateAIResponse = async (userMessage, messageHistory, topic = 'general'
   try {
     const systemPrompt = getSystemPrompt(topic);
 
-    // Build conversation history for context
     const conversationHistory = messageHistory
-      .slice(-10) // Last 10 messages for context
+      .slice(-10)
       .map((msg) => ({
         role: msg.sender === 'USER' ? 'user' : 'model',
         parts: [{ text: msg.text }],
@@ -132,7 +127,24 @@ const generateAIResponse = async (userMessage, messageHistory, topic = 'general'
       },
     });
 
-    const result = await chat.sendMessage(userMessage);
+    const prompt = `${systemPrompt}\n\nUser: ${userMessage}`;
+
+    if (options.stream && typeof options.onChunk === 'function') {
+      const resultStream = await chat.sendMessageStream(prompt);
+      let fullText = '';
+
+      for await (const chunk of resultStream.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          fullText += chunkText;
+          options.onChunk(chunkText);
+        }
+      }
+
+      return fullText || 'I understand. Tell me more about this.';
+    }
+
+    const result = await chat.sendMessage(prompt);
     const text = result.response.text();
 
     return text || 'I understand. Tell me more about this.';

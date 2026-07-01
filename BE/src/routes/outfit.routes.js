@@ -15,14 +15,26 @@ router.use(protect);
  *     security:
  *       - bearerAuth: []
  *     requestBody:
- *       required: true
+ *       required: false
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - occasion
  *             properties:
+ *               top:
+ *                 type: string
+ *                 example: "White shirt"
+ *               bottom:
+ *                 type: string
+ *                 example: "Black trousers"
+ *               shoes:
+ *                 type: string
+ *                 example: "White sneakers"
+ *               accessories:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["watch", "belt"]
  *               occasion:
  *                 type: string
  *                 example: "Đi làm"
@@ -48,12 +60,22 @@ router.use(protect);
  *                 data:
  *                   type: object
  *                   properties:
- *                     recommendation:
+ *                     suggestion:
+ *                       type: string
+ *                     tips:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     styleScore:
+ *                       type: number
+ *                     improvements:
+ *                       type: string
+ *                     recordId:
  *                       type: string
  *                     products:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/Product'
+ *                         type: object
  *       401:
  *         description: Unauthorized
  */

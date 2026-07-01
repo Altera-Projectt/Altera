@@ -1,19 +1,32 @@
 const OutfitRecommendation = require('../models/OutfitRecommendation');
-const { generateOutfitRecommendation } = require('../services/ai.service');
+const Product = require('../models/Product');
+const { generateOutfitRecommendation, normalizeOutfitHistoryEntry } = require('../services/ai.service');
 
 const recommend = async (req, res, next) => {
   try {
-    const { top, bottom, shoes, accessories, occasion } = req.body;
+    const { top, bottom, shoes, accessories, occasion, style, budget, preferences } = req.body;
+    const normalizedAccessories = Array.isArray(accessories) ? accessories : accessories ? [accessories] : [];
+    const normalizedBudget = budget ? Number(budget) : null;
+    const requestedCategories = [top ? 'SHIRT' : null, bottom ? 'PANTS' : null, shoes ? 'SHOES' : null].filter(Boolean);
 
-    if (!top && !bottom && !shoes) {
-      return res.status(400).json({ success: false, message: 'Please provide at least one item (top, bottom, or shoes)' });
-    }
+    const productQuery = {
+      isActive: true,
+      ...(requestedCategories.length > 0 ? { category: { $in: requestedCategories } } : { category: { $in: ['SHIRT', 'PANTS', 'SHOES'] } }),
+      ...(normalizedBudget ? { price: { $lte: normalizedBudget } } : {}),
+      ...(req.body?.stock === 'available' ? { stock: { $gt: 0 } } : {}),
+    };
 
-    const result = await generateOutfitRecommendation({ top, bottom, shoes, accessories }, occasion);
+    const matchedProducts = await Product.find(productQuery).sort({ price: 1 }).limit(6).lean();
+
+    const result = await generateOutfitRecommendation(
+      { top, bottom, shoes, accessories: normalizedAccessories, style, preferences },
+      occasion || 'casual',
+      matchedProducts
+    );
 
     const record = await OutfitRecommendation.create({
       userId: req.user._id,
-      selectedItems: { top, bottom, shoes, accessories: accessories || [] },
+      selectedItems: { top, bottom, shoes, accessories: normalizedAccessories },
       aiSuggestion: result.suggestion,
       styleScore: result.styleScore,
       occasion: occasion || 'casual',
@@ -27,6 +40,7 @@ const recommend = async (req, res, next) => {
         styleScore: result.styleScore,
         improvements: result.improvements,
         recordId: record._id,
+        products: matchedProducts,
       },
     });
   } catch (error) {
@@ -39,10 +53,12 @@ const getHistory = async (req, res, next) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
 
-    const [history, total] = await Promise.all([
+    const [historyDocs, total] = await Promise.all([
       OutfitRecommendation.find({ userId: req.user._id }).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
       OutfitRecommendation.countDocuments({ userId: req.user._id }),
     ]);
+
+    const history = historyDocs.map((item) => normalizeOutfitHistoryEntry(item));
 
     res.status(200).json({
       success: true,

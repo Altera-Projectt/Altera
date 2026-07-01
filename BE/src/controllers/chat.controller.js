@@ -65,6 +65,26 @@ const sendMessage = async (req, res, next) => {
       });
     }
 
+    const wantsStream = req.headers.accept?.includes('text/event-stream') || req.query.stream === '1';
+
+    if (wantsStream) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders?.();
+
+      const result = await chatService.sendMessage(req.params.id, req.user._id, message.trim(), {
+        stream: true,
+        onChunk: (chunk) => {
+          res.write(`data: ${JSON.stringify({ type: 'chunk', text: chunk })}\n\n`);
+        },
+      });
+
+      res.write(`data: ${JSON.stringify({ type: 'done', text: result.aiMessage.text })}\n\n`);
+      res.end();
+      return;
+    }
+
     const result = await chatService.sendMessage(req.params.id, req.user._id, message.trim());
 
     res.status(200).json({

@@ -11,34 +11,60 @@ const getGenAI = () => {
   return genAI;
 };
 
+const formatCurrency = (price) => {
+  const amount = Number(price || 0);
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+};
+
+const buildCatalogPromptSection = (products = []) => {
+  if (!Array.isArray(products) || products.length === 0) {
+    return 'No product catalog provided for this request.';
+  }
+
+  const lines = products.map((product, index) => {
+    const desc = product.description ? ` | ${product.description}` : '';
+    return `${index + 1}. ${product.name} | Category: ${product.category} | Price: ${formatCurrency(product.price)}${desc}`;
+  });
+
+  return `Available products in the shop:\n${lines.join('\n')}`;
+};
+
 /**
  * Generate outfit recommendation using AI
- * @param {{ top: string, bottom: string, shoes: string, accessories?: string[] }} items
+ * @param {{ top: string, bottom: string, shoes: string, accessories?: string[], style?: string, preferences?: string }} items
  * @param {string} occasion - Optional occasion context
- * @returns {Promise<{suggestion: string, styleScore: number, tips: string[]}>}
+ * @param {Array<object>} productCatalog - Optional shop catalog for richer recommendations
+ * @returns {Promise<{suggestion: string, styleScore: number, tips: string[], improvements: string}>}
  */
-const generateOutfitRecommendation = async (items, occasion = 'casual') => {
-  const { top, bottom, shoes, accessories = [] } = items;
+const generateOutfitRecommendation = async (items, occasion = 'casual', productCatalog = []) => {
+  const { top, bottom, shoes, accessories = [], style, preferences } = items;
 
   const itemsList = [
     top && `Top: ${top}`,
     bottom && `Bottom: ${bottom}`,
     shoes && `Shoes: ${shoes}`,
     accessories.length > 0 && `Accessories: ${accessories.join(', ')}`,
+    style && `Style: ${style}`,
+    preferences && `Preferences: ${preferences}`,
   ]
     .filter(Boolean)
     .join('\n');
 
+  const catalogPromptSection = buildCatalogPromptSection(productCatalog);
+
   const prompt = `You are a professional fashion stylist and outfit consultant.
 
 A customer wants outfit advice for a "${occasion}" occasion. Here are their selected items:
-${itemsList}
+${itemsList || 'No specific items were provided; suggest a fresh outfit based on the request and catalog.'}
+
+${catalogPromptSection}
 
 Please provide:
 1. A detailed style analysis (2-3 sentences) about how these items work together
 2. Specific styling tips (2-3 tips)
 3. A style score from 1-10 based on color coordination, fit appropriateness, and occasion suitability
 4. Suggestions for what to add or change to improve the look
+5. If the catalog contains a product that clearly fits, mention it naturally in the suggestion and suggest it as a strong option.
 
 Respond in this exact JSON format:
 {
@@ -60,7 +86,6 @@ Respond in this exact JSON format:
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    // Parse JSON response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error('Invalid AI response format');
@@ -96,4 +121,20 @@ const getFallbackRecommendation = (items, occasion) => {
   };
 };
 
-module.exports = { generateOutfitRecommendation };
+const normalizeOutfitHistoryEntry = (entry) => {
+  const plain = typeof entry?.toObject === 'function' ? entry.toObject() : { ...entry };
+  const suggestion = plain.suggestion || plain.aiSuggestion || 'No suggestion';
+
+  return {
+    ...plain,
+    suggestion,
+    aiSuggestion: suggestion,
+    products: Array.isArray(plain.products) ? plain.products : [],
+  };
+};
+
+module.exports = {
+  generateOutfitRecommendation,
+  buildCatalogPromptSection,
+  normalizeOutfitHistoryEntry,
+};
