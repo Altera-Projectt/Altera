@@ -57,6 +57,7 @@ const options = {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
+            code: { type: 'string' },
             message: { type: 'string' },
             error: { type: 'string' },
           },
@@ -73,6 +74,7 @@ const options = {
     './src/routes/order.routes.js',
     './src/routes/cart.routes.js',
     './src/routes/chat.routes.js',
+    './src/routes/stylist.routes.js',
   ],
 };
 

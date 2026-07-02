@@ -71,6 +71,7 @@ const getUserOrders = async (userId, { page = 1, limit = 10, status }) => {
   const [orders, total] = await Promise.all([
     Order.find(query)
       .populate('items.productId', 'name imageUrl category')
+      .populate('items.designId', 'previewImage customImage shirtColor status')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit)),
@@ -94,7 +95,8 @@ const getUserOrders = async (userId, { page = 1, limit = 10, status }) => {
 const getOrderById = async (orderId, userId, role) => {
   const order = await Order.findById(orderId)
     .populate('userId', 'fullName email')
-    .populate('items.productId', 'name imageUrl category');
+    .populate('items.productId', 'name imageUrl category')
+    .populate('items.designId', 'previewImage customImage shirtColor status');
 
   if (!order) {
     const error = new Error('Order not found');

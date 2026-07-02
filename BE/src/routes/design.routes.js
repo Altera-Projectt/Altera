@@ -1,11 +1,89 @@
 const express = require('express');
 const router = express.Router();
-const { createDesign, getDesignById, getMyDesigns, updateDesign, deleteDesign } = require('../controllers/design.controller');
+const {
+  createDesign,
+  getDesignById,
+  getMyDesigns,
+  updateDesign,
+  deleteDesign,
+  uploadDesign,
+  generateDesign,
+  refineDesign,
+  saveDesign,
+  orderDesign,
+} = require('../controllers/design.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const multer = require('multer');
 const upload = multer({ dest: 'src/uploads/' });
 
 router.use(protect);
+
+/**
+ * @swagger
+ * /api/v1/designs/upload:
+ *   post:
+ *     summary: Upload a source image for Design Studio
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *               shirtColor:
+ *                 type: string
+ *                 example: "white"
+ */
+router.post(
+  '/upload',
+  upload.fields([{ name: 'image', maxCount: 1 }, { name: 'customImage', maxCount: 1 }, { name: 'previewImage', maxCount: 1 }]),
+  uploadDesign
+);
+
+/**
+ * @swagger
+ * /api/v1/designs/generate:
+ *   post:
+ *     summary: Generate a design preview with AI
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - prompt
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *                 example: "A vintage eagle print"
+ *               style:
+ *                 type: string
+ *                 example: "Vintage"
+ *               shirtType:
+ *                 type: string
+ *                 example: "T-shirt"
+ *               colorPalette:
+ *                 type: string
+ *                 example: "Black, cream, faded red"
+ *     responses:
+ *       201:
+ *         description: AI generated image URL and design ID returned
+ *       503:
+ *         description: Gemini API unavailable
+ */
+router.post('/generate', generateDesign);
 
 /**
  * @swagger
@@ -55,6 +133,54 @@ router.post('/', upload.fields([{ name: 'customImage', maxCount: 1 }, { name: 'p
  *         description: My designs retrieved successfully
  */
 router.get('/my', getMyDesigns);
+
+/**
+ * @swagger
+ * /api/v1/designs/{id}/refine:
+ *   post:
+ *     summary: Refine a generated design with a new prompt
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - prompt
+ *             properties:
+ *               prompt:
+ *                 type: string
+ *                 example: "Make the eagle larger"
+ */
+router.post('/:id/refine', refineDesign);
+
+/**
+ * @swagger
+ * /api/v1/designs/{id}/save:
+ *   post:
+ *     summary: Save a generated design
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/:id/save', saveDesign);
+
+/**
+ * @swagger
+ * /api/v1/designs/{id}/order:
+ *   post:
+ *     summary: Create an order from a saved design
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post('/:id/order', orderDesign);
 
 /**
  * @swagger

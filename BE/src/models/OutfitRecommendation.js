@@ -17,6 +17,26 @@ const OutfitRecommendationSchema = new mongoose.Schema(
       type: String,
       required: [true, 'AI suggestion is required'],
     },
+    style: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    reason: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    tips: {
+      type: [String],
+      default: [],
+    },
+    products: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+      },
+    ],
     styleScore: {
       type: Number,
       min: 0,
@@ -25,8 +45,8 @@ const OutfitRecommendationSchema = new mongoose.Schema(
     },
     occasion: {
       type: String,
-      enum: ['casual', 'formal', 'sport', 'party', 'work', 'date', 'other'],
-      default: 'casual',
+      trim: true,
+      default: 'other',
     },
   },
   {

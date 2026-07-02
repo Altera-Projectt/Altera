@@ -26,6 +26,31 @@ const DesignSchema = new mongoose.Schema(
       type: String, // URL from Cloudinary
       default: null,
     },
+    prompt: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    style: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    shirtType: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    colorPalette: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ['DRAFT', 'SAVED'],
+      default: 'SAVED',
+    },
     fontSize: {
       type: Number,
       default: 24,

@@ -7,7 +7,12 @@ const OrderItemSchema = new mongoose.Schema(
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Product',
-      required: true,
+      default: null,
+    },
+    designId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Design',
+      default: null,
     },
     quantity: {
       type: Number,
@@ -24,6 +29,10 @@ const OrderItemSchema = new mongoose.Schema(
   },
   { _id: false }
 );
+
+OrderItemSchema.path('productId').validate(function validateOrderItemSource() {
+  return Boolean(this.productId || this.designId);
+}, 'Order item must reference a product or design');
 
 const ShippingAddressSchema = new mongoose.Schema(
   {

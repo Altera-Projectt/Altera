@@ -66,13 +66,13 @@ router.use(protect);
  *                       type: array
  *                       items:
  *                         type: string
- *                     styleScore:
- *                       type: number
- *                     improvements:
+ *                     style:
+ *                       type: string
+ *                     reason:
  *                       type: string
  *                     recordId:
  *                       type: string
- *                     products:
+ *                     recommendedProducts:
  *                       type: array
  *                       items:
  *                         type: object
@@ -85,7 +85,7 @@ router.post('/recommend', recommend);
  * @swagger
  * /api/v1/outfits/print:
  *   post:
- *     summary: Generate a print-ready fashion image using AI
+ *     summary: Deprecated. Use POST /api/v1/designs/generate instead
  *     tags:
  *       - Outfits
  *     security:
@@ -113,8 +113,8 @@ router.post('/recommend', recommend);
  *                 type: string
  *                 example: "Live in color"
  *     responses:
- *       200:
- *         description: AI generated print image returned
+ *       410:
+ *         description: Endpoint moved to Design Studio
  *         content:
  *           application/json:
  *             schema:
@@ -122,14 +122,12 @@ router.post('/recommend', recommend);
  *               properties:
  *                 success:
  *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     imageData:
- *                       type: string
- *                       description: Base64 encoded PNG image data URI
- *       400:
- *         description: Invalid prompt
+ *                 code:
+ *                   type: string
+ *                   example: ENDPOINT_MOVED
+ *                 message:
+ *                   type: string
+ *                   example: This endpoint has moved to POST /api/v1/designs/generate
  *       401:
  *         description: Unauthorized
  */

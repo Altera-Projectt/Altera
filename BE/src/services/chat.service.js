@@ -1,24 +1,5 @@
 const Chat = require('../models/Chat');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { GEMINI_API_KEY } = require('../config/env');
-const logger = require('../utils/logger');
-
-let genAI = null;
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-
-const getGenAI = () => {
-  if (!genAI && GEMINI_API_KEY) {
-    console.log('Gemini key exists:', true);
-    console.log('Gemini key prefix:', `${GEMINI_API_KEY.substring(0, 8)}...`);
-    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  }
-
-  if (!GEMINI_API_KEY) {
-    logger.warn('Gemini API key not configured or missing. Using fallback response.');
-  }
-
-  return genAI;
-};
+const geminiService = require('./gemini.service');
 
 /**
  * Create a new chat conversation
@@ -110,77 +91,14 @@ const sendMessage = async (chatId, userId, userMessage, options = {}) => {
  * Generate AI response using Gemini API
  */
 const generateAIResponse = async (userMessage, messageHistory, topic = 'general', options = {}) => {
-  const client = getGenAI();
+  const systemPrompt = getSystemPrompt(topic);
+  const recentHistory = messageHistory.slice(-10);
+  const historyWithoutCurrent =
+    recentHistory.length > 0 && recentHistory[recentHistory.length - 1].sender === 'USER'
+      ? recentHistory.slice(0, -1)
+      : recentHistory;
 
-  if (!client) {
-    logger.warn('Gemini API key not configured. Using fallback response.');
-    return getFallbackResponse(userMessage, topic);
-  }
-
-  try {
-    const systemPrompt = getSystemPrompt(topic);
-
-    console.log('Gemini key exists:', !!GEMINI_API_KEY);
-    console.log('Using Gemini model:', GEMINI_MODEL);
-    console.log('Using system prompt for topic:', topic);
-
-    const recentHistory = messageHistory.slice(-10);
-    const historyWithoutCurrent =
-      recentHistory.length > 0 && recentHistory[recentHistory.length - 1].sender === 'USER'
-        ? recentHistory.slice(0, -1)
-        : recentHistory;
-
-    const conversationHistory = [
-      {
-        role: 'system',
-        parts: [{ text: systemPrompt }],
-      },
-      ...historyWithoutCurrent.map((msg) => ({
-        role: msg.sender === 'USER' ? 'user' : 'assistant',
-        parts: [{ text: msg.text }],
-      })),
-    ];
-
-    const model = client.getGenerativeModel({ model: GEMINI_MODEL });
-    const chat = model.startChat({
-      history: conversationHistory,
-      generationConfig: {
-        maxOutputTokens: 500,
-      },
-    });
-
-    const prompt = userMessage;
-
-    if (options.stream && typeof options.onChunk === 'function') {
-      const resultStream = await chat.sendMessageStream(prompt);
-      let fullText = '';
-
-      for await (const chunk of resultStream.stream) {
-        const chunkText = chunk.text();
-        if (chunkText) {
-          fullText += chunkText;
-          options.onChunk(chunkText);
-        }
-      }
-
-      return fullText || 'I understand. Tell me more about this.';
-    }
-
-    const result = await chat.sendMessage(prompt);
-    const text = result.response.text();
-
-    return text || 'I understand. Tell me more about this.';
-  } catch (error) {
-    console.error('========== GEMINI ERROR ==========');
-    console.error(error);
-    console.error('Message:', error?.message);
-    console.error('Gemini key exists:', !!GEMINI_API_KEY);
-    console.error('Gemini key prefix:', GEMINI_API_KEY ? `${GEMINI_API_KEY.substring(0, 8)}...` : 'missing');
-
-    logger.error('Chat AI service error: %s', error?.message || 'Unknown error');
-    logger.error(error);
-    return getFallbackResponse(userMessage, topic);
-  }
+  return geminiService.sendChatMessage(systemPrompt, historyWithoutCurrent, userMessage, options);
 };
 
 /**
@@ -221,20 +139,6 @@ Be conversational, friendly, and helpful. Keep responses concise (under 300 word
   };
 
   return prompts[topic] || prompts.general;
-};
-
-/**
- * Fallback response when AI unavailable
- */
-const getFallbackResponse = (userMessage, topic) => {
-  const responses = {
-    fashion: 'That sounds interesting! Fashion is all about expressing yourself. Could you tell me more about your style preferences or what kind of advice you\'re looking for?',
-    outfit: 'Great question about your outfit! I\'d love to help you style it better. Can you describe the items you\'re thinking of wearing?',
-    style: 'Finding your personal style is a journey! What aspects of fashion inspire you the most?',
-    general: 'I appreciate that! Feel free to tell me more about what\'s on your mind.',
-  };
-
-  return responses[topic] || responses.general;
 };
 
 /**

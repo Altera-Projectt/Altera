@@ -16,6 +16,7 @@ const outfitRoutes = require('./routes/outfit.routes');
 const orderRoutes = require('./routes/order.routes');
 const cartRoutes = require('./routes/cart.routes');
 const chatRoutes = require('./routes/chat.routes');
+const stylistRoutes = require('./routes/stylist.routes');
 
 const app = express();
 
@@ -53,6 +54,7 @@ app.use(`${API}/designs`, designRoutes);
 app.use(`${API}/outfits`, outfitRoutes);
 app.use(`${API}/orders`, orderRoutes);
 app.use(`${API}/chats`, chatRoutes);
+app.use(`${API}/stylist`, stylistRoutes);
 app.use(`${API}`, cartRoutes); // /api/v1/cart & /api/v1/wishlist
 
 // ─── Error Handling ───────────────────────────────────────────────────────────
