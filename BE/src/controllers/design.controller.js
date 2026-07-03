@@ -64,6 +64,24 @@ const generateDesign = async (req, res, next) => {
   }
 };
 
+const clearGeneratedHistory = async (req, res, next) => {
+  try {
+    await designAiService.clearGeneratedDesignHistory(req.user._id);
+    res.status(200).json({ success: true, message: 'Generation cache cleared' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getGeneratedHistory = async (req, res, next) => {
+  try {
+    const history = await designAiService.getGeneratedDesignHistory(req.user._id);
+    res.status(200).json({ success: true, data: { history } });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const refineDesign = async (req, res, next) => {
   try {
     const result = await designAiService.refineDesign(req.params.id, req.user._id, req.user.role, req.body);
@@ -99,6 +117,8 @@ module.exports = {
   deleteDesign,
   uploadDesign,
   generateDesign,
+  clearGeneratedHistory,
+  getGeneratedHistory,
   refineDesign,
   saveDesign,
   orderDesign,

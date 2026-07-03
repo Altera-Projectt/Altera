@@ -3,6 +3,53 @@ const Order = require('../models/Order');
 const geminiService = require('./gemini.service');
 const { uploadImage } = require('../utils/cloudinary');
 
+const MAX_GENERATED_HISTORY = 5;
+const MIN_GENERATE_INTERVAL_MS = 15_000;
+const USER_GENERATION_CACHE = new Map();
+
+const normalizePrompt = (prompt) => {
+  if (typeof prompt !== 'string') return '';
+  return prompt
+    .trim()
+    .replace(/\s+/g, ' ')
+    .slice(0, 200);
+};
+
+const buildPollinationsPromptSegment = (prompt) => encodeURIComponent(normalizePrompt(prompt));
+
+const buildPollinationsCurlCommand = (prompt, filename = 'test.png') => {
+  const encodedPrompt = buildPollinationsPromptSegment(prompt);
+  const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=768&model=flux&nologo=true`;
+  return `curl -o ${filename} "${url}"`;
+};
+
+const getUserGenerationState = (userId) => {
+  const key = userId.toString();
+  if (!USER_GENERATION_CACHE.has(key)) {
+    USER_GENERATION_CACHE.set(key, { history: [], lastGeneratedAt: 0 });
+  }
+  return USER_GENERATION_CACHE.get(key);
+};
+
+const clearUserGenerationState = (userId) => USER_GENERATION_CACHE.delete(userId.toString());
+
+const canGenerateNow = (userId) => {
+  const state = getUserGenerationState(userId);
+  return Date.now() - state.lastGeneratedAt >= MIN_GENERATE_INTERVAL_MS;
+};
+
+const addGeneratedImageToHistory = (userId, item) => {
+  const state = getUserGenerationState(userId);
+  state.history.push(item);
+  state.lastGeneratedAt = Date.now();
+  if (state.history.length > MAX_GENERATED_HISTORY) {
+    state.history.shift();
+  }
+  return state.history;
+};
+
+const getUserGenerationHistory = (userId) => getUserGenerationState(userId).history;
+
 const buildDesignPrompt = ({ prompt, style, shirtType, colorPalette }) => {
   const pieces = [
     'Create a high-quality fashion print design suitable for screen printing or direct-to-garment printing on a shirt.',
@@ -24,19 +71,32 @@ const uploadGeneratedImage = async ({ mimeType, data }) => {
 };
 
 const generateDesign = async (userId, payload) => {
-  if (!payload.prompt || typeof payload.prompt !== 'string' || !payload.prompt.trim()) {
+  const prompt = normalizePrompt(payload.prompt);
+  if (!prompt) {
     const error = new Error('Prompt is required to generate a design.');
     error.statusCode = 400;
     throw error;
   }
 
-  const imageResult = await geminiService.generateImage(buildDesignPrompt(payload));
+  if (!canGenerateNow(userId)) {
+    const error = new Error('Please wait 15 seconds before generating another image.');
+    error.statusCode = 429;
+    throw error;
+  }
+
+  const curlCommand = buildPollinationsCurlCommand(prompt, payload.filename || 'test.png');
+  const imageResult = await geminiService.generateImage(buildDesignPrompt({
+    prompt,
+    style: payload.style,
+    shirtType: payload.shirtType,
+    colorPalette: payload.colorPalette,
+  }));
   const imageUrl = await uploadGeneratedImage(imageResult);
 
   const design = await Design.create({
     userId,
     shirtColor: payload.shirtColor || payload.colorPalette || 'white',
-    prompt: payload.prompt.trim(),
+    prompt,
     style: payload.style || null,
     shirtType: payload.shirtType || null,
     colorPalette: payload.colorPalette || null,
@@ -45,11 +105,21 @@ const generateDesign = async (userId, payload) => {
     status: 'DRAFT',
   });
 
+  const history = addGeneratedImageToHistory(userId, {
+    prompt,
+    imageUrl,
+    curlCommand,
+    createdAt: new Date().toISOString(),
+  });
+
   return {
     imageUrl,
     preview: imageUrl,
+    curlCommand,
+    prompt,
     designId: design._id,
     design,
+    history,
   };
 };
 
@@ -85,6 +155,14 @@ const saveGeneratedDesign = async (designId, userId, role) => {
   design.status = 'SAVED';
   await design.save();
   return design;
+};
+
+const clearGeneratedDesignHistory = async (userId) => {
+  clearUserGenerationState(userId);
+};
+
+const getGeneratedDesignHistory = async (userId) => {
+  return getUserGenerationHistory(userId);
 };
 
 const createOrderFromDesign = async (designId, userId, role, { shippingAddress, note, price } = {}) => {
@@ -155,4 +233,6 @@ module.exports = {
   saveGeneratedDesign,
   uploadDesignImage,
   createOrderFromDesign,
+  clearGeneratedDesignHistory,
+  getGeneratedDesignHistory,
 };

@@ -8,6 +8,8 @@ const {
   deleteDesign,
   uploadDesign,
   generateDesign,
+  clearGeneratedHistory,
+  getGeneratedHistory,
   refineDesign,
   saveDesign,
   orderDesign,
@@ -84,6 +86,36 @@ router.post(
  *         description: Gemini API unavailable
  */
 router.post('/generate', generateDesign);
+
+/**
+ * @swagger
+ * /api/v1/designs/generate/history:
+ *   get:
+ *     summary: Get recent generated image history for the current user
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Recent generation history returned
+ */
+router.get('/generate/history', getGeneratedHistory);
+
+/**
+ * @swagger
+ * /api/v1/designs/generate/history:
+ *   delete:
+ *     summary: Clear the current user's generation cache/history
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Generation cache cleared successfully
+ */
+router.delete('/generate/history', clearGeneratedHistory);
 
 /**
  * @swagger
