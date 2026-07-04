@@ -1,6 +1,5 @@
 const Design = require('../models/Design');
 const Order = require('../models/Order');
-const geminiService = require('./gemini.service');
 const { uploadImage } = require('../utils/cloudinary');
 
 const MAX_GENERATED_HISTORY = 5;
@@ -64,8 +63,21 @@ const buildDesignPrompt = ({ prompt, style, shirtType, colorPalette }) => {
   return pieces.join(' ');
 };
 
-const uploadGeneratedImage = async ({ mimeType, data }) => {
-  const dataUri = `data:${mimeType || 'image/png'};base64,${data}`;
+const fetchPollinationsImage = async (prompt) => {
+  const encodedPrompt = buildPollinationsPromptSegment(prompt);
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=768&model=flux&nologo=true`;
+
+  const response = await fetch(pollinationsUrl);
+  if (!response.ok) {
+    throw new Error('Pollinations image generation failed');
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return buffer;
+};
+
+const uploadGeneratedImage = async (imageBuffer) => {
+  const dataUri = `data:image/png;base64,${imageBuffer.toString('base64')}`;
   const uploaded = await uploadImage(dataUri, 'designs/generated');
   return uploaded.url;
 };
@@ -85,13 +97,13 @@ const generateDesign = async (userId, payload) => {
   }
 
   const curlCommand = buildPollinationsCurlCommand(prompt, payload.filename || 'test.png');
-  const imageResult = await geminiService.generateImage(buildDesignPrompt({
+  const imageBuffer = await fetchPollinationsImage(buildDesignPrompt({
     prompt,
     style: payload.style,
     shirtType: payload.shirtType,
     colorPalette: payload.colorPalette,
   }));
-  const imageUrl = await uploadGeneratedImage(imageResult);
+  const imageUrl = await uploadGeneratedImage(imageBuffer);
 
   const design = await Design.create({
     userId,
@@ -131,7 +143,7 @@ const refineDesign = async (designId, userId, role, { prompt }) => {
   }
 
   const design = await getOwnedDesign(designId, userId, role);
-  const imageResult = await geminiService.generateImage(
+  const imageBuffer = await fetchPollinationsImage(
     buildDesignPrompt({
       prompt: `${design.prompt || 'Existing shirt design'}. Refine request: ${prompt.trim()}`,
       style: design.style,
@@ -139,7 +151,7 @@ const refineDesign = async (designId, userId, role, { prompt }) => {
       colorPalette: design.colorPalette,
     })
   );
-  const imageUrl = await uploadGeneratedImage(imageResult);
+  const imageUrl = await uploadGeneratedImage(imageBuffer);
 
   design.prompt = `${design.prompt || ''}\nRefine: ${prompt.trim()}`.trim();
   design.customImage = imageUrl;
