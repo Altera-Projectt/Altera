@@ -1,10 +1,1092 @@
-export function DesignStudioPage() {
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Palette,
+  Trash2,
+  ShoppingBag,
+  RotateCcw,
+  Wand2,
+  RefreshCw,
+  BookOpen,
+  Plus,
+  Layers,
+} from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
+import { Card, CardContent } from '@/components/ui/Card'
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalFooter,
+  ModalClose,
+} from '@/components/ui/Modal'
+import { GridLoadingState } from '@/components/ui/LoadingState'
+import { EmptyState } from '@/components/ui/EmptyState'
+import {
+  DesignService,
+  type Design,
+  type GenerateDesignResponse,
+} from '@/services/design.api'
+import { cn } from '@/utils/cn'
+
+// ── Constants ──────────────────────────────────────────────────────────────
+
+const STYLE_OPTIONS = ['Vintage', 'Streetwear', 'Minimalist', 'Bold', 'Abstract', 'Floral', 'Y2K']
+const SHIRT_TYPE_OPTIONS = ['T-shirt', 'Oversized', 'Baby Tee', 'Hoodie', 'Polo']
+const SHIRT_COLOR_OPTIONS = [
+  { label: 'White',  value: 'white',  hex: '#ffffff' },
+  { label: 'Black',  value: 'black',  hex: '#111111' },
+  { label: 'Navy',   value: 'navy',   hex: '#1e3a5f' },
+  { label: 'Grey',   value: 'grey',   hex: '#9ca3af' },
+  { label: 'Beige',  value: 'beige',  hex: '#d4b896' },
+  { label: 'Cream',  value: 'cream',  hex: '#fffdd0' },
+]
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+}
+
+function getShirtHex(color: string): string {
+  return SHIRT_COLOR_OPTIONS.find((c) => c.value.toLowerCase() === color.toLowerCase())?.hex ?? '#ffffff'
+}
+
+// ── Toast (inline, no extra deps) ──────────────────────────────────────────
+
+function useToast() {
+  const [toasts, setToasts] = useState<{ id: number; msg: string; type: 'success' | 'error' }[]>([])
+  const counter = useRef(0)
+  const show = (msg: string, type: 'success' | 'error' = 'success') => {
+    const id = ++counter.current
+    setToasts((prev) => [...prev, { id, msg, type }])
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500)
+  }
+  return { toasts, show }
+}
+
+function ToastContainer({ toasts }: { toasts: { id: number; msg: string; type: 'success' | 'error' }[] }) {
+  if (!toasts.length) return null
   return (
-    <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12">
-      <h1 className="font-heading text-3xl font-bold">Design Studio</h1>
-      <p className="mt-4 text-[var(--color-muted-foreground)]">
-        Placeholder for 3D Custom Shirt Design Studio.
-      </p>
+    <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2">
+      {toasts.map((t) => (
+        <div
+          key={t.id}
+          className={cn(
+            'flex items-center gap-2 px-4 py-3 rounded-[var(--radius-md)]',
+            'text-sm font-medium shadow-[var(--shadow-lg)]',
+            'animate-in slide-in-from-bottom-4 duration-300',
+            t.type === 'success'
+              ? 'bg-[var(--color-foreground)] text-[var(--color-background)]'
+              : 'bg-[var(--color-error)] text-white',
+          )}
+        >
+          {t.type === 'success' ? '✓' : '✕'} {t.msg}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Select helper ──────────────────────────────────────────────────────────
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  disabled,
+  children,
+}: {
+  label: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void
+  disabled?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+        {label}
+      </label>
+      <select
+        className={cn(
+          'w-full h-10 px-3 text-sm',
+          'bg-[var(--color-background)] text-[var(--color-foreground)]',
+          'border border-[var(--color-border)] rounded-[var(--radius-md)]',
+          'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+        )}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+      >
+        {children}
+      </select>
+    </div>
+  )
+}
+
+// ── Shirt Mockup ───────────────────────────────────────────────────────────
+
+// ── Order Modal ────────────────────────────────────────────────────────────
+
+interface OrderForm {
+  fullName: string
+  phone: string
+  address: string
+  city: string
+  price: number | string
+  note: string
+}
+
+function OrderModal({
+  open,
+  onOpenChange,
+  thumbnailUrl,
+  onSubmit,
+  submitting,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  thumbnailUrl?: string
+  onSubmit: (form: OrderForm) => Promise<void>
+  submitting: boolean
+}) {
+  const [form, setForm] = useState<OrderForm>({
+    fullName: '',
+    phone: '',
+    address: '',
+    city: '',
+    price: 299000,
+    note: '',
+  })
+  const [errors, setErrors] = useState<Partial<Record<keyof OrderForm, string>>>({})
+
+  const set =
+    (field: keyof OrderForm) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((prev) => ({ ...prev, [field]: e.target.value }))
+
+  const validate = () => {
+    const errs: typeof errors = {}
+    if (!form.fullName.trim()) errs.fullName = 'Vui lòng nhập họ tên'
+    if (!form.phone.trim()) errs.phone = 'Vui lòng nhập số điện thoại'
+    if (!form.address.trim()) errs.address = 'Vui lòng nhập địa chỉ'
+    if (!form.city.trim()) errs.city = 'Vui lòng nhập tỉnh/thành phố'
+    setErrors(errs)
+    return Object.keys(errs).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validate()) return
+    await onSubmit(form)
+  }
+
+  return (
+    <Modal open={open} onOpenChange={onOpenChange}>
+      <ModalContent size="md">
+        <ModalHeader>
+          <ModalTitle>Xác nhận đặt hàng</ModalTitle>
+          <ModalDescription>Nhập thông tin giao hàng để hoàn tất đơn của bạn</ModalDescription>
+        </ModalHeader>
+
+        {thumbnailUrl && (
+          <div className="mb-4 flex justify-center">
+            <img
+              src={thumbnailUrl}
+              alt="Design thumbnail"
+              className="rounded-[var(--radius-md)] object-cover border border-[var(--color-border)]"
+              style={{ width: 80, height: 80 }}
+            />
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Họ và tên"
+            required
+            placeholder="Nguyễn Văn A"
+            value={form.fullName}
+            onChange={set('fullName')}
+            error={errors.fullName}
+          />
+          <Input
+            label="Số điện thoại"
+            required
+            type="tel"
+            placeholder="0901 234 567"
+            value={form.phone}
+            onChange={set('phone')}
+            error={errors.phone}
+          />
+          <Input
+            label="Địa chỉ"
+            required
+            placeholder="123 Đường ABC, Quận 1"
+            value={form.address}
+            onChange={set('address')}
+            error={errors.address}
+          />
+          <Input
+            label="Thành phố"
+            required
+            placeholder="Hồ Chí Minh"
+            value={form.city}
+            onChange={set('city')}
+            error={errors.city}
+          />
+          <Input
+            label="Giá (VND)"
+            type="number"
+            value={String(form.price)}
+            onChange={set('price')}
+          />
+          <Input
+            label="Ghi chú (tuỳ chọn)"
+            placeholder="Yêu cầu đặc biệt..."
+            value={form.note}
+            onChange={set('note')}
+          />
+
+          <ModalFooter>
+            <ModalClose asChild>
+              <Button type="button" variant="outline" disabled={submitting}>
+                Hủy
+              </Button>
+            </ModalClose>
+            <Button type="submit" variant="primary" loading={submitting}>
+              Xác nhận đặt hàng
+            </Button>
+          </ModalFooter>
+        </form>
+      </ModalContent>
+    </Modal>
+  )
+}
+
+// ── Generate Form ──────────────────────────────────────────────────────────
+
+interface FormValues {
+  prompt: string
+  style: string
+  shirtType: string
+  colorPalette: string
+  shirtColor: string
+}
+
+function GenerateForm({
+  onGenerate,
+  generating,
+  initialValues,
+  error,
+}: {
+  onGenerate: (vals: FormValues) => Promise<void>
+  generating: boolean
+  initialValues?: Partial<FormValues>
+  error: string | null
+}) {
+  const [form, setForm] = useState<FormValues>({
+    prompt: initialValues?.prompt ?? '',
+    style: initialValues?.style ?? '',
+    shirtType: initialValues?.shirtType ?? 'T-shirt',
+    colorPalette: initialValues?.colorPalette ?? '',
+    shirtColor: initialValues?.shirtColor ?? 'white',
+  })
+  const [promptError, setPromptError] = useState('')
+  const [countdown, setCountdown] = useState(15)
+
+  // Countdown effect while generating
+  useEffect(() => {
+    if (!generating) { setCountdown(15); return }
+    setCountdown(15)
+    const interval = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000)
+    return () => clearInterval(interval)
+  }, [generating])
+
+  const setField =
+    (field: keyof FormValues) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm((prev) => ({ ...prev, [field]: e.target.value }))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.prompt.trim()) {
+      setPromptError('Vui lòng mô tả hình muốn in')
+      return
+    }
+    setPromptError('')
+    await onGenerate(form)
+  }
+
+  if (generating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-6">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-foreground)]" />
+        <div className="text-center space-y-2">
+          <p className="font-medium text-[var(--color-foreground)]">AI đang tạo thiết kế của bạn...</p>
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            Quá trình này mất khoảng 15 giây, vui lòng đợi
+          </p>
+          {countdown > 0 && (
+            <p className="text-xs text-[var(--color-muted-foreground)] tabular-nums">
+              ⏱ {countdown}s
+            </p>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Error banner */}
+      {error && (
+        <div className="border border-[var(--color-error)] bg-red-50 text-[var(--color-error)] rounded-[var(--radius-md)] p-3 text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Prompt — full width */}
+      <div className="w-full">
+        <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+          Mô tả hình muốn in <span className="text-[var(--color-accent)]">*</span>
+        </label>
+        <textarea
+          className={cn(
+            'w-full min-h-[120px] px-3 py-2 text-sm',
+            'bg-[var(--color-background)] text-[var(--color-foreground)]',
+            'border rounded-[var(--radius-md)]',
+            'placeholder:text-[var(--color-muted-foreground)]',
+            'transition-colors duration-150 resize-y',
+            'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
+            promptError
+              ? 'border-[var(--color-error)] focus:ring-[var(--color-error)]'
+              : 'border-[var(--color-border)]',
+          )}
+          placeholder="VD: Con đại bàng phong cách vintage trên nền tối, chi tiết cao..."
+          value={form.prompt}
+          onChange={setField('prompt')}
+          disabled={generating}
+        />
+        {promptError && (
+          <p className="mt-1.5 text-xs text-[var(--color-error)]">{promptError}</p>
+        )}
+      </div>
+
+      {/* 2-column grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <SelectField
+          label="Phong cách"
+          value={form.style}
+          onChange={setField('style')}
+          disabled={generating}
+        >
+          <option value="">-- Chọn phong cách --</option>
+          {STYLE_OPTIONS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </SelectField>
+
+        <SelectField
+          label="Loại áo"
+          value={form.shirtType}
+          onChange={setField('shirtType')}
+          disabled={generating}
+        >
+          {SHIRT_TYPE_OPTIONS.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </SelectField>
+
+        <Input
+          label="Bảng màu (tuỳ chọn)"
+          placeholder="VD: Đen, kem, đỏ cũ"
+          value={form.colorPalette}
+          onChange={setField('colorPalette')}
+          disabled={generating}
+        />
+
+        <SelectField
+          label="Màu áo"
+          value={form.shirtColor}
+          onChange={setField('shirtColor')}
+          disabled={generating}
+        >
+          {SHIRT_COLOR_OPTIONS.map((c) => (
+            <option key={c.value} value={c.value}>{c.label}</option>
+          ))}
+        </SelectField>
+      </div>
+
+      <Button
+        type="submit"
+        variant="primary"
+        size="lg"
+        loading={generating}
+        className="w-full uppercase font-semibold tracking-wider h-14 gap-2"
+      >
+        {!generating && <Wand2 className="h-5 w-5" />}
+        {generating ? 'AI đang tạo thiết kế... (~15 giây)' : '✨ Tạo thiết kế với AI'}
+      </Button>
+    </form>
+  )
+}
+
+// ── Result Panel ───────────────────────────────────────────────────────────
+
+function ResultPanel({
+  result,
+  isSaved,
+  saving,
+  refining,
+  onSave,
+  onOrder,
+  onRefine,
+  onReset,
+}: {
+  result: GenerateDesignResponse
+  isSaved: boolean
+  saving: boolean
+  refining: boolean
+  onSave: () => Promise<void>
+  onOrder: () => void
+  onRefine: (prompt: string) => Promise<void>
+  onReset: () => void
+}) {
+  const [refinePrompt, setRefinePrompt] = useState('')
+  const { design } = result
+  const displayImage =
+    result.imageUrl || result.preview || design.customImage || design.previewImage || ''
+
+  const handleRefineSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!refinePrompt.trim()) return
+    await onRefine(refinePrompt)
+    setRefinePrompt('')
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Back link */}
+      <button
+        type="button"
+        onClick={onReset}
+        className="flex items-center gap-1.5 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        ← Tạo thiết kế mới
+      </button>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Left — Shirt mockup */}
+        <div className="relative">
+          <div
+            className="relative w-full max-w-[320px] mx-auto rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-[var(--shadow-md)] overflow-hidden"
+            style={{ aspectRatio: '3/4', backgroundColor: getShirtHex(design.shirtColor ?? 'white') }}
+          >
+            {/* Collar */}
+            <div
+              className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-10 rounded-b-full border-b border-x border-[var(--color-border)] opacity-20"
+            />
+            {displayImage && (
+              <img
+                src={displayImage}
+                alt="Generated design"
+                className="rounded-[var(--radius-md)] object-contain"
+                style={{ width: '60%', position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)' }}
+              />
+            )}
+            {/* Status badge */}
+            <div className="absolute top-3 right-3">
+              <Badge variant={design.status === 'SAVED' ? 'success' : 'warning'}>
+                {design.status}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Right — Controls */}
+        <div className="flex flex-col gap-4">
+          {/* Prompt used */}
+          {(result.prompt || design.prompt) && (
+            <p className="text-xs text-[var(--color-muted-foreground)] line-clamp-2 italic">
+              "{result.prompt || design.prompt}"
+            </p>
+          )}
+
+          {/* Style + ShirtType badges */}
+          <div className="flex flex-wrap gap-2">
+            {design.style && <Badge variant="secondary">{design.style}</Badge>}
+            {design.shirtType && <Badge variant="secondary">{design.shirtType}</Badge>}
+            {design.shirtColor && <Badge variant="secondary" className="capitalize">{design.shirtColor}</Badge>}
+          </div>
+
+          <hr className="border-[var(--color-border)]" />
+
+          {/* Refine */}
+          <form onSubmit={handleRefineSubmit} className="flex gap-2">
+            <input
+              className={cn(
+                'flex-1 h-10 px-3 text-sm',
+                'bg-[var(--color-background)] text-[var(--color-foreground)]',
+                'border border-[var(--color-border)] rounded-[var(--radius-md)]',
+                'placeholder:text-[var(--color-muted-foreground)]',
+                'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
+              placeholder="VD: Làm con đại bàng to hơn, thêm text..."
+              value={refinePrompt}
+              onChange={(e) => setRefinePrompt(e.target.value)}
+              disabled={refining}
+            />
+            <Button type="submit" variant="outline" loading={refining} disabled={refining || !refinePrompt.trim()}>
+              <RefreshCw className={cn('h-4 w-4', refining && 'animate-spin')} />
+              🔄 Tinh chỉnh
+            </Button>
+          </form>
+
+          <hr className="border-[var(--color-border)]" />
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-3">
+            {/* Save */}
+            <Button
+              variant="secondary"
+              size="md"
+              className="w-full gap-2"
+              onClick={onSave}
+              disabled={isSaved || saving}
+              loading={saving}
+            >
+              {isSaved ? '✅ Đã lưu' : '💾 Lưu thiết kế'}
+            </Button>
+
+            {/* Order */}
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full gap-2 uppercase font-semibold tracking-wider h-14"
+              onClick={onOrder}
+            >
+              <ShoppingBag className="h-5 w-5" />
+              🛒 Đặt hàng ngay
+            </Button>
+
+            {/* Reset */}
+            <Button
+              variant="ghost"
+              size="md"
+              className="w-full"
+              onClick={onReset}
+            >
+              ← Tạo thiết kế mới
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Design Card (Library) ──────────────────────────────────────────────────
+
+function DesignCard({
+  design,
+  onReuse,
+  onOrder,
+  onDelete,
+}: {
+  design: Design
+  onReuse: (d: Design) => void
+  onOrder: (d: Design) => void
+  onDelete: (id: string) => void
+}) {
+  const img = design.previewImage || design.customImage
+  return (
+    <Card hoverable className="flex flex-col">
+      <div
+        className="w-full bg-[var(--color-muted)] overflow-hidden"
+        style={{ height: 200, borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}
+      >
+        {img ? (
+          <img
+            src={img}
+            alt={design.prompt ?? 'Design'}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-[var(--color-muted-foreground)]">
+            <Palette className="h-10 w-10 opacity-30" />
+          </div>
+        )}
+      </div>
+
+      <CardContent className="flex flex-col gap-3 pt-4">
+        {/* Status + date */}
+        <div className="flex items-center justify-between">
+          <Badge variant={design.status === 'SAVED' ? 'success' : 'warning'}>
+            {design.status}
+          </Badge>
+          <span className="text-xs text-[var(--color-muted-foreground)]">
+            {formatDate(design.createdAt)}
+          </span>
+        </div>
+
+        {/* Prompt */}
+        {design.prompt && (
+          <p className="text-sm text-[var(--color-foreground)] line-clamp-2 leading-relaxed">
+            {design.prompt}
+          </p>
+        )}
+
+        {/* Meta */}
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          {[design.style, design.shirtType].filter(Boolean).join(' · ')}
+        </p>
+
+        {/* Actions */}
+        <div className="flex gap-2 pt-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-1 text-xs"
+            onClick={() => onReuse(design)}
+          >
+            <RotateCcw className="h-3 w-3" />
+            Dùng lại
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            className="flex-1 gap-1 text-xs"
+            onClick={() => onOrder(design)}
+          >
+            <ShoppingBag className="h-3 w-3" />
+            Đặt hàng
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] hover:bg-red-50"
+            onClick={() => {
+              if (window.confirm('Bạn có chắc muốn xóa thiết kế này?')) {
+                onDelete(design._id)
+              }
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Create Tab ─────────────────────────────────────────────────────────────
+
+function CreateTab({
+  viewState,
+  generating,
+  refining,
+  saving,
+  isSaved,
+  currentDesign,
+  generateError,
+  onGenerate,
+  onRefine,
+  onSave,
+  onOrder,
+  onReset,
+  initialValues,
+}: {
+  viewState: 'form' | 'result'
+  generating: boolean
+  refining: boolean
+  saving: boolean
+  isSaved: boolean
+  currentDesign: GenerateDesignResponse | null
+  generateError: string | null
+  onGenerate: (vals: {
+    prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string
+  }) => Promise<void>
+  onRefine: (prompt: string) => Promise<void>
+  onSave: () => Promise<void>
+  onOrder: () => void
+  onReset: () => void
+  initialValues?: Partial<{ prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string }>
+}) {
+  if (viewState === 'form') {
+    return (
+      <Card variant="elevated" className="p-8">
+        <GenerateForm
+          onGenerate={onGenerate}
+          generating={generating}
+          initialValues={initialValues}
+          error={generateError}
+        />
+      </Card>
+    )
+  }
+
+  if (viewState === 'result' && currentDesign) {
+    return (
+      <Card variant="elevated" className="p-8">
+        <ResultPanel
+          result={currentDesign}
+          isSaved={isSaved}
+          saving={saving}
+          refining={refining}
+          onSave={onSave}
+          onOrder={onOrder}
+          onRefine={onRefine}
+          onReset={onReset}
+        />
+      </Card>
+    )
+  }
+
+  return null
+}
+
+// ── Library Tab ────────────────────────────────────────────────────────────
+
+function LibraryTab({
+  designs,
+  loading,
+  error,
+  onReuse,
+  onOrder,
+  onDelete,
+  onRefetch,
+  onCreateNew,
+}: {
+  designs: Design[]
+  loading: boolean
+  error: string | null
+  onReuse: (d: Design) => void
+  onOrder: (d: Design) => void
+  onDelete: (id: string) => void
+  onRefetch: () => void
+  onCreateNew: () => void
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="font-heading text-xl font-bold">Thiết kế của tôi</h2>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={onCreateNew}>
+          <Plus className="h-4 w-4" />
+          Tạo mới
+        </Button>
+      </div>
+
+      {loading ? (
+        <GridLoadingState cols={3} />
+      ) : error ? (
+        <div className="border border-[var(--color-error)] bg-red-50 text-[var(--color-error)] rounded-[var(--radius-md)] p-4 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={onRefetch}>Thử lại</Button>
+        </div>
+      ) : designs.length === 0 ? (
+        <EmptyState
+          icon={Palette}
+          title="Chưa có thiết kế nào"
+          description="Hãy tạo thiết kế đầu tiên của bạn"
+          actionLabel="Tạo ngay"
+          onAction={onCreateNew}
+        />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {designs.map((design) => (
+            <DesignCard
+              key={design._id}
+              design={design}
+              onReuse={onReuse}
+              onOrder={onOrder}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────
+
+export function DesignStudioPage() {
+  const navigate = useNavigate()
+  const { toasts, show: showToast } = useToast()
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'create' | 'library'>('create')
+  const [viewState, setViewState] = useState<'form' | 'result'>('form')
+  const [generating, setGenerating] = useState(false)
+  const [refining, setRefining] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [currentDesign, setCurrentDesign] = useState<GenerateDesignResponse | null>(null)
+  const [showOrderModal, setShowOrderModal] = useState(false)
+  const [orderDesignId, setOrderDesignId] = useState<string | null>(null)
+  const [orderThumbnail, setOrderThumbnail] = useState<string | undefined>(undefined)
+  const [orderSubmitting, setOrderSubmitting] = useState(false)
+  const [myDesigns, setMyDesigns] = useState<Design[]>([])
+  const [loadingLibrary, setLoadingLibrary] = useState(false)
+  const [libraryError, setLibraryError] = useState<string | null>(null)
+  const [libraryLoaded, setLibraryLoaded] = useState(false)
+  const [reuseInitial, setReuseInitial] = useState<
+    Partial<{ prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string }> | undefined
+  >(undefined)
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
+
+  const handleGenerate = async (vals: {
+    prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string
+  }) => {
+    try {
+      setGenerating(true)
+      setGenerateError(null)
+      const payload = {
+        prompt: vals.prompt,
+        ...(vals.style && { style: vals.style }),
+        ...(vals.shirtType && { shirtType: vals.shirtType }),
+        ...(vals.colorPalette && { colorPalette: vals.colorPalette }),
+        ...(vals.shirtColor && { shirtColor: vals.shirtColor }),
+      }
+      const res = await DesignService.generateDesign(payload)
+      setCurrentDesign(res.data.data)
+      setViewState('result')
+      setIsSaved(false)
+    } catch (err: any) {
+      const status = err.response?.status
+      if (status === 429) {
+        setGenerateError('Vui lòng chờ 15 giây trước khi tạo thiết kế mới.')
+      } else if (status === 503) {
+        setGenerateError('Dịch vụ đang bận, vui lòng thử lại sau ít phút.')
+      } else if (status === 400) {
+        setGenerateError('Vui lòng mô tả hình muốn in.')
+      } else {
+        setGenerateError('Đã có lỗi xảy ra, vui lòng thử lại.')
+      }
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleRefine = async (prompt: string) => {
+    if (!currentDesign) return
+    setRefining(true)
+    try {
+      const res = await DesignService.refineDesign(currentDesign.designId, prompt)
+      setCurrentDesign(res.data.data)
+      setIsSaved(false)
+      showToast('Thiết kế đã được cập nhật!')
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Tinh chỉnh thất bại', 'error')
+    } finally {
+      setRefining(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!currentDesign) return
+    setSaving(true)
+    try {
+      await DesignService.saveDesign(currentDesign.designId)
+      setIsSaved(true)
+      // update status in currentDesign
+      setCurrentDesign((prev) =>
+        prev ? { ...prev, design: { ...prev.design, status: 'SAVED' } } : prev
+      )
+      showToast('Đã lưu vào thư viện thiết kế!')
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Lưu thất bại', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const openOrderModal = (designId: string, thumbnail?: string) => {
+    setOrderDesignId(designId)
+    setOrderThumbnail(thumbnail)
+    setShowOrderModal(true)
+  }
+
+  const handleOrderSubmit = async (form: OrderForm) => {
+    if (!orderDesignId) return
+    setOrderSubmitting(true)
+    try {
+      const res = await DesignService.orderDesign(orderDesignId, {
+        shippingAddress: {
+          fullName: form.fullName,
+          phone: form.phone,
+          address: form.address,
+          city: form.city,
+        },
+        price: Number(form.price),
+        ...(form.note && { note: form.note }),
+      })
+      setShowOrderModal(false)
+      const orderId = res.data.data?.order?._id
+      navigate(orderId ? `/orders/success/${orderId}` : '/orders')
+    } catch (err: any) {
+      showToast(err?.response?.data?.message || 'Đặt hàng thất bại', 'error')
+    } finally {
+      setOrderSubmitting(false)
+    }
+  }
+
+  const handleReuseFromLibrary = (design: Design) => {
+    setReuseInitial({
+      prompt: design.prompt,
+      style: design.style,
+      shirtType: design.shirtType,
+      colorPalette: design.colorPalette,
+      shirtColor: design.shirtColor,
+    })
+    setViewState('form')
+    setCurrentDesign(null)
+    setGenerateError(null)
+    setActiveTab('create')
+  }
+
+  const handleOrderFromLibrary = (design: Design) => {
+    const thumb = design.previewImage || design.customImage
+    openOrderModal(design._id, thumb)
+  }
+
+  const handleDeleteDesign = async (id: string) => {
+    try {
+      await DesignService.deleteDesign(id)
+      setMyDesigns((prev) => prev.filter((d) => d._id !== id))
+      showToast('Đã xóa thiết kế')
+    } catch {
+      showToast('Xóa thất bại', 'error')
+    }
+  }
+
+  const fetchLibrary = async () => {
+    setLoadingLibrary(true)
+    setLibraryError(null)
+    try {
+      const res = await DesignService.getMyDesigns()
+      setMyDesigns(res.data.data.designs)
+      setLibraryLoaded(true)
+    } catch (err: any) {
+      setLibraryError(err?.response?.data?.message || 'Không thể tải thư viện')
+    } finally {
+      setLoadingLibrary(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'library' && !libraryLoaded) {
+      fetchLibrary()
+    }
+  }, [activeTab])
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide flex items-center gap-3">
+          <Layers className="h-8 w-8" />
+          Design Studio
+        </h1>
+        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
+          Mô tả hình muốn in, AI sẽ tạo thiết kế độc đáo cho bạn
+        </p>
+      </div>
+
+      {/* Tab buttons */}
+      <div className="mb-8 flex gap-2 border-b border-[var(--color-border)] pb-0">
+        {(['create', 'library'] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium border-b-2 transition-all duration-200 inline-flex items-center gap-1.5',
+              activeTab === tab
+                ? 'border-[var(--color-primary)] text-[var(--color-foreground)]'
+                : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
+            )}
+          >
+            {tab === 'create' ? (
+              <><Wand2 className="h-4 w-4" /> 🎨 Tạo thiết kế</>
+            ) : (
+              <><BookOpen className="h-4 w-4" /> 📁 Thư viện của tôi</>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'create' && (
+        <CreateTab
+          viewState={viewState}
+          generating={generating}
+          refining={refining}
+          saving={saving}
+          isSaved={isSaved}
+          currentDesign={currentDesign}
+          generateError={generateError}
+          onGenerate={handleGenerate}
+          onRefine={handleRefine}
+          onSave={handleSave}
+          onOrder={() => {
+            if (currentDesign) {
+              const thumb = currentDesign.imageUrl || currentDesign.preview ||
+                currentDesign.design.customImage || currentDesign.design.previewImage
+              openOrderModal(currentDesign.designId, thumb)
+            }
+          }}
+          onReset={() => {
+            setViewState('form')
+            setCurrentDesign(null)
+            setGenerateError(null)
+            setIsSaved(false)
+            setReuseInitial(undefined)
+          }}
+          initialValues={reuseInitial}
+        />
+      )}
+
+      {activeTab === 'library' && (
+        <LibraryTab
+          designs={myDesigns}
+          loading={loadingLibrary}
+          error={libraryError}
+          onReuse={handleReuseFromLibrary}
+          onOrder={handleOrderFromLibrary}
+          onDelete={handleDeleteDesign}
+          onRefetch={fetchLibrary}
+          onCreateNew={() => setActiveTab('create')}
+        />
+      )}
+
+      {/* Order Modal */}
+      <OrderModal
+        open={showOrderModal}
+        onOpenChange={setShowOrderModal}
+        thumbnailUrl={orderThumbnail}
+        onSubmit={handleOrderSubmit}
+        submitting={orderSubmitting}
+      />
+
+      {/* Toasts */}
+      <ToastContainer toasts={toasts} />
     </div>
   )
 }
