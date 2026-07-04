@@ -10,7 +10,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "bcryptjs": "^2.4.3",
-    "cloudinary": "^2.5.1",
+    "cloudinary": "file:./cloudinary-mock",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",

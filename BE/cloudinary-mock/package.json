@@ -1,0 +1,5 @@
+{
+  "name": "cloudinary",
+  "version": "2.5.1",
+  "main": "index.js"
+}
