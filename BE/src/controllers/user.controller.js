@@ -19,7 +19,11 @@ const updateProfile = async (req, res, next) => {
 
     // Handle avatar upload
     if (req.file) {
-      const uploaded = await uploadImage(req.file.path, 'avatars');
+      const mimeType = req.file.mimetype || 'image/jpeg';
+      const dataUri = req.file.buffer
+        ? `data:${mimeType};base64,${req.file.buffer.toString('base64')}`
+        : req.file.path;
+      const uploaded = await uploadImage(dataUri, 'altera/avatars');
       updates.avatar = uploaded.url;
     }
 

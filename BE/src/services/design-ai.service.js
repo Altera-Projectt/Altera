@@ -208,7 +208,11 @@ const uploadDesignImage = async (userId, files = {}, body = {}) => {
     throw error;
   }
 
-  const uploaded = await uploadImage(file.path, 'designs/uploads');
+  const mimeType = file.mimetype || 'image/jpeg';
+  const dataUri = file.buffer
+    ? `data:${mimeType};base64,${file.buffer.toString('base64')}`
+    : file.path;
+  const uploaded = await uploadImage(dataUri, 'altera/designs/uploads');
   const design = await Design.create({
     userId,
     shirtColor: body.shirtColor || 'white',

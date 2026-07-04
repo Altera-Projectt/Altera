@@ -16,7 +16,8 @@ const {
 } = require('../controllers/design.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const multer = require('multer');
-const upload = multer({ dest: 'src/uploads/' });
+const storage = multer.memoryStorage();
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.use(protect);
 

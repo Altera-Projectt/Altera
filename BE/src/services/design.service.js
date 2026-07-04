@@ -2,6 +2,15 @@ const Design = require('../models/Design');
 const { uploadImage } = require('../utils/cloudinary');
 const logger = require('../utils/logger');
 
+const buildDataUri = (file) => {
+  if (!file) return null;
+  if (file.buffer) {
+    const mimeType = file.mimetype || 'image/jpeg';
+    return `data:${mimeType};base64,${file.buffer.toString('base64')}`;
+  }
+  return file.path;
+};
+
 /**
  * Create a new shirt design
  */
@@ -13,13 +22,13 @@ const createDesign = async (userId, designData, files = {}) => {
 
   // Upload custom image if provided
   if (files.customImage) {
-    const uploaded = await uploadImage(files.customImage[0].path, 'designs/custom');
+    const uploaded = await uploadImage(buildDataUri(files.customImage[0]), 'altera/designs/custom');
     customImage = uploaded.url;
   }
 
   // Upload preview image if provided
   if (files.previewImage) {
-    const uploaded = await uploadImage(files.previewImage[0].path, 'designs/previews');
+    const uploaded = await uploadImage(buildDataUri(files.previewImage[0]), 'altera/designs/previews');
     previewImage = uploaded.url;
   }
 
@@ -103,13 +112,13 @@ const updateDesign = async (designId, userId, role, updateData, files = {}) => {
 
   // Update custom image if provided
   if (files.customImage) {
-    const uploaded = await uploadImage(files.customImage[0].path, 'designs/custom');
+    const uploaded = await uploadImage(buildDataUri(files.customImage[0]), 'altera/designs/custom');
     design.customImage = uploaded.url;
   }
 
   // Update preview image if provided
   if (files.previewImage) {
-    const uploaded = await uploadImage(files.previewImage[0].path, 'designs/previews');
+    const uploaded = await uploadImage(buildDataUri(files.previewImage[0]), 'altera/designs/previews');
     design.previewImage = uploaded.url;
   }
 

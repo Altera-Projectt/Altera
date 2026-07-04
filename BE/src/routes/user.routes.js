@@ -3,7 +3,8 @@ const router = express.Router();
 const { getProfile, updateProfile, getAllUsers, deleteAccount } = require('../controllers/user.controller');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
 const multer = require('multer');
-const upload = multer({ dest: 'src/uploads/' });
+const storage = multer.memoryStorage();
+const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 } });
 
 router.use(protect);
 
