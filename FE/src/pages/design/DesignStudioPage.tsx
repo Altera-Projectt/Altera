@@ -257,13 +257,13 @@ function OrderModal({
             onChange={set('note')}
           />
 
-          <ModalFooter>
+          <ModalFooter className="mt-6">
             <ModalClose asChild>
-              <Button type="button" variant="outline" disabled={submitting}>
+              <Button type="button" variant="ghost" disabled={submitting}>
                 Hủy
               </Button>
             </ModalClose>
-            <Button type="submit" variant="primary" loading={submitting}>
+            <Button type="submit" variant="primary" loading={submitting} className="uppercase tracking-widest font-semibold px-8">
               Xác nhận đặt hàng
             </Button>
           </ModalFooter>
@@ -327,24 +327,9 @@ function GenerateForm({
     await onGenerate(form)
   }
 
-  if (generating) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 gap-6">
-        <div className="h-16 w-16 animate-spin rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-foreground)]" />
-        <div className="text-center space-y-2">
-          <p className="font-medium text-[var(--color-foreground)]">AI đang tạo thiết kế của bạn...</p>
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            Quá trình này mất khoảng 15 giây, vui lòng đợi
-          </p>
-          {countdown > 0 && (
-            <p className="text-xs text-[var(--color-muted-foreground)] tabular-nums">
-              ⏱ {countdown}s
-            </p>
-          )}
-        </div>
-      </div>
-    )
-  }
+  // We removed the full-screen loading component from here.
+  // The generating state is now handled in CreateTab's Central Canvas.
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -432,18 +417,16 @@ function GenerateForm({
         variant="primary"
         size="lg"
         loading={generating}
-        className="w-full uppercase font-semibold tracking-wider h-14 gap-2"
+        className="w-full uppercase font-semibold tracking-widest h-14 mt-4"
       >
-        {!generating && <Wand2 className="h-5 w-5" />}
-        {generating ? 'AI đang tạo thiết kế... (~15 giây)' : '✨ Tạo thiết kế với AI'}
+        {!generating && <Wand2 className="h-5 w-5 mr-2" />}
+        {generating ? `Đang phác thảo... ${countdown}s` : 'Phác thảo ý tưởng'}
       </Button>
     </form>
   )
 }
 
-// ── Result Panel ───────────────────────────────────────────────────────────
-
-function ResultPanel({
+function ResultControls({
   result,
   isSaved,
   saving,
@@ -464,8 +447,6 @@ function ResultPanel({
 }) {
   const [refinePrompt, setRefinePrompt] = useState('')
   const { design } = result
-  const displayImage =
-    result.imageUrl || result.preview || design.customImage || design.previewImage || ''
 
   const handleRefineSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -475,123 +456,76 @@ function ResultPanel({
   }
 
   return (
-    <div className="space-y-6">
-      {/* Back link */}
-      <button
-        type="button"
-        onClick={onReset}
-        className="flex items-center gap-1.5 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
-      >
-        <RotateCcw className="h-3.5 w-3.5" />
-        ← Tạo thiết kế mới
-      </button>
+    <div className="space-y-6 flex flex-col h-full">
+      <div>
+        <h3 className="text-sm font-semibold text-[var(--color-foreground)] uppercase tracking-wider mb-3">
+          Thiết kế đã tạo
+        </h3>
+        
+        {/* Style + ShirtType badges */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {design.style && <Badge variant="secondary">{design.style}</Badge>}
+          {design.shirtType && <Badge variant="secondary">{design.shirtType}</Badge>}
+          {design.shirtColor && <Badge variant="secondary" className="capitalize">{design.shirtColor}</Badge>}
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Left — Shirt mockup */}
-        <div className="relative">
-          <div
-            className="relative w-full max-w-[320px] mx-auto rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-[var(--shadow-md)] overflow-hidden"
-            style={{ aspectRatio: '3/4', backgroundColor: getShirtHex(design.shirtColor ?? 'white') }}
-          >
-            {/* Collar */}
-            <div
-              className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-10 rounded-b-full border-b border-x border-[var(--color-border)] opacity-20"
-            />
-            {displayImage && (
-              <img
-                src={displayImage}
-                alt="Generated design"
-                className="rounded-[var(--radius-md)] object-contain"
-                style={{ width: '60%', position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)' }}
-              />
+        {/* Refine */}
+        <form onSubmit={handleRefineSubmit} className="flex gap-2">
+          <input
+            className={cn(
+              'flex-1 h-10 px-3 text-sm',
+              'bg-[var(--color-background)] text-[var(--color-foreground)]',
+              'border border-[var(--color-border)] rounded-[var(--radius-md)]',
+              'placeholder:text-[var(--color-muted-foreground)]',
+              'focus:outline-none focus:ring-2 focus:ring-[var(--color-foreground)] focus:border-transparent',
+              'disabled:opacity-50 disabled:cursor-not-allowed transition-all'
             )}
-            {/* Status badge */}
-            <div className="absolute top-3 right-3">
-              <Badge variant={design.status === 'SAVED' ? 'success' : 'warning'}>
-                {design.status}
-              </Badge>
-            </div>
-          </div>
-        </div>
+            placeholder="VD: Thêm chi tiết, đổi màu..."
+            value={refinePrompt}
+            onChange={(e) => setRefinePrompt(e.target.value)}
+            disabled={refining}
+          />
+          <Button type="submit" variant="outline" loading={refining} disabled={refining || !refinePrompt.trim()}>
+            <RefreshCw className={cn('h-4 w-4', refining && 'animate-spin')} />
+            Tinh chỉnh
+          </Button>
+        </form>
+      </div>
 
-        {/* Right — Controls */}
-        <div className="flex flex-col gap-4">
-          {/* Prompt used */}
-          {(result.prompt || design.prompt) && (
-            <p className="text-xs text-[var(--color-muted-foreground)] line-clamp-2 italic">
-              "{result.prompt || design.prompt}"
-            </p>
-          )}
+      <div className="mt-auto pt-6 flex flex-col gap-3">
+        {/* Save */}
+        <Button
+          variant="outline"
+          size="md"
+          className="w-full gap-2 transition-all hover:bg-[var(--color-foreground)] hover:text-[var(--color-background)]"
+          onClick={onSave}
+          disabled={isSaved || saving}
+          loading={saving}
+        >
+          {isSaved ? 'Đã lưu vào bộ sưu tập' : 'Lưu bản thảo'}
+        </Button>
 
-          {/* Style + ShirtType badges */}
-          <div className="flex flex-wrap gap-2">
-            {design.style && <Badge variant="secondary">{design.style}</Badge>}
-            {design.shirtType && <Badge variant="secondary">{design.shirtType}</Badge>}
-            {design.shirtColor && <Badge variant="secondary" className="capitalize">{design.shirtColor}</Badge>}
-          </div>
-
-          <hr className="border-[var(--color-border)]" />
-
-          {/* Refine */}
-          <form onSubmit={handleRefineSubmit} className="flex gap-2">
-            <input
-              className={cn(
-                'flex-1 h-10 px-3 text-sm',
-                'bg-[var(--color-background)] text-[var(--color-foreground)]',
-                'border border-[var(--color-border)] rounded-[var(--radius-md)]',
-                'placeholder:text-[var(--color-muted-foreground)]',
-                'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
-              )}
-              placeholder="VD: Làm con đại bàng to hơn, thêm text..."
-              value={refinePrompt}
-              onChange={(e) => setRefinePrompt(e.target.value)}
-              disabled={refining}
-            />
-            <Button type="submit" variant="outline" loading={refining} disabled={refining || !refinePrompt.trim()}>
-              <RefreshCw className={cn('h-4 w-4', refining && 'animate-spin')} />
-              🔄 Tinh chỉnh
-            </Button>
-          </form>
-
-          <hr className="border-[var(--color-border)]" />
-
-          {/* Action buttons */}
-          <div className="flex flex-col gap-3">
-            {/* Save */}
-            <Button
-              variant="secondary"
-              size="md"
-              className="w-full gap-2"
-              onClick={onSave}
-              disabled={isSaved || saving}
-              loading={saving}
-            >
-              {isSaved ? '✅ Đã lưu' : '💾 Lưu thiết kế'}
-            </Button>
-
-            {/* Order */}
-            <Button
-              variant="primary"
-              size="lg"
-              className="w-full gap-2 uppercase font-semibold tracking-wider h-14"
-              onClick={onOrder}
-            >
-              <ShoppingBag className="h-5 w-5" />
-              🛒 Đặt hàng ngay
-            </Button>
-
-            {/* Reset */}
-            <Button
-              variant="ghost"
-              size="md"
-              className="w-full"
-              onClick={onReset}
-            >
-              ← Tạo thiết kế mới
-            </Button>
-          </div>
-        </div>
+        {/* Order */}
+        <Button
+          variant="primary"
+          size="lg"
+          className="w-full gap-2 uppercase font-semibold tracking-widest h-14 transition-transform active:scale-95"
+          onClick={onOrder}
+        >
+          <ShoppingBag className="h-5 w-5" />
+          Đặt hàng ngay
+        </Button>
+        
+        {/* Reset */}
+        <Button
+          variant="ghost"
+          size="md"
+          className="w-full mt-2 text-[var(--color-muted-foreground)]"
+          onClick={onReset}
+        >
+          <RotateCcw className="h-4 w-4 mr-2" />
+          Tạo thiết kế khác
+        </Button>
       </div>
     </div>
   )
@@ -724,37 +658,89 @@ function CreateTab({
   onReset: () => void
   initialValues?: Partial<{ prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string }>
 }) {
-  if (viewState === 'form') {
-    return (
-      <Card variant="elevated" className="p-8">
-        <GenerateForm
-          onGenerate={onGenerate}
-          generating={generating}
-          initialValues={initialValues}
-          error={generateError}
-        />
-      </Card>
-    )
-  }
+  return (
+    <div className="flex flex-col lg:flex-row gap-8 h-full min-h-[650px]">
+      {/* ── Left Sidebar (Controls) ── */}
+      <aside className="w-full lg:w-[420px] flex flex-col shrink-0">
+        <Card className="flex flex-col h-full p-6 border-[var(--color-border)] shadow-sm bg-[var(--color-background)] group hover:border-[var(--color-foreground)] transition-colors duration-500">
+          <div className="mb-6 border-b border-[var(--color-border)] pb-4">
+             <h2 className="font-heading text-lg uppercase tracking-widest font-semibold flex items-center gap-2">
+                <Wand2 className="w-5 h-5" /> Creator Tools
+             </h2>
+          </div>
+          
+          <div className={cn("transition-opacity duration-300", (viewState === 'result' && currentDesign) ? "hidden" : "block")}>
+            <GenerateForm
+              onGenerate={onGenerate}
+              generating={generating}
+              initialValues={initialValues}
+              error={generateError}
+            />
+          </div>
 
-  if (viewState === 'result' && currentDesign) {
-    return (
-      <Card variant="elevated" className="p-8">
-        <ResultPanel
-          result={currentDesign}
-          isSaved={isSaved}
-          saving={saving}
-          refining={refining}
-          onSave={onSave}
-          onOrder={onOrder}
-          onRefine={onRefine}
-          onReset={onReset}
-        />
-      </Card>
-    )
-  }
+          {viewState === 'result' && currentDesign && (
+            <div className="animate-in fade-in slide-in-from-left-4 duration-500 flex-1">
+              <ResultControls 
+                result={currentDesign}
+                isSaved={isSaved}
+                saving={saving}
+                refining={refining}
+                onSave={onSave}
+                onOrder={onOrder}
+                onRefine={onRefine}
+                onReset={onReset}
+              />
+            </div>
+          )}
+        </Card>
+      </aside>
 
-  return null
+      {/* ── Central Canvas ── */}
+      <div className="flex-1 relative bg-[var(--color-neutral)] rounded-[var(--radius-xl)] border border-[var(--color-border)] overflow-hidden flex items-center justify-center p-8 min-h-[500px] shadow-inner">
+         {generating ? (
+            <div className="absolute inset-0 bg-[var(--color-background)]/60 backdrop-blur-md flex flex-col items-center justify-center z-10 animate-in fade-in duration-300">
+               <div className="h-16 w-16 animate-spin rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-foreground)] mb-6 shadow-lg" />
+               <p className="font-heading uppercase tracking-widest text-[var(--color-foreground)] font-semibold animate-pulse">Crafting your design...</p>
+            </div>
+         ) : viewState === 'result' && currentDesign ? (
+            <div className="animate-in zoom-in-95 fade-in duration-700 w-full h-full flex items-center justify-center">
+              <div
+                className="relative w-full max-w-[400px] mx-auto rounded-[var(--radius-xl)] shadow-2xl overflow-hidden transition-transform hover:scale-[1.02] duration-500"
+                style={{ aspectRatio: '3/4', backgroundColor: getShirtHex(currentDesign.design.shirtColor ?? 'white') }}
+              >
+                {/* Collar */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 rounded-b-[3rem] border-b-2 border-x-2 border-black/5" />
+                
+                {/* Image */}
+                {(currentDesign.imageUrl || currentDesign.preview || currentDesign.design.customImage || currentDesign.design.previewImage) && (
+                  <img
+                    src={currentDesign.imageUrl || currentDesign.preview || currentDesign.design.customImage || currentDesign.design.previewImage || ''}
+                    alt="Generated design"
+                    className="object-contain"
+                    style={{ width: '60%', position: 'absolute', top: '25%', left: '50%', transform: 'translateX(-50%)' }}
+                  />
+                )}
+                
+                {/* Status badge */}
+                <div className="absolute top-4 right-4">
+                  <Badge variant={currentDesign.design.status === 'SAVED' ? 'success' : 'secondary'} className="shadow-sm">
+                    {currentDesign.design.status}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+         ) : (
+            <div className="opacity-50 hover:opacity-80 transition-opacity duration-300">
+              <EmptyState
+                icon={Palette}
+                title="Canvas is empty"
+                description="Describe your idea in the Creator Tools panel and let AI bring it to life."
+              />
+            </div>
+         )}
+      </div>
+    </div>
+  )
 }
 
 // ── Library Tab ────────────────────────────────────────────────────────────
@@ -999,14 +985,15 @@ export function DesignStudioPage() {
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide flex items-center gap-3">
-          <Layers className="h-8 w-8" />
-          Design Studio
-        </h1>
-        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
-          Mô tả hình muốn in, AI sẽ tạo thiết kế độc đáo cho bạn
-        </p>
+      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-4xl font-normal uppercase tracking-widest flex items-center gap-3">
+            Design Studio
+          </h1>
+          <p className="mt-2 text-sm text-[var(--color-muted-foreground)] tracking-wide">
+            Describe your vision, and our AI will generate a unique fashion piece.
+          </p>
+        </div>
       </div>
 
       {/* Tab buttons */}

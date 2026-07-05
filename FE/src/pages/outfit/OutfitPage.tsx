@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/Button'
 import { Input, Label } from '@/components/ui/Input'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { ErrorState } from '@/components/ui/ErrorState'
-import { GridLoadingState } from '@/components/ui/LoadingState'
 import { formatPrice } from '@/utils/format'
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -110,47 +109,47 @@ export function OutfitPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-var(--spacing-navbar,72px))] bg-[var(--color-background)] overflow-hidden">
+      
+      {/* ── LEFT SIDE: Styling Brief ───────────────────────────────────── */}
+      <div className="w-full lg:w-[450px] xl:w-[500px] flex flex-col border-r border-[var(--color-border)] bg-[var(--color-background)] shrink-0 h-full relative z-10">
+        <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+          
+          {/* ── Page Header ───────────────────────────────────────────────── */}
+          <div className="mb-8">
+            <h1 className="font-heading text-3xl font-bold uppercase tracking-widest text-[var(--color-foreground)]">Trợ lý Phong cách</h1>
+            <p className="mt-2 text-sm text-[var(--color-muted-foreground)] leading-relaxed">
+              Nhập những món đồ bạn đang có. AI sẽ phác thảo một bộ trang phục hoàn chỉnh dành riêng cho bạn.
+            </p>
+          </div>
 
-      {/* ── Page Header ───────────────────────────────────────────────── */}
-      <div className="mb-8">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide">AI Stylist</h1>
-        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
-          Nhập những món đồ bạn đang có để nhận gợi ý outfit từ AI.
-        </p>
-      </div>
+          {/* ── Tabs ──────────────────────────────────────────────────────── */}
+          <div className="flex gap-1 mb-8 border-b border-[var(--color-border)]">
+            {([
+              { key: 'stylist', label: 'Phác thảo phong cách', Icon: Sparkles },
+              { key: 'history', label: 'Lịch sử tư vấn', Icon: Clock },
+            ] as { key: Tab; label: string; Icon: React.ComponentType<{ className?: string }> }[]).map(({ key, label, Icon }) => (
+              <button
+                key={key}
+                id={`outfit-tab-${key}`}
+                type="button"
+                onClick={() => setTab(key)}
+                className={[
+                  'flex items-center gap-2 px-4 py-3 text-sm font-semibold tracking-wider uppercase transition-colors',
+                  tab === key
+                    ? 'border-b-2 border-[var(--color-foreground)] text-[var(--color-foreground)]'
+                    : 'border-b-2 border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
+                ].join(' ')}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </div>
 
-      {/* ── Tabs ──────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 mb-8 border-b border-[var(--color-border)]">
-        {([
-          { key: 'stylist', label: 'AI Stylist', Icon: Sparkles },
-          { key: 'history', label: 'Lịch sử', Icon: Clock },
-        ] as { key: Tab; label: string; Icon: React.ComponentType<{ className?: string }> }[]).map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            id={`outfit-tab-${key}`}
-            type="button"
-            onClick={() => setTab(key)}
-            className={[
-              'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
-              tab === key
-                ? 'border-[var(--color-primary)] text-[var(--color-foreground)]'
-                : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
-            ].join(' ')}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── STYLIST TAB ───────────────────────────────────────────────── */}
-      {tab === 'stylist' && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
-
-          {/* Left: Form */}
-          <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-6">
+          {/* ── STYLIST TAB (Left content) ────────────────────────────────── */}
+          {tab === 'stylist' && (
+            <form onSubmit={handleSubmit} className="space-y-8 pb-10">
 
               {/* Items — required section */}
               <fieldset className="border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5 space-y-4">
@@ -161,22 +160,22 @@ export function OutfitPage() {
 
                 <Input
                   id="outfit-input-top"
-                  label="👕 Áo đang có"
+                  label="Áo đang có"
                   placeholder="VD: Áo thun trắng oversize cotton"
                   value={top}
                   onChange={(e) => setTop(e.target.value)}
                 />
                 <Input
                   id="outfit-input-bottom"
-                  label="👖 Quần đang có"
+                  label="Quần đang có"
                   placeholder="VD: Quần baggy đen denim"
                   value={bottom}
                   onChange={(e) => setBottom(e.target.value)}
                 />
                 <Input
                   id="outfit-input-shoes"
-                  label="👟 Giày đang có"
-                  placeholder="VD: Giày sneaker trắng Nike"
+                  label="Giày đang có"
+                  placeholder="VD: Giày sneaker trắng cổ thấp"
                   value={shoes}
                   onChange={(e) => setShoes(e.target.value)}
                 />
@@ -288,123 +287,132 @@ export function OutfitPage() {
                 variant="primary"
                 size="lg"
                 loading={loading}
-                className="w-full uppercase tracking-wider font-semibold"
+                className="w-full uppercase tracking-widest font-semibold h-14"
               >
-                <Sparkles className="h-4 w-4" />
-                Nhận gợi ý AI
+                {!loading && <Sparkles className="h-4 w-4 mr-2" />}
+                {loading ? 'Đang phân tích...' : 'Tạo bộ trang phục'}
               </Button>
             </form>
-          </div>
-
-          {/* Right: Result */}
-          <div className="lg:col-span-3 min-h-[300px]">
-            {loading && <GridLoadingState cols={2} className="pt-2" />}
-
-            {!loading && !result && !error && (
-              <EmptyState
-                icon={Sparkles}
-                title="Chờ gợi ý từ AI"
-                description="Nhập ít nhất một món đồ bên trái rồi bấm &quot;Nhận gợi ý AI&quot; để bắt đầu."
-              />
-            )}
-
-            {!loading && result && (
-              <div className="space-y-8">
-                {/* AI recommendation text */}
-                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-muted)]/30 p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-4 w-4 text-[var(--color-accent)]" />
-                    <h2 className="font-heading text-base font-semibold">Gợi ý từ AI Stylist</h2>
-                  </div>
-                  <p className="text-sm text-[var(--color-foreground)] leading-relaxed whitespace-pre-wrap">
-                    {result.recommendation}
-                  </p>
-                </div>
-
-                {/* Product grid */}
-                {(result.products ?? []).length > 0 && (
-                  <div>
-                    <h3 className="font-heading text-base font-semibold mb-4 flex items-center gap-2">
-                      <ShoppingBag className="h-4 w-4" />
-                      Sản phẩm gợi ý ({(result.products ?? []).length})
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {(result.products ?? []).map((product) => (
-                        <OutfitProductCard key={product._id} product={product} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(result.products ?? []).length === 0 && (
-                  <EmptyState
-                    icon={ShoppingBag}
-                    title="Không có sản phẩm"
-                    description="AI không tìm thấy sản phẩm phù hợp lần này. Thử điều chỉnh yêu cầu."
-                  />
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── HISTORY TAB ───────────────────────────────────────────────── */}
-      {tab === 'history' && (
-        <div>
-          {historyLoading && <GridLoadingState cols={2} />}
-
-          {!historyLoading && historyError && (
-            <ErrorState message={historyError} onRetry={fetchHistory} />
           )}
 
-          {!historyLoading && !historyError && (history ?? []).length === 0 && (
-            <EmptyState
-              icon={Clock}
-              title="Chưa có lịch sử"
-              description="Hãy thử AI Stylist để nhận gợi ý outfit đầu tiên của bạn!"
-              actionLabel="Thử ngay"
-              onAction={() => setTab('stylist')}
-            />
-          )}
-
-          {!historyLoading && !historyError && (history ?? []).length > 0 && (
-            <div className="space-y-6">
-              {(history ?? []).map((item, idx) => (
-                <div
-                  key={item._id ?? idx}
-                  className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-background)] p-6"
-                >
-                  {/* Timestamp */}
-                  <p className="text-xs text-[var(--color-muted-foreground)] mb-3">
-                    {new Date(item.createdAt).toLocaleDateString('vi-VN', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-
-                  {/* Recommendation text */}
-                  <p className="text-sm text-[var(--color-foreground)] leading-relaxed mb-4">
-                    {item.recommendation}
-                  </p>
-
-                  {/* Products mini-grid */}
-                  {(item.products ?? []).length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {(item.products ?? []).map((p) => (
-                        <HistoryProductMini key={p._id} product={p} />
-                      ))}
-                    </div>
-                  )}
+          {/* ── HISTORY TAB (Left content) ────────────────────────────────── */}
+          {tab === 'history' && (
+            <div className="pb-10">
+              {historyLoading && (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="h-24 w-full bg-zinc-200 animate-pulse rounded-[var(--radius-lg)] relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent" />
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {!historyLoading && historyError && (
+                <ErrorState message={historyError} onRetry={fetchHistory} />
+              )}
+
+              {!historyLoading && !historyError && (history ?? []).length === 0 && (
+                <EmptyState
+                  icon={Clock}
+                  title="Chưa có lịch sử tư vấn"
+                  description="Các bộ trang phục được tư vấn sẽ được lưu lại tại đây."
+                  actionLabel="Bắt đầu phác thảo"
+                  onAction={() => setTab('stylist')}
+                />
+              )}
+
+              {!historyLoading && !historyError && (history ?? []).length > 0 && (
+                <div className="space-y-4">
+                  {(history ?? []).map((item, idx) => (
+                    <button
+                      key={item._id ?? idx}
+                      onClick={() => setResult(item as unknown as OutfitRecommendation)}
+                      className="w-full text-left rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-background)] hover:bg-[var(--color-neutral)] p-4 transition-colors"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                        {new Date(item.createdAt).toLocaleDateString('vi-VN', {
+                          day: '2-digit', month: '2-digit', year: 'numeric',
+                        })}
+                      </p>
+                      <p className="text-sm text-[var(--color-foreground)] line-clamp-2 font-serif">
+                        {item.recommendation}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
+      </div>
+
+      {/* ── RIGHT SIDE: Inspiration Board ──────────────────────────────── */}
+      <div className="flex-1 flex flex-col bg-[var(--color-neutral)] h-full overflow-y-auto relative">
+        <div className="p-6 lg:p-12 max-w-5xl mx-auto w-full">
+          {tab === 'stylist' && loading && (
+            <div className="animate-in fade-in duration-500 pt-10">
+              <div className="flex items-center gap-3 mb-8">
+                <Sparkles className="h-5 w-5 text-[var(--color-foreground)] animate-pulse" />
+                <h2 className="font-heading text-xl uppercase tracking-widest">Đang phác thảo bộ trang phục...</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex flex-col space-y-4">
+                    <div className="aspect-[3/4] w-full rounded-[var(--radius-lg)] bg-zinc-200 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent" />
+                    <div className="h-4 w-2/3 bg-zinc-200 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent" />
+                    <div className="h-4 w-1/3 bg-zinc-200 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!loading && !result && !error && (
+            <div className="h-full flex flex-col items-center justify-center text-center py-32 opacity-50">
+              <Sparkles className="w-12 h-12 mb-6 text-[var(--color-muted-foreground)]" />
+              <h2 className="font-heading text-2xl uppercase tracking-widest text-[var(--color-foreground)] mb-2">Bảng cảm hứng</h2>
+              <p className="text-sm text-[var(--color-muted-foreground)] max-w-sm mx-auto">
+                Hoàn thiện phần phác thảo để xem bộ sưu tập được tuyển chọn riêng cho bạn.
+              </p>
+            </div>
+          )}
+
+          {!loading && result && (
+            <div className="space-y-10 animate-in slide-in-from-bottom-8 duration-700 fade-in pt-4">
+              {/* AI recommendation text */}
+              <div>
+                <h2 className="font-heading text-3xl mb-4 font-normal tracking-wide">Bộ trang phục của bạn</h2>
+                <div className="pl-6 border-l border-[var(--color-foreground)] py-2">
+                  <p className="text-lg font-serif text-[var(--color-foreground)] leading-relaxed whitespace-pre-wrap">
+                    {result.recommendation}
+                  </p>
+                </div>
+              </div>
+
+              {/* Product grid */}
+              {(result.products ?? []).length > 0 && (
+                <div>
+                  <h3 className="font-heading text-sm uppercase tracking-widest font-semibold mb-6 flex items-center gap-2 text-[var(--color-muted-foreground)]">
+                    Featured Pieces
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {(result.products ?? []).map((product) => (
+                      <OutfitProductCard key={product._id} product={product} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(result.products ?? []).length === 0 && (
+                <EmptyState
+                  icon={ShoppingBag}
+                  title="Không tìm thấy sản phẩm phù hợp"
+                  description="AI chưa tìm được sản phẩm phù hợp lần này. Hãy dùng gợi ý phía trên làm cảm hứng."
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

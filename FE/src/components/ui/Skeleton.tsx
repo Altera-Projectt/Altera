@@ -18,8 +18,10 @@ export const Skeleton = forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
       role="status"
       aria-label="Loading…"
       className={cn(
-        'animate-pulse rounded-[var(--radius-md)]',
+        'relative overflow-hidden rounded-[var(--radius-md)]',
         'bg-[var(--color-neutral)]',
+        'before:absolute before:inset-0 before:-translate-x-full',
+        'before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent',
         className,
       )}
       {...props}

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button'
 import { ProductCard } from '@/components/fashion'
 import { ProductService } from '@/services/product.api'
 import type { Product } from '@/types/product.types'
+import { cn } from '@/utils/cn'
 
 // ── Quick-nav cards for newly added pages ─────────────────────────────────
 
@@ -92,12 +93,12 @@ export function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-[var(--spacing-contentMax)] px-6 text-center text-white">
+        <div className="relative z-10 mx-auto max-w-[var(--spacing-contentMax)] px-6 text-center text-white flex flex-col items-center">
           <motion.span
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="text-xs font-semibold uppercase tracking-[0.25em] text-rose-500"
+            className="text-xs font-semibold uppercase tracking-[0.25em] text-zinc-300"
           >
             Gen-Z AI Fashion Platform
           </motion.span>
@@ -105,7 +106,7 @@ export function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            className="mt-4 font-heading text-5xl font-black uppercase tracking-wider sm:text-7xl lg:text-8xl"
+            className="mt-4 font-heading text-5xl font-normal uppercase tracking-widest sm:text-7xl lg:text-8xl"
           >
             Evolve Your Style
           </motion.h1>
@@ -113,7 +114,7 @@ export function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="mx-auto mt-6 max-w-xl text-sm font-light leading-relaxed text-zinc-300 sm:text-base"
+            className="mx-auto mt-6 max-w-lg text-sm font-light leading-relaxed text-zinc-300 sm:text-base"
           >
             Design custom clothing in 3D, get tailored outfit recommendations driven by AI, and showcase your signature aesthetic.
           </motion.p>
@@ -121,19 +122,14 @@ export function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3 }}
-            className="mt-10 flex flex-wrap items-center justify-center gap-4"
+            className="mt-12 flex flex-wrap items-center justify-center gap-6"
           >
-            <Button asChild variant="accent" size="lg" className="uppercase font-semibold tracking-wider px-8">
+            <Button asChild variant="secondary" size="lg" className="bg-white text-black hover:bg-zinc-200 uppercase font-semibold tracking-wider px-10">
               <Link to="/products">Shop Catalog</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black uppercase font-semibold tracking-wider px-8">
+            <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black uppercase font-semibold tracking-wider px-10">
               <Link to="/design" className="flex items-center gap-2">
                 3D Studio <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="ghost" size="lg" className="text-white/70 hover:text-white hover:bg-white/10 uppercase font-semibold tracking-wider px-8">
-              <Link to="/membership" className="flex items-center gap-2">
-                <Crown className="h-4 w-4" /> Membership
               </Link>
             </Button>
           </motion.div>
@@ -181,16 +177,22 @@ export function HomePage() {
 
       {/* 3. Sustainable Fashion Section */}
       <section className="py-24 border-b border-[var(--color-border)]">
-        <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="mx-auto max-w-[var(--spacing-contentMax)] px-6"
+        >
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-[var(--color-foreground)]">
                 <Leaf className="h-5 w-5" />
               </div>
-              <h2 className="mt-4 font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
+              <h2 className="mt-6 font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
                 Eco-Friendly &amp; Sustainable
               </h2>
-              <p className="mt-6 text-sm text-[var(--color-muted-foreground)] leading-relaxed">
+              <p className="mt-6 text-sm text-[var(--color-muted-foreground)] leading-relaxed max-w-md">
                 ALTERA is committed to reducing environmental impact. Our custom studio generates patterns directly for production, ensuring zero inventory waste. We prioritize organic materials, ethical labor, and circular design principles.
               </p>
               <div className="mt-8 grid grid-cols-2 gap-6">
@@ -203,24 +205,24 @@ export function HomePage() {
                   <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">On-demand production prints only what is needed</p>
                 </div>
               </div>
-              <div className="mt-8">
-                <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
+              <div className="mt-10">
+                <Button asChild variant="outline" className="uppercase font-semibold tracking-wider px-8">
                   <Link to="/about" className="flex items-center gap-2">
-                    Tìm hiểu thêm về ALTERA <ArrowRight className="h-4 w-4" />
+                    Our Story <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
               </div>
             </div>
-            <div className="aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-muted)]">
+            <div className="aspect-[4/5] overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-muted)] shadow-xl">
               <img
                 src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=80"
                 alt="Sustainable production"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-1000 hover:scale-105"
                 loading="lazy"
               />
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* 4. AI Stylist Section */}
@@ -302,11 +304,17 @@ export function HomePage() {
       </section>
 
       {/* 6. Featured Products */}
-      <section className="py-24 bg-[var(--color-neutral)]">
+      <section className="py-28 bg-[var(--color-background)] border-b border-[var(--color-border)]">
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
-          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center justify-between gap-6 md:flex-row mb-16"
+          >
             <div>
-              <h2 className="font-heading text-3xl font-bold uppercase tracking-wide">
+              <h2 className="font-heading text-3xl font-normal uppercase tracking-widest">
                 Featured Catalog
               </h2>
               <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
@@ -314,32 +322,36 @@ export function HomePage() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Button asChild variant="ghost" className="uppercase font-semibold tracking-wider">
-                <Link to="/wishlist" className="flex items-center gap-2">
-                  <Heart className="h-4 w-4" /> Wishlist
-                </Link>
-              </Button>
-              <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
+              <Button asChild variant="outline" className="uppercase font-semibold tracking-wider rounded-none">
                 <Link to="/products">View All Products</Link>
               </Button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-12">
             {isLoading
               ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex flex-col space-y-4">
-                  <div className="aspect-[3/4] w-full animate-pulse rounded-[var(--radius-md)] bg-zinc-300 dark:bg-zinc-800" />
-                  <div className="h-4 w-2/3 animate-pulse bg-zinc-300 dark:bg-zinc-800" />
-                  <div className="h-4 w-1/3 animate-pulse bg-zinc-300 dark:bg-zinc-800" />
+                <div key={i} className={cn("flex flex-col space-y-4", i === 0 || i === 3 ? "lg:col-span-7" : "lg:col-span-5")}>
+                  <div className="aspect-[3/4] w-full animate-pulse rounded-[var(--radius-md)] bg-zinc-200 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent" />
+                  <div className="h-4 w-2/3 bg-zinc-200" />
+                  <div className="h-4 w-1/3 bg-zinc-200" />
                 </div>
               ))
               : products.length > 0
-                ? products.map((product) => (
-                  <ProductCard key={product._id} product={product} />
+                ? products.map((product, i) => (
+                  <motion.div
+                    key={product._id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.6, delay: i * 0.1 }}
+                    className={cn(i === 0 || i === 3 ? "lg:col-span-7" : "lg:col-span-5")}
+                  >
+                    <ProductCard product={product} className="h-full w-full" />
+                  </motion.div>
                 ))
                 : (
-                  <div className="col-span-4 text-center py-12 text-[var(--color-muted-foreground)]">
+                  <div className="col-span-full text-center py-12 text-[var(--color-muted-foreground)]">
                     <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-30" />
                     <p className="text-sm">Catalog đang được cập nhật...</p>
                     <Button asChild variant="outline" size="sm" className="mt-4">

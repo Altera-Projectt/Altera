@@ -14,6 +14,7 @@ export function ChatPage() {
 
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [rightPanelOpen, setRightPanelOpen] = useState(true)
 
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -34,7 +35,7 @@ export function ChatPage() {
       const res = await ChatService.getChats()
       setChats(res.data.data.chats)
     } catch {
-      setChatsError('Không thể tải danh sách chat.')
+      setChatsError('Không thể tải danh sách hội thoại.')
     } finally {
       setChatsLoading(false)
     }
@@ -200,9 +201,9 @@ export function ChatPage() {
             )}
             {!chatsLoading && chats.length === 0 && (
               <div className="text-[var(--color-muted-foreground)] text-sm text-center py-8 px-3">
-                Chưa có cuộc trò chuyện nào.
+                Chưa có cuộc hội thoại nào.
                 <br />
-                Tạo mới để bắt đầu!
+                Khởi tạo một cuộc trò chuyện mới để bắt đầu.
               </div>
             )}
             {chats.map((chat) => {
@@ -251,33 +252,34 @@ export function ChatPage() {
         </div>
       </aside>
 
-      {/* ── Main chat area ────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-background)]">
+      {/* ── Main chat area (Left) ────────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-background)] relative">
         {/* Top bar */}
-        <div className="h-[60px] px-5 border-b border-[var(--color-border)] flex items-center gap-4 shrink-0 bg-[var(--color-background)]/80 backdrop-blur-md">
-          <button
-            id="chat-btn-toggle-sidebar"
-            onClick={() => setSidebarOpen((o) => !o)}
-            className="p-2 -ml-2 rounded-[var(--radius-md)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+        <div className="h-[72px] px-6 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-[var(--color-background)]/90 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <button
+              id="chat-btn-toggle-sidebar"
+              onClick={() => setSidebarOpen((o) => !o)}
+              className="p-2 -ml-2 rounded-full text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            
+            {selectedChat ? (
+              <div className="flex items-center gap-3">
+                <div>
+                  <h2 className="text-[var(--color-foreground)] font-heading font-semibold text-lg">{selectedChat.title}</h2>
+                  {selectedChat.topic && (
+                    <p className="text-[var(--color-muted-foreground)] text-xs uppercase tracking-wider mt-0.5">{selectedChat.topic}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <h2 className="text-[var(--color-foreground)] font-heading font-semibold text-lg">Trợ lý Phong cách</h2>
+            )}
+          </div>
           
-          {selectedChat ? (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-[var(--color-foreground)] font-semibold text-sm">{selectedChat.title}</p>
-                {selectedChat.topic && (
-                  <p className="text-[var(--color-muted-foreground)] text-[12px] truncate max-w-xs">{selectedChat.topic}</p>
-                )}
-              </div>
-            </div>
-          ) : (
-            <p className="text-[var(--color-muted-foreground)] text-sm font-medium">ALTERA AI Chat</p>
-          )}
+          {/* Toggle right panel (mobile/tablet only if needed, but we keep it simple here) */}
         </div>
 
         {/* Messages area */}
@@ -290,7 +292,7 @@ export function ChatPage() {
                 <MessageSquare className="w-8 h-8 opacity-50" />
               </div>
               <p className="text-[var(--color-muted-foreground)] text-sm max-w-sm">
-                Bắt đầu cuộc trò chuyện bằng cách gửi tin nhắn bên dưới.
+                Bắt đầu hội thoại bằng cách gửi tin nhắn bên dưới.
               </p>
             </div>
           ) : (
@@ -306,7 +308,7 @@ export function ChatPage() {
 
         {/* Input area */}
         {selectedChat && (
-          <div className="p-4 lg:p-6 border-t border-[var(--color-border)] shrink-0 bg-[var(--color-neutral)]">
+          <div className="p-6 border-t border-[var(--color-border)] shrink-0 bg-[var(--color-background)]">
             <div className="max-w-3xl mx-auto">
               {sendError && (
                 <div className="flex items-center gap-2 mb-3 p-3 rounded-[var(--radius-md)] bg-red-50 text-[var(--color-error)] border border-[var(--color-error)]/20 text-sm">
@@ -315,14 +317,14 @@ export function ChatPage() {
                 </div>
               )}
               
-              <div className="flex items-end gap-3 bg-[var(--color-background)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)]/50 focus-within:ring-1 focus-within:ring-[var(--color-accent)]/50 rounded-[var(--radius-lg)] p-2 transition-all">
+              <div className="flex items-end gap-3 bg-[var(--color-neutral)] border border-[var(--color-border)] focus-within:border-[var(--color-foreground)] focus-within:ring-1 focus-within:ring-[var(--color-foreground)] rounded-[var(--radius-lg)] p-2 transition-all">
                 <textarea
                   id="chat-input-message"
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Nhắn tin với AI... (Enter để gửi, Shift+Enter xuống dòng)"
+                  placeholder="Mô tả phong cách bạn đang tìm kiếm..."
                   rows={1}
                   disabled={sending}
                   className="flex-1 bg-transparent border-none text-[var(--color-foreground)] text-sm p-3 outline-none resize-none max-h-[200px] font-sans placeholder:text-[var(--color-muted-foreground)]"
@@ -336,22 +338,45 @@ export function ChatPage() {
                   id="chat-btn-send"
                   onClick={handleSend}
                   disabled={sending || !input.trim()}
-                  className="w-11 h-11 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)] flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 mb-0.5 mr-0.5"
+                  className="w-12 h-12 shrink-0 rounded-full bg-[var(--color-foreground)] text-[var(--color-background)] flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 mb-0.5 mr-0.5"
                 >
                   {sending ? (
                     <MiniSpinner />
                   ) : (
-                    <Send className="w-5 h-5 ml-[-2px] mb-[-2px]" />
+                    <Send className="w-5 h-5 ml-[-2px]" />
                   )}
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--color-muted-foreground)] text-center mt-3">
-                AI có thể mắc sai sót. Luôn kiểm tra thông tin quan trọng.
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-[var(--color-muted-foreground)] text-center mt-4">
+                Trợ lý AI có thể mắc sai sót. Vui lòng kiểm tra thông tin quan trọng.
               </p>
             </div>
           </div>
         )}
       </div>
+
+      {/* ── Right: Inspiration Board ────────────────────────────────────── */}
+      <aside className="hidden lg:flex flex-col w-[400px] xl:w-[480px] bg-[var(--color-neutral)] border-l border-[var(--color-border)] shrink-0">
+        <div className="h-[72px] px-6 border-b border-[var(--color-border)] flex items-center shrink-0">
+          <h3 className="font-heading font-semibold text-base uppercase tracking-wider text-[var(--color-foreground)]">Bảng cảm hứng</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 opacity-60">
+            <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+              <div className="aspect-[3/4] rounded-[var(--radius-lg)] bg-[var(--color-muted)] border border-[var(--color-border)] flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-[var(--color-muted-foreground)]" />
+              </div>
+              <div className="aspect-[3/4] rounded-[var(--radius-lg)] bg-[var(--color-muted)] border border-[var(--color-border)] flex items-center justify-center mt-8">
+                <ShoppingBag className="w-6 h-6 text-[var(--color-muted-foreground)]" />
+              </div>
+            </div>
+            <div>
+              <p className="font-heading font-semibold text-lg text-[var(--color-foreground)]">Tuyển chọn dành riêng cho bạn</p>
+              <p className="text-sm text-[var(--color-muted-foreground)] mt-2">Gợi ý trang phục và moodboard phong cách sẽ hiện ra tại đây.</p>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   )
 }
@@ -361,29 +386,32 @@ export function ChatPage() {
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.sender === 'USER'
   return (
-    <div className={cn("flex gap-4 items-start", isUser ? "flex-row-reverse" : "flex-row")}>
+    <div className={cn("flex gap-4 items-start w-full", isUser ? "flex-row-reverse" : "flex-row")}>
       {/* Avatar */}
-      <div className={cn(
-        "w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1",
-        isUser ? "bg-[var(--color-muted)] text-[var(--color-foreground)]" : "bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
-      )}>
-        {isUser ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-      </div>
+      {!isUser && (
+        <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center mt-1 bg-[var(--color-foreground)] text-[var(--color-background)] shadow-sm">
+          <Sparkles className="w-5 h-5" />
+        </div>
+      )}
 
       {/* Bubble */}
       <div className={cn(
-        "max-w-[80%] rounded-2xl p-4",
+        "max-w-[85%] rounded-[var(--radius-lg)] p-5",
         isUser 
-          ? "bg-[var(--color-muted)] text-[var(--color-foreground)] rounded-tr-sm" 
-          : "bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/10 text-[var(--color-foreground)] rounded-tl-sm"
+          ? "bg-[var(--color-foreground)] text-[var(--color-background)] rounded-tr-sm" 
+          : "bg-transparent text-[var(--color-foreground)] border-l-2 border-[var(--color-border)] pl-6 py-2 rounded-none"
       )}>
-        <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+        {/* Render AI text with serif heading for some structure if needed, or just clean prose */}
+        <div className={cn(
+          "text-[15px] leading-loose whitespace-pre-wrap break-words", 
+          !isUser ? "font-serif text-[16px] tracking-wide" : "font-sans"
+        )}>
           {message.text}
-        </p>
+        </div>
         {message.createdAt && (
           <p className={cn(
-            "text-[11px] mt-2",
-            isUser ? "text-[var(--color-muted-foreground)] text-right" : "text-[var(--color-muted-foreground)] text-left"
+            "text-[10px] uppercase tracking-widest mt-3 opacity-60",
+            isUser ? "text-right text-[var(--color-background)]" : "text-left text-[var(--color-foreground)]"
           )}>
             {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           </p>
@@ -395,15 +423,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 function TypingIndicator() {
   return (
-    <div className="flex gap-4 items-start">
-      <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1 bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
-        <Sparkles className="w-4 h-4" />
+    <div className="flex gap-4 items-start w-full">
+      <div className="w-10 h-10 rounded-full shrink-0 flex items-center justify-center mt-1 bg-[var(--color-foreground)] text-[var(--color-background)] shadow-sm">
+        <Sparkles className="w-5 h-5" />
       </div>
-      <div className="bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/10 rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-1.5">
+      <div className="bg-transparent border-l-2 border-[var(--color-border)] pl-6 py-4 flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]"
+            className="w-1.5 h-1.5 rounded-full bg-[var(--color-foreground)]"
             style={{ animation: `dot-bounce 1.4s ${i * 0.2}s infinite ease-in-out` }}
           />
         ))}
@@ -427,10 +455,10 @@ function ChatEmptyState({ onNewChat, creating }: { onNewChat: () => void; creati
       
       <div>
         <h2 className="font-heading font-bold text-2xl text-[var(--color-foreground)] mb-3">
-          Chào mừng đến ALTERA AI Chat
+          Trợ lý Phong cách cá nhân
         </h2>
         <p className="text-[var(--color-muted-foreground)] text-sm max-w-md mx-auto leading-relaxed">
-          Trợ lý thời trang AI của bạn. Hỏi bất kỳ điều gì về phong cách, outfit, xu hướng thời trang và nhiều hơn nữa.
+          Phân tích phong cách, gợi ý trang phục và xu hướng mới nhất — tất cả trong một cuộc hội thoại.
         </p>
       </div>
       
@@ -441,14 +469,14 @@ function ChatEmptyState({ onNewChat, creating }: { onNewChat: () => void; creati
         className="px-6 py-3 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)] font-semibold text-sm flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 shadow-sm"
       >
         {creating ? <MiniSpinner /> : <Plus className="w-4 h-4" />}
-        Tạo cuộc trò chuyện mới
+        Khởi tạo hội thoại mới
       </button>
       
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-6">
         {[
-          { icon: Sparkles, label: 'Gợi ý outfit' },
+          { icon: Sparkles, label: 'Gợi ý trang phục' },
           { icon: ShoppingBag, label: 'Tư vấn mua sắm' },
-          { icon: MessageSquare, label: 'Xu hướng thời trang' },
+          { icon: MessageSquare, label: 'Xu hướng mới nhất' },
         ].map((item) => (
           <div
             key={item.label}

@@ -12,8 +12,8 @@ const buttonVariants = cva(
     'font-medium font-body text-sm leading-none',
     'select-none whitespace-nowrap',
     'rounded-[var(--radius-md)]',
-    'transition-all duration-200 ease-in-out',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-2',
+    'transition-all duration-300 ease-smooth',
+    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-1',
     'disabled:pointer-events-none disabled:opacity-40',
     'active:scale-[0.98]',
   ],
@@ -22,15 +22,15 @@ const buttonVariants = cva(
       variant: {
         primary: [
           'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]',
-          'hover:bg-zinc-800',
+          'hover:bg-zinc-800 hover:shadow-md hover:-translate-y-0.5',
         ],
         secondary: [
           'bg-[var(--color-neutral)] text-[var(--color-neutral-foreground)]',
-          'hover:bg-zinc-200',
+          'hover:bg-zinc-200 hover:-translate-y-0.5',
         ],
         outline: [
           'border border-[var(--color-border)] bg-transparent text-[var(--color-foreground)]',
-          'hover:bg-[var(--color-neutral)]',
+          'hover:bg-[var(--color-foreground)] hover:text-[var(--color-background)]',
         ],
         ghost: [
           'bg-transparent text-[var(--color-foreground)]',
@@ -38,22 +38,22 @@ const buttonVariants = cva(
         ],
         danger: [
           'bg-[var(--color-error)] text-[var(--color-error-foreground)]',
-          'hover:bg-red-600',
+          'hover:bg-red-600 hover:shadow-md hover:-translate-y-0.5',
         ],
         accent: [
           'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]',
-          'hover:bg-rose-700',
+          'hover:opacity-90 hover:shadow-md hover:-translate-y-0.5',
         ],
         link: [
           'bg-transparent text-[var(--color-foreground)] underline-offset-4',
-          'hover:underline p-0 h-auto',
+          'hover:underline p-0 h-auto hover:opacity-80',
         ],
       },
       size: {
         sm: 'h-8 px-3 text-xs',
-        md: 'h-10 px-4 text-sm',
-        lg: 'h-12 px-6 text-base',
-        xl: 'h-14 px-8 text-lg',
+        md: 'h-10 px-5 text-sm uppercase tracking-wide font-semibold',
+        lg: 'h-12 px-8 text-sm uppercase tracking-wide font-bold',
+        xl: 'h-14 px-10 text-base uppercase tracking-wider font-bold',
         icon: 'h-10 w-10 p-0',
         'icon-sm': 'h-8 w-8 p-0',
       },
