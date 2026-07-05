@@ -2,7 +2,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GEMINI_API_KEY } = require('../config/env');
 const logger = require('../utils/logger');
 
-const SUPPORTED_GEMINI_MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
+const SUPPORTED_GEMINI_MODELS = ['gemini-1.5-flash'];
 const GEMINI_MODEL = (() => {
   const configuredModel = process.env.GEMINI_MODEL?.trim();
   if (configuredModel && SUPPORTED_GEMINI_MODELS.includes(configuredModel)) {
