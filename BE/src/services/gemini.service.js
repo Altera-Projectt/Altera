@@ -3,13 +3,8 @@ const { GEMINI_API_KEY } = require('../config/env');
 const logger = require('../utils/logger');
 
 const SUPPORTED_GEMINI_MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
-const GEMINI_MODEL = (() => {
-  const configuredModel = process.env.GEMINI_MODEL?.trim();
-  if (configuredModel && SUPPORTED_GEMINI_MODELS.includes(configuredModel)) {
-    return configuredModel;
-  }
-  return 'gemini-1.5-flash';
-})();
+// Ép cứng dùng gemini-1.5-flash vì 2.0 đang bị limit 0 trên Free Tier
+const GEMINI_MODEL = 'gemini-1.5-flash';
 const GEMINI_MODEL_FALLBACKS = SUPPORTED_GEMINI_MODELS;
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
 
