@@ -11,19 +11,31 @@ const quiz = async (req, res, next) => {
 
 const recommend = async (req, res, next) => {
   try {
-    const result = await stylistService.recommend(req.user._id, req.body);
+    // Nếu body có quiz object thì phân tích quiz trước
+    let quizResult = null
+    if (req.body.quiz && !req.body.style) {
+      quizResult = await stylistService.analyzeQuiz(req.body.quiz)
+      req.body.style = quizResult.style
+    }
+
+    const result = await stylistService.recommend(req.user._id, {
+      ...req.body,
+      quizResult, // truyền thêm quizResult để prompt dùng colorPalette
+    })
+
     const record = await stylistService.saveRecommendation(req.user._id, {
       ...result,
       occasion: req.body.occasion || 'other',
-    });
+    })
 
     res.status(200).json({
       success: true,
       data: {
         ...result,
+        quizResult, // trả về FE để hiển thị
         recordId: record._id,
       },
-    });
+    })
   } catch (error) {
     next(error);
   }

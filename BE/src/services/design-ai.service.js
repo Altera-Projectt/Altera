@@ -51,14 +51,25 @@ const getUserGenerationHistory = (userId) => getUserGenerationState(userId).hist
 
 const buildDesignPrompt = ({ prompt, style, shirtType, colorPalette }) => {
   const pieces = [
-    'Create a high-quality fashion print design suitable for screen printing or direct-to-garment printing on a shirt.',
-    `Design prompt: ${prompt.trim()}.`,
+    // Chỉ rõ là artwork/graphic 2D, không phải ảnh thật
+    'Flat 2D graphic artwork, print-ready design for direct-to-garment shirt printing.',
+    'Transparent or white background only.',
+    `Subject: ${prompt.trim()}.`,
   ];
 
-  if (style) pieces.push(`Style reference: ${style}.`);
-  if (shirtType) pieces.push(`Shirt type: ${shirtType}.`);
-  if (colorPalette) pieces.push(`Preferred color palette: ${colorPalette}.`);
-  pieces.push('Generate a clean PNG image only. Do not include explanatory text.');
+  if (style) pieces.push(`Art style: ${style}.`);
+  if (colorPalette) pieces.push(`Color palette: ${colorPalette}.`);
+
+  pieces.push([
+    // Negative prompt — nói rõ KHÔNG làm gì
+    'NO shirt or clothing in image.',
+    'NO human figures, NO people, NO faces, NO models.',
+    'NO photorealistic photography.',
+    'NO text unless specifically requested.',
+    'NO background scenery.',
+    'Isolated graphic only, suitable for screen printing.',
+    'High contrast, clean edges, print-ready artwork.',
+  ].join(' '));
 
   return pieces.join(' ');
 };
