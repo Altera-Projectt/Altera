@@ -123,7 +123,7 @@ const generateText = async (prompt, { model = GEMINI_MODEL, maxOutputTokens = 80
 
     logger.error('Gemini text request failed: %s', error?.message || 'Unknown error');
     logger.error(error);
-    throw new AiServiceError('Gemini API unavailable', { cause: error });
+    throw new AiServiceError(`Gemini API unavailable: ${error?.message || 'Unknown error'}`, { cause: error });
   }
 };
 
@@ -195,7 +195,7 @@ const sendChatMessage = async (systemPrompt, messageHistory, userMessage, option
 
     logger.error('Gemini chat request failed: %s', error?.message || 'Unknown error');
     logger.error(error);
-    throw new AiServiceError('Gemini API unavailable', { cause: error });
+    throw new AiServiceError(`Gemini API unavailable: ${error?.message || 'Unknown error'}`, { cause: error });
   }
 };
 
