@@ -35,8 +35,15 @@ import { cn } from '@/utils/cn'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const STYLE_OPTIONS = ['Vintage', 'Streetwear', 'Minimalist', 'Bold', 'Abstract', 'Floral', 'Y2K']
-const SHIRT_TYPE_OPTIONS = ['T-shirt', 'Oversized', 'Baby Tee', 'Hoodie', 'Polo']
+const STYLE_OPTIONS = [
+  { value: 'Graphic Art',         label: 'Graphic Art',         hint: 'Vector rõ nét, phù hợp in sắc sảo' },
+  { value: 'Vintage Illustration', label: 'Vintage Illustration', hint: 'Nét khắc cổ điển, tone sepia/nâu' },
+  { value: 'Streetwear Bold',     label: 'Streetwear Bold',     hint: 'Mảng màu lớn, contrast cao, dễ in' },
+  { value: 'Minimalist Line Art', label: 'Minimalist Line Art', hint: 'Nét đơn giản, tinh tế' },
+  { value: 'Anime / Manga',       label: 'Anime / Manga',       hint: 'Phong cách Nhật, nhiều chi tiết' },
+  { value: 'Watercolor',          label: 'Watercolor',          hint: 'Màu nước, mềm mại' },
+  { value: 'Abstract',            label: 'Abstract',            hint: 'Trừa tượng, hình học' },
+]
 const SHIRT_COLOR_OPTIONS = [
   { label: 'White',  value: 'white',  hex: '#ffffff' },
   { label: 'Black',  value: 'black',  hex: '#111111' },
@@ -44,6 +51,12 @@ const SHIRT_COLOR_OPTIONS = [
   { label: 'Grey',   value: 'grey',   hex: '#9ca3af' },
   { label: 'Beige',  value: 'beige',  hex: '#d4b896' },
   { label: 'Cream',  value: 'cream',  hex: '#fffdd0' },
+]
+const PROMPT_EXAMPLES = [
+  'Con đại bàng dang cánh, phong cách vintage',
+  'Hoa sen nở, minimalist, đen trắng',
+  'Rồng lửa, anime style, màu đỏ cam',
+  'Skull với hoa hồng, streetwear bold',
 ]
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -278,7 +291,6 @@ function OrderModal({
 interface FormValues {
   prompt: string
   style: string
-  shirtType: string
   colorPalette: string
   shirtColor: string
 }
@@ -296,9 +308,8 @@ function GenerateForm({
 }) {
   const [form, setForm] = useState<FormValues>({
     prompt: initialValues?.prompt ?? '',
-    style: initialValues?.style ?? '',
-    shirtType: initialValues?.shirtType ?? 'T-shirt',
-    colorPalette: initialValues?.colorPalette ?? '',
+    style: initialValues?.style ?? 'Graphic Art',       // default — phù hợp nhất cho print design
+    colorPalette: initialValues?.colorPalette ?? 'Black and white, high contrast', // default — luôn ra đẹp
     shirtColor: initialValues?.shirtColor ?? 'white',
   })
   const [promptError, setPromptError] = useState('')
@@ -327,9 +338,9 @@ function GenerateForm({
     await onGenerate(form)
   }
 
-  // We removed the full-screen loading component from here.
-  // The generating state is now handled in CreateTab's Central Canvas.
+  // The generating state is handled in CreateTab's Central Canvas.
 
+  const currentStyleHint = STYLE_OPTIONS.find((s) => s.value === form.style)?.hint ?? ''
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -340,14 +351,38 @@ function GenerateForm({
         </div>
       )}
 
+      {/* Prompt Examples */}
+      <div className="rounded-[var(--radius-md)] bg-[var(--color-muted)] p-3">
+        <p className="text-xs font-medium text-[var(--color-muted-foreground)] mb-2">
+          Ví dụ prompt tốt:
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {PROMPT_EXAMPLES.map((example) => (
+            <button
+              key={example}
+              type="button"
+              onClick={() => setForm((prev) => ({ ...prev, prompt: example }))}
+              className={cn(
+                'text-xs px-2 py-1 rounded-[var(--radius-sm)]',
+                'border border-[var(--color-border)] bg-[var(--color-background)]',
+                'hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-foreground)] hover:border-[var(--color-primary)]',
+                'transition-all duration-200 cursor-pointer',
+              )}
+            >
+              {example}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Prompt — full width */}
       <div className="w-full">
         <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-          Mô tả hình muốn in <span className="text-[var(--color-accent)]">*</span>
+          Mô tả hình muốn in lên áo <span className="text-[var(--color-accent)]">*</span>
         </label>
         <textarea
           className={cn(
-            'w-full min-h-[120px] px-3 py-2 text-sm',
+            'w-full min-h-[100px] px-3 py-2 text-sm',
             'bg-[var(--color-background)] text-[var(--color-foreground)]',
             'border rounded-[var(--radius-md)]',
             'placeholder:text-[var(--color-muted-foreground)]',
@@ -357,67 +392,63 @@ function GenerateForm({
               ? 'border-[var(--color-error)] focus:ring-[var(--color-error)]'
               : 'border-[var(--color-border)]',
           )}
-          placeholder="VD: Con đại bàng phong cách vintage trên nền tối, chi tiết cao..."
+          placeholder="VD: Con đại bàng dang cánh, phong cách cổ điển..."
           value={form.prompt}
           onChange={setField('prompt')}
           disabled={generating}
         />
-        {promptError && (
+        {promptError ? (
           <p className="mt-1.5 text-xs text-[var(--color-error)]">{promptError}</p>
+        ) : (
+          <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
+            Mô tả càng chi tiết càng tốt: con vật/vật thể, phong cách, màu sắc mong muốn
+          </p>
         )}
       </div>
 
-      {/* 2-column grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <SelectField
-          label="Phong cách"
-          value={form.style}
-          onChange={setField('style')}
-          disabled={generating}
-        >
-          <option value="">-- Chọn phong cách --</option>
-          {STYLE_OPTIONS.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </SelectField>
+      {/* Phong cách nghệ thuật */}
+      <SelectField
+        label="Phong cách nghệ thuật"
+        value={form.style}
+        onChange={setField('style')}
+        disabled={generating}
+      >
+        {STYLE_OPTIONS.map((s) => (
+          <option key={s.value} value={s.value}>{s.label}</option>
+        ))}
+      </SelectField>
+      {currentStyleHint && (
+        <p className="-mt-4 text-xs text-[var(--color-muted-foreground)] pl-0.5">{currentStyleHint}</p>
+      )}
 
-        <SelectField
-          label="Loại áo"
-          value={form.shirtType}
-          onChange={setField('shirtType')}
-          disabled={generating}
-        >
-          {SHIRT_TYPE_OPTIONS.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </SelectField>
+      {/* Màu sắc */}
+      <Input
+        label="Màu sắc"
+        placeholder="VD: Đỏ, vàng, đen — hoặc mô tả tông màu"
+        value={form.colorPalette}
+        onChange={setField('colorPalette')}
+        disabled={generating}
+        hint="Màu đen trắng luôn cho kết quả in đẹp nhất"
+      />
 
-        <Input
-          label="Bảng màu (tuỳ chọn)"
-          placeholder="VD: Đen, kem, đỏ cũ"
-          value={form.colorPalette}
-          onChange={setField('colorPalette')}
-          disabled={generating}
-        />
-
-        <SelectField
-          label="Màu áo"
-          value={form.shirtColor}
-          onChange={setField('shirtColor')}
-          disabled={generating}
-        >
-          {SHIRT_COLOR_OPTIONS.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </SelectField>
-      </div>
+      {/* Màu áo */}
+      <SelectField
+        label="Màu áo"
+        value={form.shirtColor}
+        onChange={setField('shirtColor')}
+        disabled={generating}
+      >
+        {SHIRT_COLOR_OPTIONS.map((c) => (
+          <option key={c.value} value={c.value}>{c.label}</option>
+        ))}
+      </SelectField>
 
       <Button
         type="submit"
         variant="primary"
         size="lg"
         loading={generating}
-        className="w-full uppercase font-semibold tracking-widest h-14 mt-4"
+        className="w-full uppercase font-semibold tracking-widest h-14 mt-2"
       >
         {!generating && <Wand2 className="h-5 w-5 mr-2" />}
         {generating ? `Đang phác thảo... ${countdown}s` : 'Phác thảo ý tưởng'}
@@ -649,14 +680,12 @@ function CreateTab({
   isSaved: boolean
   currentDesign: GenerateDesignResponse | null
   generateError: string | null
-  onGenerate: (vals: {
-    prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string
-  }) => Promise<void>
+  onGenerate: (vals: FormValues) => Promise<void>
   onRefine: (prompt: string) => Promise<void>
   onSave: () => Promise<void>
   onOrder: () => void
   onReset: () => void
-  initialValues?: Partial<{ prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string }>
+  initialValues?: Partial<FormValues>
 }) {
   return (
     <div className="flex flex-col lg:flex-row gap-8 h-full min-h-[650px]">
@@ -700,7 +729,7 @@ function CreateTab({
          {generating ? (
             <div className="absolute inset-0 bg-[var(--color-background)]/60 backdrop-blur-md flex flex-col items-center justify-center z-10 animate-in fade-in duration-300">
                <div className="h-16 w-16 animate-spin rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-foreground)] mb-6 shadow-lg" />
-               <p className="font-heading uppercase tracking-widest text-[var(--color-foreground)] font-semibold animate-pulse">Crafting your design...</p>
+               <p className="font-heading uppercase tracking-widest text-[var(--color-foreground)] font-semibold animate-pulse">AI đang tạo thiết kế của bạn...</p>
             </div>
          ) : viewState === 'result' && currentDesign ? (
             <div className="animate-in zoom-in-95 fade-in duration-700 w-full h-full flex items-center justify-center">
@@ -733,8 +762,8 @@ function CreateTab({
             <div className="opacity-50 hover:opacity-80 transition-opacity duration-300">
               <EmptyState
                 icon={Palette}
-                title="Canvas is empty"
-                description="Describe your idea in the Creator Tools panel and let AI bring it to life."
+                title="Canvas trống"
+                description="Mô tả ý tưởng trong phần bên trái và để AI phác thảo cho bạn."
               />
             </div>
          )}
@@ -828,25 +857,20 @@ export function DesignStudioPage() {
   const [myDesigns, setMyDesigns] = useState<Design[]>([])
   const [loadingLibrary, setLoadingLibrary] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
-  const [libraryLoaded, setLibraryLoaded] = useState(false)
-  const [reuseInitial, setReuseInitial] = useState<
-    Partial<{ prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string }> | undefined
-  >(undefined)
+  const [reuseInitial, setReuseInitial] = useState<Partial<FormValues> | undefined>(undefined)
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
-  const handleGenerate = async (vals: {
-    prompt: string; style: string; shirtType: string; colorPalette: string; shirtColor: string
-  }) => {
+  const handleGenerate = async (vals: FormValues) => {
     try {
       setGenerating(true)
       setGenerateError(null)
+      // Always send with fallbacks so BE has full context
       const payload = {
-        prompt: vals.prompt,
-        ...(vals.style && { style: vals.style }),
-        ...(vals.shirtType && { shirtType: vals.shirtType }),
-        ...(vals.colorPalette && { colorPalette: vals.colorPalette }),
-        ...(vals.shirtColor && { shirtColor: vals.shirtColor }),
+        prompt: vals.prompt.trim(),
+        style: vals.style || 'Graphic Art',
+        colorPalette: vals.colorPalette || 'Black and white, high contrast',
+        shirtColor: vals.shirtColor || 'white',
       }
       const res = await DesignService.generateDesign(payload)
       setCurrentDesign(res.data.data)
@@ -889,11 +913,12 @@ export function DesignStudioPage() {
     try {
       await DesignService.saveDesign(currentDesign.designId)
       setIsSaved(true)
-      // update status in currentDesign
       setCurrentDesign((prev) =>
         prev ? { ...prev, design: { ...prev.design, status: 'SAVED' } } : prev
       )
       showToast('Đã lưu vào thư viện thiết kế!')
+      // Refresh library in background so it's up-to-date when user switches tab
+      fetchLibrary()
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Lưu thất bại', 'error')
     } finally {
@@ -935,7 +960,6 @@ export function DesignStudioPage() {
     setReuseInitial({
       prompt: design.prompt,
       style: design.style,
-      shirtType: design.shirtType,
       colorPalette: design.colorPalette,
       shirtColor: design.shirtColor,
     })
@@ -966,7 +990,6 @@ export function DesignStudioPage() {
     try {
       const res = await DesignService.getMyDesigns()
       setMyDesigns(res.data.data.designs)
-      setLibraryLoaded(true)
     } catch (err: any) {
       setLibraryError(err?.response?.data?.message || 'Không thể tải thư viện')
     } finally {
@@ -974,8 +997,9 @@ export function DesignStudioPage() {
     }
   }
 
+  // Fetch library every time user switches to library tab (no caching flag)
   useEffect(() => {
-    if (activeTab === 'library' && !libraryLoaded) {
+    if (activeTab === 'library') {
       fetchLibrary()
     }
   }, [activeTab])
@@ -988,10 +1012,10 @@ export function DesignStudioPage() {
       <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-4xl font-normal uppercase tracking-widest flex items-center gap-3">
-            Design Studio
+            Phòng Thiết kế
           </h1>
           <p className="mt-2 text-sm text-[var(--color-muted-foreground)] tracking-wide">
-            Describe your vision, and our AI will generate a unique fashion piece.
+            Phác thảo ý tưởng, để AI tạo nên một thiết kế thời trang độc đáo cho bạn.
           </p>
         </div>
       </div>
@@ -1011,9 +1035,9 @@ export function DesignStudioPage() {
             )}
           >
             {tab === 'create' ? (
-              <><Wand2 className="h-4 w-4" /> 🎨 Tạo thiết kế</>
+              <><Wand2 className="h-4 w-4" /> Phác thảo mới</>
             ) : (
-              <><BookOpen className="h-4 w-4" /> 📁 Thư viện của tôi</>
+              <><BookOpen className="h-4 w-4" /> Thư viện của tôi</>
             )}
           </button>
         ))}
@@ -1034,8 +1058,10 @@ export function DesignStudioPage() {
           onSave={handleSave}
           onOrder={() => {
             if (currentDesign) {
-              const thumb = currentDesign.imageUrl || currentDesign.preview ||
-                currentDesign.design.customImage || currentDesign.design.previewImage
+              const thumb = currentDesign.preview
+                || currentDesign.imageUrl
+                || currentDesign.design?.previewImage
+                || currentDesign.design?.customImage
               openOrderModal(currentDesign.designId, thumb)
             }
           }}
