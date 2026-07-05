@@ -2,6 +2,7 @@
  * ALTERA — Product Types
  */
 
+
 /* 
 export type ProductSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL'
 export type ProductGender = 'MEN' | 'WOMEN' | 'UNISEX'

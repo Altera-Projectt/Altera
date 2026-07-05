@@ -297,11 +297,13 @@ interface FormValues {
 function GenerateForm({
   onGenerate,
   generating,
+  cooldown,
   initialValues,
   error,
 }: {
   onGenerate: (vals: FormValues) => Promise<void>
   generating: boolean
+  cooldown: number
   initialValues?: Partial<FormValues>
   error: string | null
 }) {
@@ -312,16 +314,6 @@ function GenerateForm({
     shirtColor: initialValues?.shirtColor ?? 'white',
   })
   const [promptError, setPromptError] = useState('')
-  const [countdown, setCountdown] = useState(15)
-
-  // Countdown effect while generating
-  useEffect(() => {
-    if (!generating) { setCountdown(15); return }
-    setCountdown(15)
-    const interval = setInterval(() => setCountdown((c) => Math.max(0, c - 1)), 1000)
-    return () => clearInterval(interval)
-  }, [generating])
-
   const setField =
     (field: keyof FormValues) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -447,11 +439,28 @@ function GenerateForm({
         variant="primary"
         size="lg"
         loading={generating}
+        disabled={generating || cooldown > 0}
         className="w-full uppercase font-semibold tracking-widest h-14 mt-2"
       >
-        {!generating && <Wand2 className="h-5 w-5 mr-2" />}
-        {generating ? `Đang phác thảo... ${countdown}s` : 'Phác thảo ý tưởng'}
+        {generating
+          ? 'Đang phác thảo...'
+          : cooldown > 0
+          ? `Chờ ${cooldown}s để tạo tiếp`
+          : 'Tạo thiết kế với AI'}
       </Button>
+      {cooldown > 0 && !generating && (
+        <div className="mt-2">
+          <div className="h-1 w-full rounded-full bg-[var(--color-muted)] overflow-hidden">
+            <div
+              className="h-full bg-[var(--color-primary)] transition-all duration-1000"
+              style={{ width: `${(cooldown / 60) * 100}%` }}
+            />
+          </div>
+          <p className="text-[10px] uppercase tracking-widest text-center text-[var(--color-muted-foreground)] mt-2">
+            Có thể tạo ảnh mới sau {cooldown} giây
+          </p>
+        </div>
+      )}
     </form>
   )
 }
@@ -671,6 +680,7 @@ function CreateTab({
   onOrder,
   onReset,
   initialValues,
+  cooldown,
 }: {
   viewState: 'form' | 'result'
   generating: boolean
@@ -685,6 +695,7 @@ function CreateTab({
   onOrder: () => void
   onReset: () => void
   initialValues?: Partial<FormValues>
+  cooldown: number
 }) {
   return (
     <div className="flex flex-col lg:flex-row gap-8 h-full min-h-[650px]">
@@ -698,13 +709,13 @@ function CreateTab({
           </div>
           
           <div className={cn("transition-opacity duration-300", (viewState === 'result' && currentDesign) ? "hidden" : "block")}>
-            <GenerateForm
-              onGenerate={onGenerate}
-              generating={generating}
-              initialValues={initialValues}
-              error={generateError}
-            />
-          </div>
+                    <GenerateForm
+                      onGenerate={onGenerate}
+                      generating={generating}
+                      cooldown={cooldown}
+                      initialValues={initialValues}
+                      error={generateError}
+                    />     </div>
 
           {viewState === 'result' && currentDesign && (
             <div className="animate-in fade-in slide-in-from-left-4 duration-500 flex-1">
@@ -858,13 +869,36 @@ export function DesignStudioPage() {
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [reuseInitial, setReuseInitial] = useState<Partial<FormValues> | undefined>(undefined)
 
+  const COOLDOWN_SECONDS = 60
+  const [cooldown, setCooldown] = useState(0)
+  const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startCooldown = () => {
+    setCooldown(COOLDOWN_SECONDS)
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current!)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (cooldownRef.current) clearInterval(cooldownRef.current)
+    }
+  }, [])
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleGenerate = async (vals: FormValues) => {
+    if (cooldown > 0) return
     try {
       setGenerating(true)
       setGenerateError(null)
-      // Always send with fallbacks so BE has full context
       const payload = {
         prompt: vals.prompt.trim(),
         style: vals.style || 'Graphic Art',
@@ -875,10 +909,12 @@ export function DesignStudioPage() {
       setCurrentDesign(res.data.data)
       setViewState('result')
       setIsSaved(false)
+      startCooldown()
     } catch (err: any) {
       const status = err.response?.status
       if (status === 429) {
-        setGenerateError('Vui lòng chờ 15 giây trước khi tạo thiết kế mới.')
+        setGenerateError('Vui lòng chờ trước khi tạo thiết kế mới.')
+        startCooldown()
       } else if (status === 503) {
         setGenerateError('Dịch vụ đang bận, vui lòng thử lại sau ít phút.')
       } else if (status === 400) {
@@ -1072,6 +1108,7 @@ export function DesignStudioPage() {
             setReuseInitial(undefined)
           }}
           initialValues={reuseInitial}
+          cooldown={cooldown}
         />
       )}
 

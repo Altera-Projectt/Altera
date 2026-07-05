@@ -109,26 +109,28 @@ export function Navbar() {
           </Button>
 
           {/* Cart */}
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            aria-label={`Cart — ${totalItems} items`}
-            className="relative"
-          >
-            <Link to="/cart">
-              <ShoppingBag className="h-4 w-4" />
-              {totalItems > 0 && (
-                <Badge
-                  variant="accent"
-                  className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
-                  aria-hidden="true"
-                >
-                  {totalItems > 99 ? '99+' : totalItems}
-                </Badge>
-              )}
-            </Link>
-          </Button>
+          {isAuthenticated && (
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              aria-label={`Cart — ${totalItems} items`}
+              className="relative"
+            >
+              <Link to="/cart">
+                <ShoppingBag className="h-4 w-4" />
+                {totalItems > 0 && (
+                  <Badge
+                    variant="accent"
+                    className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px] flex items-center justify-center"
+                    aria-hidden="true"
+                  >
+                    {totalItems > 99 ? '99+' : totalItems}
+                  </Badge>
+                )}
+              </Link>
+            </Button>
+          )}
 
           {/* Auth */}
           {isAuthenticated ? (

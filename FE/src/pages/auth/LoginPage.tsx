@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react'
 
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -73,6 +73,13 @@ export function LoginPage() {
             Sign in to your account to continue
           </p>
         </div>
+
+        {from !== '/' && (
+          <div className="mt-6 flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-muted)]/50 px-4 py-3 text-sm text-[var(--color-foreground)]">
+            <AlertCircle className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+            Vui lòng đăng nhập để sử dụng tính năng này.
+          </div>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-6">
           <div className="space-y-4">
