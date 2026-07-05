@@ -2,7 +2,8 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GEMINI_API_KEY } = require('../config/env');
 const logger = require('../utils/logger');
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_MODEL_FALLBACKS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
 let genAI = null;
 
@@ -31,6 +32,41 @@ const getClient = () => {
   return genAI;
 };
 
+const isModelUnavailableError = (error) => {
+  const message = error?.message || '';
+  return /404|not found|unsupported|does not exist|invalid model/i.test(message);
+};
+
+const getModelCandidates = (preferredModel) => {
+  const candidates = [];
+  if (preferredModel) candidates.push(preferredModel);
+  GEMINI_MODEL_FALLBACKS.forEach((fallback) => {
+    if (!candidates.includes(fallback)) candidates.push(fallback);
+  });
+  return candidates;
+};
+
+const runWithModelFallback = async (requestFn, preferredModel) => {
+  const candidates = getModelCandidates(preferredModel);
+  let lastError;
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const model = candidates[index];
+    try {
+      return await requestFn(model);
+    } catch (error) {
+      lastError = error;
+      if (!isModelUnavailableError(error) || index === candidates.length - 1) {
+        throw error;
+      }
+
+      logger.warn('Gemini model %s failed, retrying with %s', model, candidates[index + 1]);
+    }
+  }
+
+  throw lastError;
+};
+
 const extractJson = (text) => {
   const jsonMatch = text?.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
@@ -54,11 +90,13 @@ const extractJson = (text) => {
 const generateText = async (prompt, { model = GEMINI_MODEL, maxOutputTokens = 800 } = {}) => {
   try {
     const client = getClient();
-    const geminiModel = client.getGenerativeModel({ model });
-    const result = await geminiModel.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { maxOutputTokens },
-    });
+    const result = await runWithModelFallback(async (candidateModel) => {
+      const geminiModel = client.getGenerativeModel({ model: candidateModel });
+      return geminiModel.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens },
+      });
+    }, model);
 
     const text = result.response.text();
     if (!text) {
@@ -99,44 +137,48 @@ const buildChatHistory = (systemPrompt, messageHistory = []) => [
 const sendChatMessage = async (systemPrompt, messageHistory, userMessage, options = {}) => {
   try {
     const client = getClient();
-    const model = client.getGenerativeModel({ model: options.model || GEMINI_MODEL });
-    const chat = model.startChat({
-      history: buildChatHistory(systemPrompt, messageHistory),
-      generationConfig: { maxOutputTokens: options.maxOutputTokens || 500 },
-    });
+    const requestChat = async (candidateModel) => {
+      const model = client.getGenerativeModel({ model: candidateModel });
+      const chat = model.startChat({
+        history: buildChatHistory(systemPrompt, messageHistory),
+        generationConfig: { maxOutputTokens: options.maxOutputTokens || 500 },
+      });
 
-    if (options.stream && typeof options.onChunk === 'function') {
-      const resultStream = await chat.sendMessageStream(userMessage);
-      let fullText = '';
+      if (options.stream && typeof options.onChunk === 'function') {
+        const resultStream = await chat.sendMessageStream(userMessage);
+        let fullText = '';
 
-      for await (const chunk of resultStream.stream) {
-        const chunkText = chunk.text();
-        if (chunkText) {
-          fullText += chunkText;
-          options.onChunk(chunkText);
+        for await (const chunk of resultStream.stream) {
+          const chunkText = chunk.text();
+          if (chunkText) {
+            fullText += chunkText;
+            options.onChunk(chunkText);
+          }
         }
+
+        if (!fullText) {
+          throw new AiServiceError('Gemini returned an empty response', {
+            statusCode: 502,
+            code: 'AI_EMPTY_RESPONSE',
+          });
+        }
+
+        return fullText;
       }
 
-      if (!fullText) {
+      const result = await chat.sendMessage(userMessage);
+      const text = result.response.text();
+      if (!text) {
         throw new AiServiceError('Gemini returned an empty response', {
           statusCode: 502,
           code: 'AI_EMPTY_RESPONSE',
         });
       }
 
-      return fullText;
-    }
+      return text;
+    };
 
-    const result = await chat.sendMessage(userMessage);
-    const text = result.response.text();
-    if (!text) {
-      throw new AiServiceError('Gemini returned an empty response', {
-        statusCode: 502,
-        code: 'AI_EMPTY_RESPONSE',
-      });
-    }
-
-    return text;
+    return runWithModelFallback(requestChat, options.model || GEMINI_MODEL);
   } catch (error) {
     if (error instanceof AiServiceError) {
       logger.error('Gemini chat error [%s]: %s', error.code, error.message);
