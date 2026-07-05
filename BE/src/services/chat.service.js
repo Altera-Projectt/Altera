@@ -1,5 +1,5 @@
 const Chat = require('../models/Chat');
-const geminiService = require('./gemini.service');
+const cerebrasService = require('./cerebras.service');
 
 /**
  * Create a new chat conversation
@@ -88,7 +88,7 @@ const sendMessage = async (chatId, userId, userMessage, options = {}) => {
 };
 
 /**
- * Generate AI response using Gemini API
+ * Generate AI response using Cerebras API
  */
 const generateAIResponse = async (userMessage, messageHistory, topic = 'general', options = {}) => {
   const systemPrompt = getSystemPrompt(topic);
@@ -98,7 +98,7 @@ const generateAIResponse = async (userMessage, messageHistory, topic = 'general'
       ? recentHistory.slice(0, -1)
       : recentHistory;
 
-  return geminiService.sendChatMessage(systemPrompt, historyWithoutCurrent, userMessage, options);
+  return cerebrasService.sendChatMessage(systemPrompt, historyWithoutCurrent, userMessage, options);
 };
 
 /**

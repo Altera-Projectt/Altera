@@ -1,4 +1,4 @@
-const geminiService = require('./gemini.service');
+const cerebrasService = require('./cerebras.service');
 const stylistService = require('./stylist.service');
 
 const generateOutfitRecommendation = async (items, occasion = 'casual', productCatalog = []) => {
@@ -25,7 +25,7 @@ Return JSON only:
   "improvements": "what to improve"
 }`;
 
-  const parsed = await geminiService.generateJson(prompt, { maxOutputTokens: 700 });
+  const parsed = await cerebrasService.generateJson(prompt, { maxOutputTokens: 700 });
   return {
     suggestion: parsed.suggestion || 'Outfit nay phu hop voi nhu cau cua ban.',
     tips: Array.isArray(parsed.tips) ? parsed.tips : [],
@@ -34,13 +34,13 @@ Return JSON only:
   };
 };
 
-const generatePrintImage = async (prompt) => geminiService.generateImage(prompt);
+const generatePrintImage = async (prompt) => cerebrasService.generateImage(prompt);
 
 module.exports = {
   generateOutfitRecommendation,
   generatePrintImage,
   buildCatalogPromptSection: stylistService.buildCatalogPromptSection,
-  buildGeminiImageRequest: geminiService.buildGeminiImageRequest,
-  extractGeminiImageData: geminiService.extractGeminiImageData,
+  buildGeminiImageRequest: cerebrasService.buildGeminiImageRequest,
+  extractGeminiImageData: cerebrasService.extractGeminiImageData,
   normalizeOutfitHistoryEntry: stylistService.normalizeOutfitHistoryEntry,
 };
