@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "serverless-http": "^3.0.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "file:./cloudinary-mock",
     "cors": "^2.8.5",
