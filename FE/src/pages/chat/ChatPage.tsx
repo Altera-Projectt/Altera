@@ -5,7 +5,7 @@ import type { AxiosError } from 'axios'
 import type { ApiError } from '@/types/api.types'
 import {
   Sparkles, MessageSquare, Plus, Menu, Trash2, Send,
-  AlertCircle, ShoppingBag, Shirt, Compass, MessagesSquare,
+  AlertCircle, Shirt, Compass, MessagesSquare,
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 

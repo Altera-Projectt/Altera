@@ -1,7 +1,6 @@
 /**
  * ALTERA — Product Types
  */
-import type { QueryParams } from './common.types'
 
 /* 
 export type ProductSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL'

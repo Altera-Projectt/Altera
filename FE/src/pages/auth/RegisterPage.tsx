@@ -51,10 +51,9 @@ export function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true)
     try {
-      const response = await AuthService.register(data)
-      const { user, token } = response.data.data
+      await AuthService.register(data)
 
-      toast.success(response.data.message || 'Registration successful! Please log in.')
+      toast.success('Registration successful! Please log in.')
       navigate('/auth/login')
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>

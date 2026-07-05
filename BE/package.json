@@ -1,6 +1,9 @@
 {
   "name": "outfit-ai-backend",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=18"
+  },
   "description": "Backend for Outfit Ideas + Custom Shirt + AI Recommendation",
   "main": "src/server.js",
   "scripts": {
@@ -9,6 +12,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "serverless-http": "^3.0.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "file:./cloudinary-mock",
     "cors": "^2.8.5",

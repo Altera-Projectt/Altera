@@ -11,7 +11,6 @@ import {
   Sparkles,
   LogOut,
   LayoutDashboard,
-  Crown,
   Palette,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -45,7 +44,7 @@ const NAV_LINKS: NavItem[] = [
 export function Navbar() {
   const { isAuthenticated, isAdmin, user, logout } = useAuth()
   const totalItems = useCartStore((s) => s.totalItems())
-  const { setCartOpen, setSearchOpen } = useUIStore()
+  const { setSearchOpen } = useUIStore()
   const [mobileOpen, setMobileOpen] = useState(false)
   const navigate = useNavigate()
 
@@ -151,7 +150,7 @@ export function Navbar() {
                   <Palette className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" asChild aria-label={`Profile — ${user?.name}`}>
+              <Button variant="ghost" size="icon" asChild aria-label={`Profile — ${user?.fullName || user?.email || 'Profile'}`}>
                 <Link to="/profile">
                   <User className="h-4 w-4" />
                 </Link>
@@ -277,7 +276,7 @@ export function Navbar() {
                       className="flex items-center gap-2 h-10 px-3 text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
                     >
                       <User className="h-4 w-4" />
-                      {user?.name}
+                      {user?.fullName || user?.email || 'Profile'}
                     </Link>
                     <Button
                       variant="outline"

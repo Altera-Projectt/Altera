@@ -70,7 +70,7 @@ export function AdminLayout() {
         {/* Footer actions */}
         <div className="space-y-3 border-t border-[var(--color-border)] p-4">
           <div className="px-3 pb-2 text-xs font-medium text-[var(--color-muted-foreground)]">
-            Logged in as {user?.name || 'Admin'}
+            Logged in as {user?.fullName || user?.email || 'Admin'}
           </div>
           <Button variant="outline" className="w-full justify-start" asChild>
             <Link to="/">
