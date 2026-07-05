@@ -1,19 +1,16 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { GEMINI_API_KEY } = require('../config/env');
+const { CEREBRAS_API_KEY, CEREBRAS_BASE_URL } = require('../config/env');
 const logger = require('../utils/logger');
 
-const SUPPORTED_GEMINI_MODELS = ['gemini-1.5-flash'];
-const GEMINI_MODEL = (() => {
-  const configuredModel = process.env.GEMINI_MODEL?.trim();
-  if (configuredModel && SUPPORTED_GEMINI_MODELS.includes(configuredModel)) {
+const SUPPORTED_CEREBRAS_MODELS = ['gpt-oss-120b', 'gemma-4-31b', 'zai-glm-4.7'];
+const CEREBRAS_MODEL = (() => {
+  const configuredModel = (process.env.CEREBRAS_MODEL || process.env.GEMINI_MODEL || process.env.AI_MODEL)?.trim();
+  if (configuredModel && SUPPORTED_CEREBRAS_MODELS.includes(configuredModel)) {
     return configuredModel;
   }
-  return 'gemini-1.5-flash';
+  return 'gpt-oss-120b';
 })();
-const GEMINI_MODEL_FALLBACKS = SUPPORTED_GEMINI_MODELS;
+const CEREBRAS_MODEL_FALLBACKS = SUPPORTED_CEREBRAS_MODELS;
 const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
-
-let genAI = null;
 
 class AiServiceError extends Error {
   constructor(message, { statusCode = 503, code = 'AI_SERVICE_UNAVAILABLE', cause } = {}) {
@@ -25,20 +22,10 @@ class AiServiceError extends Error {
   }
 }
 
-const getClient = () => {
-  if (!GEMINI_API_KEY) {
-    throw new AiServiceError('Gemini API unavailable', {
-      code: 'AI_SERVICE_UNAVAILABLE',
-      cause: new Error('GEMINI_API_KEY is not configured'),
-    });
-  }
-
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-  }
-
-  return genAI;
-};
+const getApiConfig = () => ({
+  apiKey: CEREBRAS_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+  baseUrl: CEREBRAS_BASE_URL || process.env.CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1',
+});
 
 const isModelUnavailableError = (error) => {
   const message = error?.message || '';
@@ -48,7 +35,7 @@ const isModelUnavailableError = (error) => {
 const getModelCandidates = (preferredModel) => {
   const candidates = [];
   if (preferredModel) candidates.push(preferredModel);
-  GEMINI_MODEL_FALLBACKS.forEach((fallback) => {
+  CEREBRAS_MODEL_FALLBACKS.forEach((fallback) => {
     if (!candidates.includes(fallback)) candidates.push(fallback);
   });
   return candidates;
@@ -68,7 +55,7 @@ const runWithModelFallback = async (requestFn, preferredModel) => {
         throw error;
       }
 
-      logger.warn('Gemini model %s failed, retrying with %s', model, candidates[index + 1]);
+      logger.warn('Cerebras model %s failed, retrying with %s', model, candidates[index + 1]);
     }
   }
 
@@ -78,7 +65,7 @@ const runWithModelFallback = async (requestFn, preferredModel) => {
 const extractJson = (text) => {
   const jsonMatch = text?.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new AiServiceError('Gemini returned an invalid JSON response', {
+    throw new AiServiceError('Cerebras returned an invalid JSON response', {
       statusCode: 502,
       code: 'AI_INVALID_RESPONSE',
     });
@@ -87,7 +74,7 @@ const extractJson = (text) => {
   try {
     return JSON.parse(jsonMatch[0]);
   } catch (error) {
-    throw new AiServiceError('Gemini returned malformed JSON', {
+    throw new AiServiceError('Cerebras returned malformed JSON', {
       statusCode: 502,
       code: 'AI_INVALID_RESPONSE',
       cause: error,
@@ -95,108 +82,116 @@ const extractJson = (text) => {
   }
 };
 
-const generateText = async (prompt, { model = GEMINI_MODEL, maxOutputTokens = 800 } = {}) => {
+const requestChatCompletion = async ({ model, messages, maxOutputTokens = 800, stream = false }) => {
+  const { apiKey, baseUrl } = getApiConfig();
+
+  if (!apiKey) {
+    throw new AiServiceError('Cerebras API unavailable', {
+      code: 'AI_SERVICE_UNAVAILABLE',
+      cause: new Error('CEREBRAS_API_KEY is not configured'),
+    });
+  }
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: maxOutputTokens,
+      stream,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    throw new Error(errorText || `Cerebras request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const text = data?.choices?.[0]?.message?.content;
+
+  if (typeof text !== 'string' || !text.trim()) {
+    throw new AiServiceError('Cerebras returned an empty response', {
+      statusCode: 502,
+      code: 'AI_EMPTY_RESPONSE',
+    });
+  }
+
+  return text;
+};
+
+const generateText = async (prompt, { model = CEREBRAS_MODEL, maxOutputTokens = 800 } = {}) => {
   try {
-    const client = getClient();
-    const result = await runWithModelFallback(async (candidateModel) => {
-      const geminiModel = client.getGenerativeModel({ model: candidateModel });
-      return geminiModel.generateContent({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens },
-      });
-    }, model);
-
-    const text = result.response.text();
-    if (!text) {
-      throw new AiServiceError('Gemini returned an empty response', {
-        statusCode: 502,
-        code: 'AI_EMPTY_RESPONSE',
-      });
-    }
-
-    return text;
+    return runWithModelFallback(async (candidateModel) => requestChatCompletion({
+      model: candidateModel,
+      messages: [{ role: 'user', content: prompt }],
+      maxOutputTokens,
+    }), model);
   } catch (error) {
     if (error instanceof AiServiceError) {
-      logger.error('Gemini text error [%s]: %s', error.code, error.message);
+      logger.error('Cerebras text error [%s]: %s', error.code, error.message);
       if (error.cause) logger.error(error.cause);
       throw error;
     }
 
-    logger.error('Gemini text request failed: %s', error?.message || 'Unknown error');
+    logger.error('Cerebras text request failed: %s', error?.message || 'Unknown error');
     logger.error(error);
-    throw new AiServiceError(`Gemini API unavailable: ${error?.message || 'Unknown error'}`, { cause: error });
+    throw new AiServiceError(`Cerebras API unavailable: ${error?.message || 'Unknown error'}`, { cause: error });
   }
 };
 
 const generateJson = async (prompt, options = {}) => extractJson(await generateText(prompt, options));
 
-const buildChatHistory = (systemPrompt, messageHistory = []) => [
-  { role: 'user', parts: [{ text: systemPrompt }] },
-  {
-    role: 'model',
-    parts: [{ text: 'Understood. I will answer as ALTERA assistant and keep the response conversational.' }],
-  },
-  ...messageHistory.map((msg) => ({
-    role: msg.sender === 'USER' ? 'user' : 'model',
-    parts: [{ text: msg.text }],
-  })),
-];
+const buildChatHistory = (systemPrompt, messageHistory = []) => {
+  const history = [];
+
+  if (systemPrompt) {
+    history.push({ role: 'system', content: systemPrompt });
+  }
+
+  history.push({ role: 'assistant', content: 'Understood. I will answer as ALTERA assistant and keep the response conversational.' });
+
+  messageHistory.forEach((msg) => {
+    history.push({
+      role: msg.sender === 'USER' ? 'user' : 'assistant',
+      content: msg.text,
+    });
+  });
+
+  return history;
+};
 
 const sendChatMessage = async (systemPrompt, messageHistory, userMessage, options = {}) => {
   try {
-    const client = getClient();
-    const requestChat = async (candidateModel) => {
-      const model = client.getGenerativeModel({ model: candidateModel });
-      const chat = model.startChat({
-        history: buildChatHistory(systemPrompt, messageHistory),
-        generationConfig: { maxOutputTokens: options.maxOutputTokens || 500 },
-      });
+    const messages = buildChatHistory(systemPrompt, messageHistory);
+    messages.push({ role: 'user', content: userMessage });
 
-      if (options.stream && typeof options.onChunk === 'function') {
-        const resultStream = await chat.sendMessageStream(userMessage);
-        let fullText = '';
+    const responseText = await runWithModelFallback(async (candidateModel) => requestChatCompletion({
+      model: candidateModel,
+      messages,
+      maxOutputTokens: options.maxOutputTokens || 500,
+      stream: Boolean(options.stream),
+    }), options.model || CEREBRAS_MODEL);
 
-        for await (const chunk of resultStream.stream) {
-          const chunkText = chunk.text();
-          if (chunkText) {
-            fullText += chunkText;
-            options.onChunk(chunkText);
-          }
-        }
+    if (options.stream && typeof options.onChunk === 'function' && responseText) {
+      options.onChunk(responseText);
+    }
 
-        if (!fullText) {
-          throw new AiServiceError('Gemini returned an empty response', {
-            statusCode: 502,
-            code: 'AI_EMPTY_RESPONSE',
-          });
-        }
-
-        return fullText;
-      }
-
-      const result = await chat.sendMessage(userMessage);
-      const text = result.response.text();
-      if (!text) {
-        throw new AiServiceError('Gemini returned an empty response', {
-          statusCode: 502,
-          code: 'AI_EMPTY_RESPONSE',
-        });
-      }
-
-      return text;
-    };
-
-    return runWithModelFallback(requestChat, options.model || GEMINI_MODEL);
+    return responseText;
   } catch (error) {
     if (error instanceof AiServiceError) {
-      logger.error('Gemini chat error [%s]: %s', error.code, error.message);
+      logger.error('Cerebras chat error [%s]: %s', error.code, error.message);
       if (error.cause) logger.error(error.cause);
       throw error;
     }
 
-    logger.error('Gemini chat request failed: %s', error?.message || 'Unknown error');
+    logger.error('Cerebras chat request failed: %s', error?.message || 'Unknown error');
     logger.error(error);
-    throw new AiServiceError(`Gemini API unavailable: ${error?.message || 'Unknown error'}`, { cause: error });
+    throw new AiServiceError(`Cerebras API unavailable: ${error?.message || 'Unknown error'}`, { cause: error });
   }
 };
 
@@ -220,7 +215,7 @@ const extractGeminiImageData = (response) => {
 };
 
 const generateImage = async () => {
-  throw new AiServiceError('Image generation is disabled for this backend. Gemini is configured for text and chat responses only.', {
+  throw new AiServiceError('Image generation is disabled for this backend. Cerebras is configured for text and chat responses only.', {
     statusCode: 501,
     code: 'AI_IMAGE_GENERATION_UNSUPPORTED',
   });
