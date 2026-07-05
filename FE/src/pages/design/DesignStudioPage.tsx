@@ -9,7 +9,6 @@ import {
   RefreshCw,
   BookOpen,
   Plus,
-  Layers,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'

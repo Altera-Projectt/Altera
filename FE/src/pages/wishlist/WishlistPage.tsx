@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Heart, Trash2, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { WishlistService, type WishlistProduct } from '@/services/wishlist.api'
@@ -11,7 +11,6 @@ import { toast } from 'sonner'
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function WishlistPage() {
-  const navigate = useNavigate()
   const { fetchCart } = useCartStore()
   const [products, setProducts] = useState<WishlistProduct[]>([])
   const [loading, setLoading] = useState(true)
