@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Palette, Trash2, ChevronLeft, ChevronRight, Calendar, ImageOff } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { DesignService, type Design } from '@/services/design.api'
+import { cn } from '@/utils/cn'
 import { toast } from 'sonner'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -157,11 +158,15 @@ export function MyDesignsPage() {
             >
               {/* Image / Placeholder */}
               <div className="relative aspect-square w-full bg-[var(--color-muted)] overflow-hidden">
-                {design.imageUrl ? (
+                {(design.previewImage || design.customImage) ? (
                   <img
-                    src={design.imageUrl}
-                    alt={design.name}
+                    src={design.previewImage || design.customImage}
+                    alt={design.prompt || 'Design'}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.onerror = null
+                    }}
                   />
                 ) : (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-[var(--color-muted-foreground)]">
@@ -193,11 +198,16 @@ export function MyDesignsPage() {
                   </button>
                 </div>
 
-                {/* Public badge */}
-                {design.isPublic && (
+                {/* Status badge */}
+                {design.status && (
                   <div className="absolute bottom-2 left-2">
-                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-                      Public
+                    <span className={cn(
+                      'px-2 py-0.5 text-xs font-medium rounded-full',
+                      design.status === 'SAVED'
+                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-100 text-amber-700 border border-amber-200',
+                    )}>
+                      {design.status === 'SAVED' ? 'Đã lưu' : 'Bản nháp'}
                     </span>
                   </div>
                 )}
@@ -205,7 +215,11 @@ export function MyDesignsPage() {
 
               {/* Info */}
               <div className="p-3">
-                <h3 className="font-medium text-sm line-clamp-1 mb-1">{design.name}</h3>
+                <h3 className="font-medium text-sm line-clamp-1 mb-1">
+                  {design.prompt
+                    ? design.prompt.slice(0, 40) + (design.prompt.length > 40 ? '...' : '')
+                    : 'Thiết kế ' + design._id.slice(-4)}
+                </h3>
 
                 {design.shirtType && (
                   <p className="text-xs text-[var(--color-muted-foreground)] mb-1">

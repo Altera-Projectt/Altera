@@ -1,495 +1,680 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Sparkles, Clock, ShoppingBag, AlertCircle } from 'lucide-react'
-import { OutfitService } from '@/services/outfit.api'
-import type {
-  OutfitRecommendation,
-  OutfitRecommendPayload,
-  OutfitHistoryItem,
-  OutfitProduct,
-} from '@/types/outfit.types'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  StylistService,
+  type QuizPayload,
+  type QuizResult,
+  type RecommendResult,
+} from '@/services/outfit.api'
 import { Button } from '@/components/ui/Button'
-import { Input, Label } from '@/components/ui/Input'
+import { Badge } from '@/components/ui/Badge'
+import { Card, CardContent } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { ErrorState } from '@/components/ui/ErrorState'
-import { GridLoadingState } from '@/components/ui/LoadingState'
+import { Input } from '@/components/ui/Input'
+import { cn } from '@/utils/cn'
+import {
+  ShoppingBag, RotateCcw, ChevronRight, ChevronLeft,
+  Shirt, Footprints, Watch, Circle,
+} from 'lucide-react'
 import { formatPrice } from '@/utils/format'
 
-// ── Constants ────────────────────────────────────────────────────────────────
+// ── Types & constants ──────────────────────────────────────────────────────
 
-type Tab = 'stylist' | 'history'
+type Step = 'quiz' | 'confirm' | 'result'
 
-const OCCASIONS = ['casual', 'formal', 'sporty', 'party', 'business', 'date', 'beach', 'travel']
-const STYLES = [
-  'Streetwear',
-  'Minimalist',
-  'Classic',
-  'Boho',
-  'Preppy',
-  'Athleisure',
-  'Y2K',
-  'Vintage',
-  'Techwear',
-  'Smart Casual',
+const STEPS: Step[] = ['quiz', 'confirm', 'result']
+
+const STEP_LABELS: Record<Step, string> = {
+  quiz: 'Trả lời quiz',
+  confirm: 'Xác nhận phong cách',
+  result: 'Kết quả',
+}
+
+const GENDER_OPTIONS = [
+  { value: 'unisex', label: 'Unisex' },
+  { value: 'male',   label: 'Nam' },
+  { value: 'female', label: 'Nữ' },
 ]
 
-// ── Component ────────────────────────────────────────────────────────────────
+const SEASON_OPTIONS = [
+  { value: 'summer', label: 'Mùa hè' },
+  { value: 'winter', label: 'Mùa đông' },
+  { value: 'spring', label: 'Mùa xuân' },
+  { value: 'autumn', label: 'Mùa thu' },
+  { value: 'all',    label: 'Quanh năm' },
+]
+
+// ── Main Page ──────────────────────────────────────────────────────────────
 
 export function OutfitPage() {
-  const [tab, setTab] = useState<Tab>('stylist')
+  const navigate = useNavigate()
 
-  // ── Form ──────────────────────────────────────────────────────────────────
-  const [top, setTop] = useState('')
-  const [bottom, setBottom] = useState('')
-  const [shoes, setShoes] = useState('')
-  const [occasion, setOccasion] = useState('')
-  const [style, setStyle] = useState('')
-  const [budget, setBudget] = useState('')
-  const [preferences, setPreferences] = useState('')
+  // ── Step state ──────────────────────────────────────────────────────────
+  const [step, setStep] = useState<Step>('quiz')
 
-  // ── Recommendation ────────────────────────────────────────────────────────
+  // ── Quiz form ───────────────────────────────────────────────────────────
+  const [quizData, setQuizData] = useState<QuizPayload>({
+    favoriteItem: '',
+    favoriteColor: '',
+    personality: '',
+    occasion: '',
+  })
+
+  // ── Results ─────────────────────────────────────────────────────────────
+  const [quizResult, setQuizResult]         = useState<QuizResult | null>(null)
+  const [recommendResult, setRecommendResult] = useState<RecommendResult | null>(null)
+
+  // ── Extra form (confirm step) ───────────────────────────────────────────
+  const [gender, setGender]   = useState('unisex')
+  const [season, setSeason]   = useState('summer')
+  const [budget, setBudget]   = useState<number>(800000)
+
+  // ── Async state ─────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [result, setResult] = useState<OutfitRecommendation | null>(null)
+  const [error, setError]     = useState<string | null>(null)
 
-  // ── History ───────────────────────────────────────────────────────────────
-  const [historyLoading, setHistoryLoading] = useState(false)
-  const [historyError, setHistoryError] = useState<string | null>(null)
-  const [history, setHistory] = useState<OutfitHistoryItem[]>([])
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
-  // ── Fetch history ─────────────────────────────────────────────────────────
-  const fetchHistory = useCallback(async () => {
-    setHistoryLoading(true)
-    setHistoryError(null)
-    try {
-      const res = await OutfitService.getHistory()
-      setHistory(res.data.data.history ?? [])
-    } catch {
-      setHistoryError('Không thể tải lịch sử. Vui lòng thử lại.')
-    } finally {
-      setHistoryLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (tab === 'history') fetchHistory()
-  }, [tab, fetchHistory])
-
-  // ── Submit ────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleQuizSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
-
-    const hasItem = top.trim() || bottom.trim() || shoes.trim()
-    if (!hasItem) {
-      setError('Vui lòng nhập ít nhất một món đồ (áo, quần hoặc giày) để AI có thể gợi ý.')
+    const hasAny = Object.values(quizData).some((v) => v?.trim())
+    if (!hasAny) {
+      setError('Vui lòng trả lời ít nhất 1 câu hỏi.')
       return
     }
-
-    const payload: OutfitRecommendPayload = {}
-    if (top.trim()) payload.top = top.trim()
-    if (bottom.trim()) payload.bottom = bottom.trim()
-    if (shoes.trim()) payload.shoes = shoes.trim()
-    if (occasion) payload.occasion = occasion
-    if (style) payload.style = style
-    if (budget !== '') payload.budget = Number(budget)
-    if (preferences.trim()) payload.preferences = preferences.trim()
-
     try {
       setLoading(true)
       setError(null)
-      const response = await OutfitService.getRecommendation(payload)
-      setResult(response.data.data)
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } }
-      setError(axiosErr.response?.data?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.')
-      setResult(null)
+      const res = await StylistService.analyzeQuiz(quizData)
+      setQuizResult(res.data.data)
+      setStep('confirm')
+    } catch (err: any) {
+      const status = err.response?.status
+      if (status === 503) setError('Dịch vụ AI đang bận, vui lòng thử lại sau.')
+      else setError('Đã có lỗi xảy ra, vui lòng thử lại.')
     } finally {
       setLoading(false)
     }
   }
 
+  const handleRecommend = async () => {
+    if (!quizResult) return
+    try {
+      setLoading(true)
+      setError(null)
+      const res = await StylistService.recommend({
+        style: quizResult.style,
+        quizResult,
+        gender,
+        season,
+        budget,
+        occasion: quizData.occasion,
+      })
+      setRecommendResult(res.data.data)
+      setStep('result')
+    } catch (err: any) {
+      const status = err.response?.status
+      if (status === 503) setError('Dịch vụ AI đang bận, vui lòng thử lại sau.')
+      else if (status === 400) setError('Thiếu thông tin phong cách, vui lòng làm lại quiz.')
+      else setError('Đã có lỗi xảy ra, vui lòng thử lại.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReset = () => {
+    setStep('quiz')
+    setQuizData({ favoriteItem: '', favoriteColor: '', personality: '', occasion: '' })
+    setQuizResult(null)
+    setRecommendResult(null)
+    setError(null)
+    setGender('unisex')
+    setSeason('summer')
+    setBudget(800000)
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-
-      {/* ── Page Header ───────────────────────────────────────────────── */}
-      <div className="mb-8">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide">AI Stylist</h1>
-        <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
-          Nhập những món đồ bạn đang có để nhận gợi ý outfit từ AI.
+      {/* ── Header + Progress ── */}
+      <div className="mx-auto max-w-2xl mb-10">
+        <h1 className="font-heading text-4xl font-normal uppercase tracking-widest">
+          AI Stylist
+        </h1>
+        <p className="mt-2 text-sm text-[var(--color-muted-foreground)] tracking-wide">
+          Trả lời 4 câu hỏi ngắn — AI sẽ tìm ra phong cách phù hợp với bạn.
         </p>
+
+        {/* Progress bar */}
+        <div className="mt-6 flex gap-1.5">
+          {STEPS.map((s, i) => {
+            const currentIndex = STEPS.indexOf(step)
+            const isActive = i <= currentIndex
+            return (
+              <div key={s} className="flex-1">
+                <div className={cn(
+                  'h-0.5 rounded-full transition-all duration-500',
+                  isActive ? 'bg-[var(--color-foreground)]' : 'bg-[var(--color-border)]',
+                )} />
+                <p className={cn(
+                  'text-[10px] uppercase tracking-widest mt-1.5 transition-colors duration-300',
+                  isActive
+                    ? 'text-[var(--color-foreground)] font-semibold'
+                    : 'text-[var(--color-muted-foreground)]',
+                )}>
+                  {STEP_LABELS[s]}
+                </p>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
-      {/* ── Tabs ──────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 mb-8 border-b border-[var(--color-border)]">
-        {([
-          { key: 'stylist', label: 'AI Stylist', Icon: Sparkles },
-          { key: 'history', label: 'Lịch sử', Icon: Clock },
-        ] as { key: Tab; label: string; Icon: React.ComponentType<{ className?: string }> }[]).map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            id={`outfit-tab-${key}`}
-            type="button"
-            onClick={() => setTab(key)}
-            className={[
-              'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors',
-              tab === key
-                ? 'border-[var(--color-primary)] text-[var(--color-foreground)]'
-                : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
-            ].join(' ')}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* ── Error banner ── */}
+      {error && (
+        <div className="mx-auto max-w-2xl mb-6 p-3 rounded-[var(--radius-md)] border border-[var(--color-error)]/30 bg-red-50 text-[var(--color-error)] text-sm">
+          {error}
+        </div>
+      )}
 
-      {/* ── STYLIST TAB ───────────────────────────────────────────────── */}
-      {tab === 'stylist' && (
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-10">
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* BƯỚC 1 — QUIZ                                                     */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {step === 'quiz' && (
+        <div className="mx-auto max-w-xl">
+          <form onSubmit={handleQuizSubmit} className="space-y-8">
 
-          {/* Left: Form */}
-          <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-6">
-
-              {/* Items — required section */}
-              <fieldset className="border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5 space-y-4">
-                <legend className="px-1 text-sm font-semibold text-[var(--color-foreground)] flex items-center gap-2">
-                  Đồ bạn đang có
-                  <span className="text-xs font-normal text-[var(--color-accent)]">(bắt buộc ít nhất 1)</span>
-                </legend>
-
-                <Input
-                  id="outfit-input-top"
-                  label="👕 Áo đang có"
-                  placeholder="VD: Áo thun trắng oversize cotton"
-                  value={top}
-                  onChange={(e) => setTop(e.target.value)}
-                />
-                <Input
-                  id="outfit-input-bottom"
-                  label="👖 Quần đang có"
-                  placeholder="VD: Quần baggy đen denim"
-                  value={bottom}
-                  onChange={(e) => setBottom(e.target.value)}
-                />
-                <Input
-                  id="outfit-input-shoes"
-                  label="👟 Giày đang có"
-                  placeholder="VD: Giày sneaker trắng Nike"
-                  value={shoes}
-                  onChange={(e) => setShoes(e.target.value)}
-                />
-              </fieldset>
-
-              {/* Preferences — optional section */}
-              <fieldset className="border border-[var(--color-border)] rounded-[var(--radius-lg)] p-5 space-y-4">
-                <legend className="px-1 text-sm font-semibold text-[var(--color-foreground)]">
-                  Tuỳ chỉnh <span className="text-xs font-normal text-[var(--color-muted-foreground)]">(không bắt buộc)</span>
-                </legend>
-
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Occasion */}
-                  <div className="w-full">
-                    <Label htmlFor="outfit-select-occasion">Dịp</Label>
-                    <select
-                      id="outfit-select-occasion"
-                      value={occasion}
-                      onChange={(e) => setOccasion(e.target.value)}
-                      className={[
-                        'w-full h-10 px-3 text-sm',
-                        'bg-[var(--color-background)] text-[var(--color-foreground)]',
-                        'border border-[var(--color-border)] rounded-[var(--radius-md)]',
-                        'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
-                        'transition-colors duration-150',
-                      ].join(' ')}
-                    >
-                      <option value="">Chọn dịp...</option>
-                      {OCCASIONS.map((o) => (
-                        <option key={o} value={o}>
-                          {o.charAt(0).toUpperCase() + o.slice(1)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Style */}
-                  <div className="w-full">
-                    <Label htmlFor="outfit-select-style">Phong cách</Label>
-                    <select
-                      id="outfit-select-style"
-                      value={style}
-                      onChange={(e) => setStyle(e.target.value)}
-                      className={[
-                        'w-full h-10 px-3 text-sm',
-                        'bg-[var(--color-background)] text-[var(--color-foreground)]',
-                        'border border-[var(--color-border)] rounded-[var(--radius-md)]',
-                        'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
-                        'transition-colors duration-150',
-                      ].join(' ')}
-                    >
-                      <option value="">Chọn style...</option>
-                      {STYLES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* Budget */}
-                <Input
-                  id="outfit-input-budget"
-                  type="number"
-                  label="Ngân sách (VNĐ)"
-                  placeholder="VD: 500000"
-                  min={0}
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                />
-
-                {/* Preferences textarea */}
-                <div className="w-full">
-                  <Label htmlFor="outfit-textarea-preferences">Sở thích / Yêu cầu thêm</Label>
-                  <textarea
-                    id="outfit-textarea-preferences"
-                    rows={3}
-                    placeholder="VD: Màu tối, phong cách đơn giản, không hoạ tiết..."
-                    value={preferences}
-                    onChange={(e) => setPreferences(e.target.value)}
-                    className={[
-                      'w-full px-3 py-2 text-sm',
-                      'bg-[var(--color-background)] text-[var(--color-foreground)]',
-                      'border border-[var(--color-border)] rounded-[var(--radius-md)]',
-                      'placeholder:text-[var(--color-muted-foreground)]',
-                      'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
-                      'transition-colors duration-150 resize-none',
-                    ].join(' ')}
-                  />
-                </div>
-              </fieldset>
-
-              {/* Inline error */}
-              {error && (
-                <div
-                  role="alert"
-                  className="flex items-start gap-2 rounded-[var(--radius-md)] border border-[var(--color-error)]/30 bg-red-50 px-4 py-3 text-sm text-[var(--color-error)]"
-                >
-                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              {/* Submit */}
-              <Button
-                id="outfit-btn-submit"
-                type="submit"
-                variant="primary"
-                size="lg"
-                loading={loading}
-                className="w-full uppercase tracking-wider font-semibold"
-              >
-                <Sparkles className="h-4 w-4" />
-                Nhận gợi ý AI
-              </Button>
-            </form>
-          </div>
-
-          {/* Right: Result */}
-          <div className="lg:col-span-3 min-h-[300px]">
-            {loading && <GridLoadingState cols={2} className="pt-2" />}
-
-            {!loading && !result && !error && (
-              <EmptyState
-                icon={Sparkles}
-                title="Chờ gợi ý từ AI"
-                description="Nhập ít nhất một món đồ bên trái rồi bấm &quot;Nhận gợi ý AI&quot; để bắt đầu."
+            {/* Q1 */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+                Bạn thường mặc gì khi ra ngoài?
+              </label>
+              <p className="text-xs text-[var(--color-muted-foreground)] mb-2">
+                Loại trang phục bạn hay chọn nhất trong tuần
+              </p>
+              <Input
+                placeholder="VD: áo phông, hoodie, váy, áo khoác..."
+                value={quizData.favoriteItem}
+                onChange={(e) => setQuizData((p) => ({ ...p, favoriteItem: e.target.value }))}
+                disabled={loading}
               />
-            )}
+            </div>
 
-            {!loading && result && (
-              <div className="space-y-8">
-                {/* AI recommendation text */}
-                <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-muted)]/30 p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-4 w-4 text-[var(--color-accent)]" />
-                    <h2 className="font-heading text-base font-semibold">Gợi ý từ AI Stylist</h2>
-                  </div>
-                  <p className="text-sm text-[var(--color-foreground)] leading-relaxed whitespace-pre-wrap">
-                    {result.recommendation}
-                  </p>
+            {/* Q2 */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+                Màu sắc bạn hay chọn nhất?
+              </label>
+              <p className="text-xs text-[var(--color-muted-foreground)] mb-2">
+                Tông màu bạn cảm thấy tự tin khi mặc
+              </p>
+              <Input
+                placeholder="VD: đen trắng, pastel, màu đất, tone trung tính..."
+                value={quizData.favoriteColor}
+                onChange={(e) => setQuizData((p) => ({ ...p, favoriteColor: e.target.value }))}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Q3 */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+                Bạn tự mô tả mình là người như thế nào?
+              </label>
+              <p className="text-xs text-[var(--color-muted-foreground)] mb-2">
+                Tính cách, lối sống hoặc cá tính của bạn
+              </p>
+              <Input
+                placeholder="VD: năng động, bình thường, thích nổi bật, tối giản, cổ điển..."
+                value={quizData.personality}
+                onChange={(e) => setQuizData((p) => ({ ...p, personality: e.target.value }))}
+                disabled={loading}
+              />
+            </div>
+
+            {/* Q4 */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+                Bạn thường mặc đồ đi đâu chủ yếu?
+              </label>
+              <p className="text-xs text-[var(--color-muted-foreground)] mb-2">
+                Dịp hoặc môi trường bạn mặc nhiều nhất
+              </p>
+              <Input
+                placeholder="VD: đi học, đi làm văn phòng, đi chơi, đi cafe cuối tuần..."
+                value={quizData.occasion}
+                onChange={(e) => setQuizData((p) => ({ ...p, occasion: e.target.value }))}
+                disabled={loading}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full uppercase tracking-widest font-semibold h-14"
+              loading={loading}
+            >
+              {!loading && <ChevronRight className="w-4 h-4 mr-1" />}
+              Phân tích phong cách
+            </Button>
+          </form>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* BƯỚC 2 — CONFIRM                                                  */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {step === 'confirm' && quizResult && (
+        <div className="mx-auto max-w-2xl space-y-6">
+
+          {/* Style result card */}
+          <Card className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                  Phong cách phù hợp với bạn
+                </p>
+                <h2 className="font-heading text-3xl font-bold uppercase tracking-wide">
+                  {quizResult.style}
+                </h2>
+              </div>
+              <Badge variant="secondary" className="shrink-0 text-xs uppercase tracking-widest">
+                AI
+              </Badge>
+            </div>
+
+            <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed mb-6">
+              {quizResult.reason}
+            </p>
+
+            {/* Color palette */}
+            {quizResult.colorPalette?.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                  Bảng màu gợi ý
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {quizResult.colorPalette.map((c) => (
+                    <span
+                      key={c}
+                      className="px-3 py-1 rounded-full text-xs border border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-foreground)] font-medium"
+                    >
+                      {c}
+                    </span>
+                  ))}
                 </div>
-
-                {/* Product grid */}
-                {(result.products ?? []).length > 0 && (
-                  <div>
-                    <h3 className="font-heading text-base font-semibold mb-4 flex items-center gap-2">
-                      <ShoppingBag className="h-4 w-4" />
-                      Sản phẩm gợi ý ({(result.products ?? []).length})
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {(result.products ?? []).map((product) => (
-                        <OutfitProductCard key={product._id} product={product} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(result.products ?? []).length === 0 && (
-                  <EmptyState
-                    icon={ShoppingBag}
-                    title="Không có sản phẩm"
-                    description="AI không tìm thấy sản phẩm phù hợp lần này. Thử điều chỉnh yêu cầu."
-                  />
-                )}
               </div>
             )}
+
+            {/* Key pieces */}
+            {quizResult.keyPieces?.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                  Món đồ cơ bản cần có
+                </p>
+                <ul className="space-y-1">
+                  {quizResult.keyPieces.map((p) => (
+                    <li key={p} className="text-sm text-[var(--color-foreground)] flex items-center gap-2">
+                      <span className="w-1 h-1 rounded-full bg-[var(--color-foreground)] shrink-0" />
+                      {p}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Avoid colors */}
+            {quizResult.avoidColors?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                  Màu nên tránh
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {quizResult.avoidColors.map((c) => (
+                    <span key={c} className="text-xs text-[var(--color-error)] opacity-80">{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Extra preferences */}
+          <Card className="p-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">
+              Tuỳ chỉnh thêm
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Gender */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-foreground)] mb-1.5">
+                  Giới tính
+                </label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className={cn(
+                    'w-full h-10 px-3 text-sm rounded-[var(--radius-md)]',
+                    'border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)]',
+                    'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
+                  )}
+                >
+                  {GENDER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Season */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-foreground)] mb-1.5">
+                  Mùa
+                </label>
+                <select
+                  value={season}
+                  onChange={(e) => setSeason(e.target.value)}
+                  className={cn(
+                    'w-full h-10 px-3 text-sm rounded-[var(--radius-md)]',
+                    'border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)]',
+                    'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
+                  )}
+                >
+                  {SEASON_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Budget */}
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-foreground)] mb-1.5">
+                  Ngân sách (VND)
+                </label>
+                <input
+                  type="number"
+                  value={budget}
+                  onChange={(e) => setBudget(Number(e.target.value))}
+                  min={0}
+                  step={100000}
+                  className={cn(
+                    'w-full h-10 px-3 text-sm rounded-[var(--radius-md)]',
+                    'border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)]',
+                    'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
+                  )}
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="md"
+              className="gap-2"
+              onClick={() => { setStep('quiz'); setError(null) }}
+              disabled={loading}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Làm lại quiz
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              className="flex-1 uppercase tracking-widest font-semibold h-14 gap-2"
+              loading={loading}
+              onClick={handleRecommend}
+            >
+              {!loading && <ChevronRight className="w-4 h-4" />}
+              Xem gợi ý outfit
+            </Button>
           </div>
         </div>
       )}
 
-      {/* ── HISTORY TAB ───────────────────────────────────────────────── */}
-      {tab === 'history' && (
-        <div>
-          {historyLoading && <GridLoadingState cols={2} />}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* BƯỚC 3 — KẾT QUẢ                                                 */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {step === 'result' && recommendResult && (
+        <div className="mx-auto max-w-3xl space-y-6">
 
-          {!historyLoading && historyError && (
-            <ErrorState message={historyError} onRetry={fetchHistory} />
-          )}
+          {/* Card 1 — Tổng quan */}
+          <Card className="p-6">
+            <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+              Phong cách của bạn
+            </p>
+            <h2 className="font-heading text-3xl font-bold uppercase tracking-wide mb-4">
+              {recommendResult.style}
+            </h2>
+            {recommendResult.reason && (
+              <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed mb-4">
+                {recommendResult.reason}
+              </p>
+            )}
+            {recommendResult.outfitNote && (
+              <div className="border-l-2 border-[var(--color-border)] pl-4">
+                <p className="text-sm text-[var(--color-foreground)] leading-relaxed font-serif">
+                  {recommendResult.outfitNote}
+                </p>
+              </div>
+            )}
+          </Card>
 
-          {!historyLoading && !historyError && (history ?? []).length === 0 && (
-            <EmptyState
-              icon={Clock}
-              title="Chưa có lịch sử"
-              description="Hãy thử AI Stylist để nhận gợi ý outfit đầu tiên của bạn!"
-              actionLabel="Thử ngay"
-              onAction={() => setTab('stylist')}
-            />
-          )}
-
-          {!historyLoading && !historyError && (history ?? []).length > 0 && (
-            <div className="space-y-6">
-              {(history ?? []).map((item, idx) => (
-                <div
-                  key={item._id ?? idx}
-                  className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-background)] p-6"
-                >
-                  {/* Timestamp */}
-                  <p className="text-xs text-[var(--color-muted-foreground)] mb-3">
-                    {new Date(item.createdAt).toLocaleDateString('vi-VN', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
-
-                  {/* Recommendation text */}
-                  <p className="text-sm text-[var(--color-foreground)] leading-relaxed mb-4">
-                    {item.recommendation}
-                  </p>
-
-                  {/* Products mini-grid */}
-                  {(item.products ?? []).length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {(item.products ?? []).map((p) => (
-                        <HistoryProductMini key={p._id} product={p} />
-                      ))}
+          {/* Card 2 — Bộ outfit hoàn chỉnh */}
+          {recommendResult.completeOutfit && (
+            <Card className="p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">
+                Bộ outfit hoàn chỉnh
+              </p>
+              <div className="space-y-3">
+                {[
+                  { Icon: Shirt,     label: 'Áo',       value: recommendResult.completeOutfit.top },
+                  { Icon: Circle,    label: 'Quần / Váy', value: recommendResult.completeOutfit.bottom },
+                  { Icon: Footprints,label: 'Giày',     value: recommendResult.completeOutfit.shoes },
+                  { Icon: Watch,     label: 'Phụ kiện', value: recommendResult.completeOutfit.accessories },
+                ].filter((r) => r.value).map(({ Icon, label, value }) => (
+                  <div key={label} className="flex items-start gap-4 py-3 border-b border-[var(--color-border)] last:border-0">
+                    <div className="w-8 h-8 rounded-[var(--radius-sm)] bg-[var(--color-muted)] flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4 text-[var(--color-muted-foreground)]" />
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] font-semibold">{label}</p>
+                      <p className="text-sm text-[var(--color-foreground)] mt-0.5">{value}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
+
+          {/* Card 3 — Hướng dẫn màu sắc */}
+          {recommendResult.colorGuide && (
+            <Card className="p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">
+                Hướng dẫn màu sắc
+              </p>
+              <div className="space-y-2">
+                {[
+                  { label: 'Màu chính',     value: recommendResult.colorGuide.main },
+                  { label: 'Màu phụ',       value: recommendResult.colorGuide.secondary },
+                  { label: 'Màu điểm nhấn', value: recommendResult.colorGuide.accent },
+                ].filter((r) => r.value).map(({ label, value }) => (
+                  <div key={label} className="flex items-center justify-between">
+                    <span className="text-xs text-[var(--color-muted-foreground)]">{label}</span>
+                    <Badge variant="secondary" className="text-xs">{value}</Badge>
+                  </div>
+                ))}
+                {recommendResult.colorGuide.avoid && (
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
+                    <span className="text-xs text-[var(--color-muted-foreground)]">Màu nên tránh</span>
+                    <span className="text-xs text-[var(--color-error)]">{recommendResult.colorGuide.avoid}</span>
+                  </div>
+                )}
+                {recommendResult.colorGuide.example && (
+                  <p className="text-xs text-[var(--color-muted-foreground)] italic pt-2">
+                    {recommendResult.colorGuide.example}
+                  </p>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Card 4 — Tips phối đồ */}
+          {recommendResult.tips?.length > 0 && (
+            <Card className="p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">
+                Mẹo phối đồ
+              </p>
+              <ol className="space-y-3">
+                {recommendResult.tips.map((tip, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span className="w-5 h-5 rounded-full bg-[var(--color-foreground)] text-[var(--color-primary-foreground)] text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    <p className="text-sm text-[var(--color-foreground)] leading-relaxed">{tip}</p>
+                  </li>
+                ))}
+              </ol>
+            </Card>
+          )}
+
+          {/* Card 5 — Thời tiết & Form dáng */}
+          {(recommendResult.weatherTips || recommendResult.bodyTips) && (
+            <Card className="p-6">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">
+                Lưu ý thêm
+              </p>
+              <div className="space-y-4">
+                {recommendResult.weatherTips && (
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1 font-semibold">
+                      Theo thời tiết
+                    </p>
+                    <p className="text-sm text-[var(--color-foreground)] leading-relaxed">
+                      {recommendResult.weatherTips}
+                    </p>
+                  </div>
+                )}
+                {recommendResult.bodyTips && (
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1 font-semibold">
+                      Theo vóc dáng
+                    </p>
+                    <p className="text-sm text-[var(--color-foreground)] leading-relaxed">
+                      {recommendResult.bodyTips}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Card 6 — Sản phẩm gợi ý */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">
+              Sản phẩm được gợi ý
+            </p>
+            {recommendResult.recommendedProducts?.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {recommendResult.recommendedProducts.map((product: any, i: number) => {
+                  const reasoning = recommendResult.productReasoning?.find(
+                    (r) => r.productName === product.name,
+                  )
+                  return (
+                    <RecommendedProductCard
+                      key={product._id ?? i}
+                      product={product}
+                      reason={reasoning?.reason}
+                      onNavigate={() => navigate(`/products/${product._id}`)}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <EmptyState
+                icon={ShoppingBag}
+                title="Chưa tìm thấy sản phẩm phù hợp"
+                description="AI chưa tìm thấy sản phẩm trong kho khớp với phong cách này. Bạn có thể xem toàn bộ sản phẩm."
+                actionLabel="Xem sản phẩm"
+                onAction={() => navigate('/products')}
+              />
+            )}
+          </div>
+
+          {/* Reset CTA */}
+          <div className="flex justify-center pt-4 pb-8">
+            <Button
+              variant="outline"
+              size="md"
+              className="gap-2"
+              onClick={handleReset}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Thử lại với phong cách khác
+            </Button>
+          </div>
         </div>
       )}
     </div>
   )
 }
 
-// ── OutfitProductCard ─────────────────────────────────────────────────────────
-// Local card — outfit products use `images[]` not `imageUrl`, so we cannot
-// reuse the fashion/ProductCard which expects `product.imageUrl`.
+// ── Recommended Product Card ────────────────────────────────────────────────
 
-function OutfitProductCard({ product }: { product: OutfitProduct }) {
-  const imgSrc = (product.images ?? [])[0] ?? null
+function RecommendedProductCard({
+  product,
+  reason,
+  onNavigate,
+}: {
+  product: any
+  reason?: string
+  onNavigate: () => void
+}) {
+  const imageUrl = product.imageUrl || product.image || null
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-background)] transition-shadow hover:shadow-[var(--shadow-md)]">
+    <Card hoverable className="flex flex-col overflow-hidden" onClick={onNavigate}>
       {/* Image */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)]">
-        {imgSrc ? (
+      <div className="aspect-[3/4] bg-[var(--color-muted)] relative overflow-hidden">
+        {imageUrl ? (
           <img
-            src={imgSrc}
-            alt={product.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            src={imageUrl}
+            alt={product.name ?? 'Sản phẩm'}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-[var(--color-muted-foreground)]">
-            Không có ảnh
-          </div>
-        )}
-        {product.stock === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <span className="rounded-full bg-[var(--color-background)] px-3 py-1 text-xs font-semibold text-[var(--color-foreground)]">
-              Hết hàng
-            </span>
+          <div className="w-full h-full flex items-center justify-center text-[var(--color-muted-foreground)]">
+            <ShoppingBag className="w-10 h-10 opacity-30" />
           </div>
         )}
       </div>
 
-      {/* Info */}
-      <div className="flex flex-col flex-1 p-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted-foreground)] mb-1">
-          {product.category}
+      <CardContent className="flex flex-col gap-2 pt-4">
+        <p className="font-heading text-sm font-semibold text-[var(--color-foreground)] line-clamp-2 leading-tight">
+          {product.name ?? 'Sản phẩm không tên'}
         </p>
-        <h4 className="text-sm font-semibold text-[var(--color-foreground)] line-clamp-2 mb-1">
-          {product.name}
-        </h4>
-        <p className="text-xs text-[var(--color-muted-foreground)] line-clamp-2 mb-3">
-          {product.description}
-        </p>
-        <div className="flex items-center justify-between mt-auto">
-          <span className="text-sm font-bold text-[var(--color-foreground)]">
+        {product.price != null && (
+          <p className="text-sm font-semibold text-[var(--color-foreground)]">
             {formatPrice(product.price)}
-          </span>
-          {product.stock > 0 && (
-            <span className="text-xs text-[var(--color-muted-foreground)]">
-              Còn {product.stock}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── HistoryProductMini ────────────────────────────────────────────────────────
-
-function HistoryProductMini({ product }: { product: OutfitProduct }) {
-  const imgSrc = (product.images ?? [])[0] ?? null
-
-  return (
-    <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-background)]">
-      <div className="aspect-square w-full overflow-hidden bg-[var(--color-muted)]">
-        {imgSrc ? (
-          <img src={imgSrc} alt={product.name} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-[var(--color-muted-foreground)]">
-            No image
-          </div>
+          </p>
         )}
-      </div>
-      <div className="p-2">
-        <p className="text-xs font-medium line-clamp-1 text-[var(--color-foreground)]">
-          {product.name}
-        </p>
-        <p className="text-xs font-semibold text-[var(--color-accent)] mt-0.5">
-          {formatPrice(product.price)}
-        </p>
-      </div>
-    </div>
+        {reason && (
+          <p className="text-xs text-[var(--color-muted-foreground)] leading-relaxed line-clamp-2">
+            {reason}
+          </p>
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-1 gap-1.5"
+          onClick={(e) => { e.stopPropagation(); onNavigate() }}
+        >
+          <ShoppingBag className="w-3.5 h-3.5" />
+          Xem sản phẩm
+        </Button>
+      </CardContent>
+    </Card>
   )
 }

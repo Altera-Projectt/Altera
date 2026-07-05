@@ -3,8 +3,8 @@
  */
 
 export const typography = {
-  fontHeading: '"Montserrat", "Archivo", "Inter", ui-sans-serif, system-ui, sans-serif',
-  fontBody: '"Inter", ui-sans-serif, system-ui, sans-serif',
+  fontHeading: '"Playfair Display", "Cormorant Garamond", "Times New Roman", serif',
+  fontBody: '"Inter", "Helvetica Neue", ui-sans-serif, system-ui, sans-serif',
 
   fontWeights: {
     light: 300,

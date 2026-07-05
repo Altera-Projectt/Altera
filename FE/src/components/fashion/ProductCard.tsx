@@ -79,53 +79,58 @@ export function ProductCard({ product, className, isWishlisted = false, onWishli
   return (
     <div
       className={cn(
-        'group relative flex flex-col overflow-hidden bg-[var(--color-background)] transition-all duration-300',
+        'group relative flex flex-col overflow-hidden bg-transparent transition-all duration-300',
         className
       )}
     >
       {/* Image Container */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)]">
+      <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)] rounded-[var(--radius-md)]">
         <Link to={`/products/${product._id}`} aria-label={`View details of ${product.name}`}>
-          <div className="flex h-full w-full items-center justify-center bg-[var(--color-muted)] text-sm font-medium text-[var(--color-muted-foreground)]">
-            Upload image
-          </div>
+          <img
+            src={imageUrl}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            loading="lazy"
+          />
         </Link>
 
-
-
-        <div className="absolute bottom-4 right-4 flex flex-col gap-2 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-          {/* Wishlist button */}
+        {/* Wishlist Button - Top Right */}
+        <div className="absolute top-3 right-3 opacity-0 transition-opacity duration-300 group-hover:opacity-100 z-10">
           <button
             type="button"
             onClick={handleWishlist}
             disabled={wishlisting}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition-colors',
+              'flex h-8 w-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-md shadow-sm transition-all hover:scale-110',
               localWishlisted
-                ? 'bg-rose-500 text-white border-rose-500 hover:bg-rose-600'
-                : 'bg-[var(--color-background)] text-[var(--color-foreground)] border-[var(--color-border)] hover:bg-rose-50 hover:text-rose-500 hover:border-rose-200'
+                ? 'text-rose-500'
+                : 'text-[var(--color-foreground)] hover:text-rose-500'
             )}
             aria-label={localWishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
           >
             {wishlisting ? (
-              <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <Heart className={cn('h-4.5 w-4.5', localWishlisted && 'fill-current')} />
+              <Heart className={cn('h-4 w-4', localWishlisted && 'fill-current')} />
             )}
           </button>
+        </div>
 
-          {/* Add to cart button */}
+        {/* Quick Add Button - Bottom full width slide up */}
+        <div className="absolute bottom-0 left-0 w-full translate-y-full transition-transform duration-300 ease-out group-hover:translate-y-0">
           <button
             type="button"
             onClick={handleAddToCart}
             disabled={adding}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-background)] text-[var(--color-foreground)] border border-[var(--color-border)] shadow-sm hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-foreground)] hover:border-transparent transition-colors disabled:opacity-50"
+            className="w-full flex h-10 items-center justify-center gap-2 bg-white/90 backdrop-blur-md text-black font-semibold text-xs uppercase tracking-wider transition-colors hover:bg-black hover:text-white disabled:opacity-50"
             aria-label="Quick Add to Cart"
           >
             {adding ? (
               <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <ShoppingBag className="h-4.5 w-4.5" />
+              <>
+                <ShoppingBag className="h-4 w-4" /> Quick Add
+              </>
             )}
           </button>
         </div>
@@ -136,16 +141,16 @@ export function ProductCard({ product, className, isWishlisted = false, onWishli
         <div className="flex items-start justify-between gap-4">
           <Link
             to={`/products/${product._id}`}
-            className="text-sm font-medium text-[var(--color-foreground)] hover:underline line-clamp-1"
+            className="font-heading text-base font-bold text-[var(--color-foreground)] hover:opacity-70 transition-opacity line-clamp-1"
           >
             {product.name}
           </Link>
-          <span className="text-sm font-semibold whitespace-nowrap">
+          <span className="font-body text-sm font-semibold whitespace-nowrap">
             {formatPrice(product.price)}
           </span>
         </div>
         <div className="mt-1 flex items-center justify-between text-xs text-[var(--color-muted-foreground)]">
-          <span>{product.category}</span>
+          <span className="uppercase tracking-widest">{product.category}</span>
         </div>
       </div>
     </div>

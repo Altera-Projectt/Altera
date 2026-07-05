@@ -3,8 +3,54 @@ import { ChatService } from '@/services/chat.api'
 import type { Chat, ChatMessage } from '@/types/chat.types'
 import type { AxiosError } from 'axios'
 import type { ApiError } from '@/types/api.types'
-import { Sparkles, MessageSquare, Plus, X, Menu, Trash2, Send, AlertCircle, ShoppingBag, User } from 'lucide-react'
+import {
+  Sparkles, MessageSquare, Plus, Menu, Trash2, Send,
+  AlertCircle, ShoppingBag, Shirt, Compass, MessagesSquare,
+} from 'lucide-react'
 import { cn } from '@/utils/cn'
+
+// ── Topic config (no emojis — icon-only, premium) ─────────────────────────
+
+type TopicKey = 'fashion' | 'outfit' | 'style' | 'general'
+
+const TOPICS: {
+  value: TopicKey
+  label: string
+  desc: string
+  Icon: React.ComponentType<{ className?: string }>
+}[] = [
+  { value: 'fashion',  label: 'Tư vấn thời trang',   desc: 'Xu hướng, phong cách, thương hiệu',  Icon: Sparkles },
+  { value: 'outfit',   label: 'Gợi ý trang phục',    desc: 'Phối đồ cho dịp cụ thể',             Icon: Shirt },
+  { value: 'style',    label: 'Khám phá phong cách',  desc: 'Tìm phong cách phù hợp với bạn',    Icon: Compass },
+  { value: 'general',  label: 'Hội thoại chung',      desc: 'Hỏi bất kỳ điều gì',               Icon: MessagesSquare },
+]
+
+// ── Quick prompts per topic ────────────────────────────────────────────────
+
+const QUICK_PROMPTS: Record<TopicKey, string[]> = {
+  fashion: [
+    'Xu hướng thời trang hè 2025 là gì?',
+    'Gợi ý outfit đi làm văn phòng?',
+    'Cách phối màu trắng và đen?',
+  ],
+  outfit: [
+    'Tôi muốn mặc gì đi dự tiệc tối?',
+    'Gợi ý outfit đi date mùa hè?',
+    'Mặc gì đi cà phê cuối tuần?',
+  ],
+  style: [
+    'Tôi thích màu tối, phong cách nào hợp?',
+    'Streetwear và Minimalist khác nhau thế nào?',
+    'Làm sao tìm được phong cách riêng?',
+  ],
+  general: [
+    'Tôi muốn thay đổi phong cách ăn mặc',
+    'Món đồ cơ bản nào nên có trong tủ?',
+    'Cách bảo quản quần áo đúng cách?',
+  ],
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────
 
 export function ChatPage() {
   // ── State ─────────────────────────────────────────────────────────────────
@@ -23,6 +69,9 @@ export function ChatPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
+  // Topic selected in the empty state before creating a chat
+  const [selectedTopic, setSelectedTopic] = useState<TopicKey>('fashion')
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -34,7 +83,7 @@ export function ChatPage() {
       const res = await ChatService.getChats()
       setChats(res.data.data.chats)
     } catch {
-      setChatsError('Không thể tải danh sách chat.')
+      setChatsError('Không thể tải danh sách hội thoại.')
     } finally {
       setChatsLoading(false)
     }
@@ -54,7 +103,6 @@ export function ChatPage() {
     if (selectedChat?._id === chat._id) return
     setSelectedChat(chat)
     setSendError(null)
-    // Fetch full chat to get messages
     try {
       const res = await ChatService.getChat(chat._id)
       const fullChat = res.data.data.chat
@@ -66,10 +114,13 @@ export function ChatPage() {
   }
 
   // ── Create new chat ───────────────────────────────────────────────────────
-  const handleNewChat = async () => {
+  const handleNewChat = async (topic: TopicKey = selectedTopic) => {
     setCreatingChat(true)
     try {
-      const res = await ChatService.createChat({ title: 'New Chat' })
+      const res = await ChatService.createChat({
+        title: 'Cuộc trò chuyện mới',
+        topic,
+      })
       const newChat = res.data.data.chat
       setChats((prev) => [newChat, ...prev])
       setSelectedChat(newChat)
@@ -77,7 +128,7 @@ export function ChatPage() {
       setSendError(null)
       setTimeout(() => inputRef.current?.focus(), 100)
     } catch {
-      // silently fail – list will be stale until next refresh
+      // silently fail
     } finally {
       setCreatingChat(false)
     }
@@ -102,29 +153,33 @@ export function ChatPage() {
   }
 
   // ── Send message ──────────────────────────────────────────────────────────
-  const handleSend = async () => {
-    const content = input.trim()
+  const handleSend = async (overrideText?: string) => {
+    const content = (overrideText ?? input).trim()
     if (!content || !selectedChat || sending) return
     setSendError(null)
     setInput('')
 
-    // Optimistically append user message
-    const optimistic: ChatMessage = { sender: 'USER', text: content, createdAt: new Date().toISOString() }
+    // Optimistically append user message — exact BE shape
+    const optimistic: ChatMessage = {
+      sender: 'USER',
+      text: content,
+      createdAt: new Date().toISOString(),
+    }
     setMessages((prev) => [...prev, optimistic])
     setSending(true)
 
     try {
       const res = await ChatService.sendMessage(selectedChat._id, { message: content })
+      // BE returns { data: { userMessage, aiMessage } }
       const { userMessage, aiMessage } = res.data.data
-      
-      // Thay optimistic bằng response thật, thêm aiMessage vào
+
       setMessages((prev) => [
         ...prev.filter((m) => m !== optimistic),
         userMessage,
         aiMessage,
       ])
-      
-      // Cập nhật title trong sidebar nếu đây là tin nhắn đầu tiên:
+
+      // Update sidebar title on first message
       if (messages.length === 0) {
         setChats((prev) =>
           prev.map((c) =>
@@ -138,7 +193,6 @@ export function ChatPage() {
       const axiosErr = err as AxiosError<ApiError>
       const msg = axiosErr.response?.data?.message ?? 'Gửi tin nhắn thất bại. Vui lòng thử lại.'
       setSendError(msg)
-      // Revert optimistic message
       setMessages((prev) => prev.filter((m) => m !== optimistic))
       setInput(content)
     } finally {
@@ -156,11 +210,13 @@ export function ChatPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex h-[calc(100vh-var(--spacing-navbar,72px))] bg-[var(--color-background)] overflow-hidden">
+
       {/* ── Sidebar ──────────────────────────────────────────────────────── */}
       <aside
         className={cn(
-          "flex-shrink-0 flex-col overflow-hidden transition-all duration-300 ease-in-out border-r border-[var(--color-border)] bg-[var(--color-neutral)]",
-          sidebarOpen ? "w-[280px]" : "w-0"
+          'flex-shrink-0 flex-col overflow-hidden transition-all duration-300 ease-in-out',
+          'border-r border-[var(--color-border)] bg-[var(--color-neutral)]',
+          sidebarOpen ? 'w-[280px]' : 'w-0',
         )}
       >
         <div className="flex flex-col h-full w-[280px]">
@@ -168,21 +224,30 @@ export function ChatPage() {
           <div className="p-5 pb-4 border-b border-[var(--color-border)] shrink-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-[var(--radius-md)] bg-[var(--color-foreground)]/8 text-[var(--color-foreground)] flex items-center justify-center">
                   <MessageSquare className="w-4 h-4" />
                 </div>
-                <span className="text-[var(--color-foreground)] font-bold text-sm tracking-wide uppercase">AI Chat</span>
+                <span className="text-[var(--color-foreground)] font-bold text-sm tracking-wide uppercase">
+                  Hội thoại
+                </span>
               </div>
             </div>
 
             <button
               id="chat-btn-new"
-              onClick={handleNewChat}
+              onClick={() => handleNewChat()}
               disabled={creatingChat}
-              className="w-full py-2.5 px-4 rounded-[var(--radius-md)] border border-[var(--color-accent)]/30 bg-[var(--color-accent)]/5 text-[var(--color-accent)] font-semibold text-sm cursor-pointer flex items-center justify-center gap-2 transition-colors hover:bg-[var(--color-accent)]/15 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cn(
+                'w-full py-2.5 px-4 rounded-[var(--radius-md)]',
+                'border border-[var(--color-border)] bg-[var(--color-background)]',
+                'text-[var(--color-foreground)] font-semibold text-sm cursor-pointer',
+                'flex items-center justify-center gap-2',
+                'transition-colors hover:bg-[var(--color-foreground)] hover:text-[var(--color-primary-foreground)]',
+                'disabled:opacity-50 disabled:cursor-not-allowed',
+              )}
             >
               {creatingChat ? <MiniSpinner /> : <Plus className="w-4 h-4" />}
-              New Chat
+              Cuộc trò chuyện mới
             </button>
           </div>
 
@@ -199,50 +264,59 @@ export function ChatPage() {
               </p>
             )}
             {!chatsLoading && chats.length === 0 && (
-              <div className="text-[var(--color-muted-foreground)] text-sm text-center py-8 px-3">
-                Chưa có cuộc trò chuyện nào.
+              <div className="text-[var(--color-muted-foreground)] text-xs text-center py-8 px-3 leading-relaxed">
+                Chưa có cuộc hội thoại nào.
                 <br />
-                Tạo mới để bắt đầu!
+                Khởi tạo một cuộc trò chuyện mới để bắt đầu.
               </div>
             )}
             {chats.map((chat) => {
               const isSelected = selectedChat?._id === chat._id
+              const topicMeta = TOPICS.find((t) => t.value === chat.topic)
+              const TopicIcon = topicMeta?.Icon ?? MessageSquare
               return (
                 <div
                   key={chat._id}
                   id={`chat-item-${chat._id}`}
                   onClick={() => selectChat(chat)}
                   className={cn(
-                    "group flex items-center gap-3 p-3 rounded-[var(--radius-md)] cursor-pointer transition-all relative border",
+                    'group flex items-center gap-3 p-3 rounded-[var(--radius-md)] cursor-pointer transition-all relative border',
                     isSelected
-                      ? "bg-[var(--color-accent)]/10 border-[var(--color-accent)]/20"
-                      : "bg-transparent border-transparent hover:bg-[var(--color-muted)]"
+                      ? 'bg-[var(--color-foreground)]/8 border-[var(--color-foreground)]/15'
+                      : 'bg-transparent border-transparent hover:bg-[var(--color-muted)]',
                   )}
                 >
                   <div className={cn(
-                    "w-8 h-8 rounded-[var(--radius-md)] flex-shrink-0 flex items-center justify-center",
-                    isSelected ? "bg-[var(--color-accent)]/20 text-[var(--color-accent)]" : "bg-[var(--color-background)] text-[var(--color-muted-foreground)]"
+                    'w-8 h-8 rounded-[var(--radius-md)] flex-shrink-0 flex items-center justify-center',
+                    isSelected
+                      ? 'bg-[var(--color-foreground)] text-[var(--color-primary-foreground)]'
+                      : 'bg-[var(--color-background)] text-[var(--color-muted-foreground)]',
                   )}>
-                    <MessageSquare className="w-4 h-4" />
+                    <TopicIcon className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={cn(
-                      "text-sm truncate",
-                      isSelected ? "text-[var(--color-foreground)] font-semibold" : "text-[var(--color-muted-foreground)] font-medium"
+                      'text-sm truncate',
+                      isSelected
+                        ? 'text-[var(--color-foreground)] font-semibold'
+                        : 'text-[var(--color-muted-foreground)] font-medium',
                     )}>
                       {chat.title}
                     </p>
-                    <p className="text-[11px] text-[var(--color-muted-foreground)]/70 mt-0.5">
-                      {new Date(chat.updatedAt).toLocaleDateString('vi-VN')}
+                    <p className="text-[10px] text-[var(--color-muted-foreground)] mt-0.5 uppercase tracking-wide">
+                      {topicMeta?.label ?? chat.topic}
                     </p>
                   </div>
                   <button
-                    className="delete-btn opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-all focus:opacity-100 disabled:opacity-50"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-all focus:opacity-100 disabled:opacity-50"
                     onClick={(e) => handleDeleteChat(chat._id, e)}
                     disabled={deletingId === chat._id}
                     title="Xóa cuộc trò chuyện"
                   >
-                    {deletingId === chat._id ? <MiniSpinner className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                    {deletingId === chat._id
+                      ? <MiniSpinner className="w-4 h-4" />
+                      : <Trash2 className="w-4 h-4" />
+                    }
                   </button>
                 </div>
               )
@@ -252,51 +326,81 @@ export function ChatPage() {
       </aside>
 
       {/* ── Main chat area ────────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-background)]">
+      <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-background)] relative">
         {/* Top bar */}
-        <div className="h-[60px] px-5 border-b border-[var(--color-border)] flex items-center gap-4 shrink-0 bg-[var(--color-background)]/80 backdrop-blur-md">
-          <button
-            id="chat-btn-toggle-sidebar"
-            onClick={() => setSidebarOpen((o) => !o)}
-            className="p-2 -ml-2 rounded-[var(--radius-md)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          
-          {selectedChat ? (
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[var(--color-accent)]/10 text-[var(--color-accent)] flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4" />
-              </div>
+        <div className="h-[72px] px-6 border-b border-[var(--color-border)] flex items-center justify-between shrink-0 bg-[var(--color-background)]/90 backdrop-blur-md sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <button
+              id="chat-btn-toggle-sidebar"
+              onClick={() => setSidebarOpen((o) => !o)}
+              className="p-2 -ml-2 rounded-full text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-muted)] transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            {selectedChat ? (
               <div>
-                <p className="text-[var(--color-foreground)] font-semibold text-sm">{selectedChat.title}</p>
+                <h2 className="text-[var(--color-foreground)] font-heading font-semibold text-lg leading-tight">
+                  {selectedChat.title}
+                </h2>
                 {selectedChat.topic && (
-                  <p className="text-[var(--color-muted-foreground)] text-[12px] truncate max-w-xs">{selectedChat.topic}</p>
+                  <p className="text-[var(--color-muted-foreground)] text-[10px] uppercase tracking-widest mt-0.5">
+                    {TOPICS.find((t) => t.value === selectedChat.topic)?.label ?? selectedChat.topic}
+                  </p>
                 )}
               </div>
-            </div>
-          ) : (
-            <p className="text-[var(--color-muted-foreground)] text-sm font-medium">ALTERA AI Chat</p>
-          )}
+            ) : (
+              <h2 className="text-[var(--color-foreground)] font-heading font-semibold text-lg">
+                Trợ lý Phong cách
+              </h2>
+            )}
+          </div>
         </div>
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto p-6 lg:p-8">
           {!selectedChat ? (
-            <ChatEmptyState onNewChat={handleNewChat} creating={creatingChat} />
+            <ChatEmptyState
+              selectedTopic={selectedTopic}
+              onTopicChange={setSelectedTopic}
+              onNewChat={handleNewChat}
+              creating={creatingChat}
+            />
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-              <div className="w-16 h-16 rounded-full bg-[var(--color-muted)] flex items-center justify-center text-[var(--color-muted-foreground)]">
-                <MessageSquare className="w-8 h-8 opacity-50" />
+            // Quick prompts when a chat exists but has no messages yet
+            <div className="flex flex-col items-center justify-center h-full gap-6 text-center px-4">
+              <div className="w-14 h-14 rounded-full bg-[var(--color-muted)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-muted-foreground)]">
+                <MessageSquare className="w-6 h-6 opacity-60" />
               </div>
-              <p className="text-[var(--color-muted-foreground)] text-sm max-w-sm">
-                Bắt đầu cuộc trò chuyện bằng cách gửi tin nhắn bên dưới.
-              </p>
+              <div>
+                <p className="text-sm font-medium text-[var(--color-foreground)] mb-1">
+                  Bắt đầu cuộc trò chuyện
+                </p>
+                <p className="text-xs text-[var(--color-muted-foreground)]">
+                  Chọn một câu hỏi gợi ý hoặc tự nhập bên dưới
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center max-w-lg">
+                {(QUICK_PROMPTS[selectedChat.topic as TopicKey] ?? QUICK_PROMPTS.general).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => handleSend(q)}
+                    className={cn(
+                      'text-sm px-4 py-2 rounded-[var(--radius-md)] border text-left',
+                      'border-[var(--color-border)] bg-[var(--color-background)]',
+                      'hover:bg-[var(--color-foreground)] hover:text-[var(--color-primary-foreground)] hover:border-[var(--color-foreground)]',
+                      'transition-all duration-200',
+                    )}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="max-w-3xl mx-auto flex flex-col gap-6 pb-4">
               {messages.map((msg, i) => (
-                <MessageBubble key={i} message={msg} />
+                <MessageBubble key={msg._id ?? i} message={msg} />
               ))}
               {sending && <TypingIndicator />}
               <div ref={messagesEndRef} />
@@ -306,7 +410,7 @@ export function ChatPage() {
 
         {/* Input area */}
         {selectedChat && (
-          <div className="p-4 lg:p-6 border-t border-[var(--color-border)] shrink-0 bg-[var(--color-neutral)]">
+          <div className="px-6 pb-5 pt-4 border-t border-[var(--color-border)] shrink-0 bg-[var(--color-background)]">
             <div className="max-w-3xl mx-auto">
               {sendError && (
                 <div className="flex items-center gap-2 mb-3 p-3 rounded-[var(--radius-md)] bg-red-50 text-[var(--color-error)] border border-[var(--color-error)]/20 text-sm">
@@ -314,15 +418,15 @@ export function ChatPage() {
                   {sendError}
                 </div>
               )}
-              
-              <div className="flex items-end gap-3 bg-[var(--color-background)] border border-[var(--color-border)] focus-within:border-[var(--color-accent)]/50 focus-within:ring-1 focus-within:ring-[var(--color-accent)]/50 rounded-[var(--radius-lg)] p-2 transition-all">
+
+              <div className="flex items-end gap-3 bg-[var(--color-neutral)] border border-[var(--color-border)] focus-within:border-[var(--color-foreground)] focus-within:ring-1 focus-within:ring-[var(--color-foreground)] rounded-[var(--radius-lg)] p-2 transition-all">
                 <textarea
                   id="chat-input-message"
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Nhắn tin với AI... (Enter để gửi, Shift+Enter xuống dòng)"
+                  placeholder="Nhập câu hỏi của bạn..."
                   rows={1}
                   disabled={sending}
                   className="flex-1 bg-transparent border-none text-[var(--color-foreground)] text-sm p-3 outline-none resize-none max-h-[200px] font-sans placeholder:text-[var(--color-muted-foreground)]"
@@ -334,24 +438,45 @@ export function ChatPage() {
                 />
                 <button
                   id="chat-btn-send"
-                  onClick={handleSend}
+                  onClick={() => handleSend()}
                   disabled={sending || !input.trim()}
-                  className="w-11 h-11 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)] flex items-center justify-center transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50 mb-0.5 mr-0.5"
+                  className="w-11 h-11 shrink-0 rounded-full bg-[var(--color-foreground)] text-[var(--color-primary-foreground)] flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 mb-0.5 mr-0.5"
                 >
-                  {sending ? (
-                    <MiniSpinner />
-                  ) : (
-                    <Send className="w-5 h-5 ml-[-2px] mb-[-2px]" />
-                  )}
+                  {sending ? <MiniSpinner /> : <Send className="w-4 h-4 ml-[-1px]" />}
                 </button>
               </div>
-              <p className="text-[11px] text-[var(--color-muted-foreground)] text-center mt-3">
-                AI có thể mắc sai sót. Luôn kiểm tra thông tin quan trọng.
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-[var(--color-muted-foreground)] text-center mt-3">
+                Trợ lý AI có thể mắc sai sót. Vui lòng kiểm tra thông tin quan trọng.
               </p>
             </div>
           </div>
         )}
       </div>
+
+      {/* ── Right: Inspiration Board ──────────────────────────────────────── */}
+      <aside className="hidden lg:flex flex-col w-[380px] xl:w-[440px] bg-[var(--color-neutral)] border-l border-[var(--color-border)] shrink-0">
+        <div className="h-[72px] px-6 border-b border-[var(--color-border)] flex items-center shrink-0">
+          <h3 className="font-heading font-semibold text-sm uppercase tracking-widest text-[var(--color-foreground)]">
+            Bảng cảm hứng
+          </h3>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-6 opacity-50">
+            <div className="grid grid-cols-2 gap-3 w-full max-w-xs">
+              <div className="aspect-[3/4] rounded-[var(--radius-lg)] bg-[var(--color-muted)] border border-[var(--color-border)]" />
+              <div className="aspect-[3/4] rounded-[var(--radius-lg)] bg-[var(--color-muted)] border border-[var(--color-border)] mt-8" />
+            </div>
+            <div>
+              <p className="font-heading font-semibold text-base text-[var(--color-foreground)]">
+                Tuyển chọn dành riêng cho bạn
+              </p>
+              <p className="text-xs text-[var(--color-muted-foreground)] mt-2 leading-relaxed">
+                Gợi ý trang phục và moodboard phong cách sẽ hiện ra tại đây.
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   )
 }
@@ -359,31 +484,41 @@ export function ChatPage() {
 // ── Sub-components ──────────────────────────────────────────────────────────
 
 function MessageBubble({ message }: { message: ChatMessage }) {
+  // Uses correct BE fields: sender + text
   const isUser = message.sender === 'USER'
   return (
-    <div className={cn("flex gap-4 items-start", isUser ? "flex-row-reverse" : "flex-row")}>
-      {/* Avatar */}
-      <div className={cn(
-        "w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1",
-        isUser ? "bg-[var(--color-muted)] text-[var(--color-foreground)]" : "bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
-      )}>
-        {isUser ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-      </div>
+    <div className={cn('flex gap-3 items-start w-full', isUser ? 'flex-row-reverse' : 'flex-row')}>
+      {/* AI avatar — simple geometric, no random icon */}
+      {!isUser && (
+        <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1 bg-[var(--color-foreground)] text-[var(--color-primary-foreground)] shadow-sm text-[10px] font-bold tracking-widest">
+          AI
+        </div>
+      )}
 
       {/* Bubble */}
       <div className={cn(
-        "max-w-[80%] rounded-2xl p-4",
-        isUser 
-          ? "bg-[var(--color-muted)] text-[var(--color-foreground)] rounded-tr-sm" 
-          : "bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/10 text-[var(--color-foreground)] rounded-tl-sm"
+        'max-w-[82%] px-4 py-3',
+        isUser
+          ? [
+              'bg-[var(--color-foreground)] text-[var(--color-primary-foreground)]',
+              'rounded-[16px_4px_16px_16px]',
+            ]
+          : [
+              'bg-[var(--color-muted)] text-[var(--color-foreground)]',
+              'border border-[var(--color-border)]',
+              'rounded-[4px_16px_16px_16px]',
+            ],
       )}>
-        <p className="text-[14px] leading-relaxed whitespace-pre-wrap break-words">
+        <div className={cn(
+          'text-[14px] leading-7 whitespace-pre-wrap break-words',
+          !isUser && 'font-serif',
+        )}>
           {message.text}
-        </p>
+        </div>
         {message.createdAt && (
           <p className={cn(
-            "text-[11px] mt-2",
-            isUser ? "text-[var(--color-muted-foreground)] text-right" : "text-[var(--color-muted-foreground)] text-left"
+            'text-[10px] uppercase tracking-widest mt-2 opacity-50',
+            isUser ? 'text-right' : 'text-left',
           )}>
             {new Date(message.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
           </p>
@@ -395,15 +530,15 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
 function TypingIndicator() {
   return (
-    <div className="flex gap-4 items-start">
-      <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1 bg-[var(--color-accent)]/10 text-[var(--color-accent)]">
-        <Sparkles className="w-4 h-4" />
+    <div className="flex gap-3 items-start w-full">
+      <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center mt-1 bg-[var(--color-foreground)] text-[var(--color-primary-foreground)] shadow-sm text-[10px] font-bold tracking-widest">
+        AI
       </div>
-      <div className="bg-[var(--color-accent)]/5 border border-[var(--color-accent)]/10 rounded-2xl rounded-tl-sm px-5 py-4 flex items-center gap-1.5">
+      <div className="bg-[var(--color-muted)] border border-[var(--color-border)] rounded-[4px_16px_16px_16px] px-4 py-4 flex items-center gap-1.5">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]"
+            className="w-1.5 h-1.5 rounded-full bg-[var(--color-foreground)]"
             style={{ animation: `dot-bounce 1.4s ${i * 0.2}s infinite ease-in-out` }}
           />
         ))}
@@ -418,62 +553,105 @@ function TypingIndicator() {
   )
 }
 
-function ChatEmptyState({ onNewChat, creating }: { onNewChat: () => void; creating: boolean }) {
+// ── Chat Empty State — Topic Selector ──────────────────────────────────────
+
+function ChatEmptyState({
+  selectedTopic,
+  onTopicChange,
+  onNewChat,
+  creating,
+}: {
+  selectedTopic: TopicKey
+  onTopicChange: (t: TopicKey) => void
+  onNewChat: (topic: TopicKey) => void
+  creating: boolean
+}) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-8 text-center px-6 max-w-2xl mx-auto">
-      <div className="w-20 h-20 rounded-[1.5rem] bg-[var(--color-accent)]/10 border border-[var(--color-accent)]/20 flex items-center justify-center text-[var(--color-accent)]">
-        <Sparkles className="w-10 h-10" />
+    <div className="flex flex-col items-center justify-center h-full gap-8 text-center px-6 max-w-xl mx-auto">
+      {/* Wordmark avatar — no random icons */}
+      <div className="w-16 h-16 rounded-[var(--radius-lg)] bg-[var(--color-foreground)] text-[var(--color-primary-foreground)] flex items-center justify-center">
+        <span className="font-heading font-black text-xs tracking-widest uppercase">AI</span>
       </div>
-      
+
       <div>
-        <h2 className="font-heading font-bold text-2xl text-[var(--color-foreground)] mb-3">
-          Chào mừng đến ALTERA AI Chat
+        <h2 className="font-heading font-bold text-2xl text-[var(--color-foreground)] mb-2">
+          Trợ lý Phong cách cá nhân
         </h2>
         <p className="text-[var(--color-muted-foreground)] text-sm max-w-md mx-auto leading-relaxed">
-          Trợ lý thời trang AI của bạn. Hỏi bất kỳ điều gì về phong cách, outfit, xu hướng thời trang và nhiều hơn nữa.
+          Phân tích phong cách, gợi ý trang phục và xu hướng mới nhất — tất cả trong một cuộc hội thoại.
         </p>
       </div>
-      
+
+      {/* Topic selector — professional, no emoji */}
+      <div className="w-full max-w-sm">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
+          Chọn chủ đề
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {TOPICS.map((topic) => {
+            const isActive = selectedTopic === topic.value
+            const { Icon } = topic
+            return (
+              <button
+                key={topic.value}
+                type="button"
+                onClick={() => onTopicChange(topic.value)}
+                className={cn(
+                  'text-left p-3 rounded-[var(--radius-md)] border transition-all duration-200',
+                  'flex flex-col gap-1',
+                  isActive
+                    ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-primary-foreground)]'
+                    : 'border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-foreground)] hover:border-[var(--color-foreground)]/40',
+                )}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="text-xs font-semibold leading-tight">{topic.label}</span>
+                </div>
+                <p className={cn(
+                  'text-[11px] leading-snug',
+                  isActive ? 'opacity-70' : 'text-[var(--color-muted-foreground)]',
+                )}>
+                  {topic.desc}
+                </p>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       <button
         id="chat-btn-empty-new"
-        onClick={onNewChat}
+        onClick={() => onNewChat(selectedTopic)}
         disabled={creating}
-        className="px-6 py-3 rounded-[var(--radius-lg)] bg-[var(--color-primary)] text-[var(--color-primary-foreground)] font-semibold text-sm flex items-center gap-2 transition-all hover:opacity-90 disabled:opacity-50 shadow-sm"
+        className={cn(
+          'px-8 py-3 rounded-[var(--radius-md)]',
+          'bg-[var(--color-foreground)] text-[var(--color-primary-foreground)]',
+          'font-semibold text-sm flex items-center gap-2',
+          'transition-all hover:opacity-85 active:scale-95',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+        )}
       >
         {creating ? <MiniSpinner /> : <Plus className="w-4 h-4" />}
-        Tạo cuộc trò chuyện mới
+        Bắt đầu hội thoại
       </button>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full mt-6">
-        {[
-          { icon: Sparkles, label: 'Gợi ý outfit' },
-          { icon: ShoppingBag, label: 'Tư vấn mua sắm' },
-          { icon: MessageSquare, label: 'Xu hướng thời trang' },
-        ].map((item) => (
-          <div
-            key={item.label}
-            className="p-5 rounded-[var(--radius-lg)] bg-[var(--color-neutral)] border border-[var(--color-border)] text-center flex flex-col items-center gap-3"
-          >
-            <div className="w-10 h-10 rounded-full bg-[var(--color-background)] flex items-center justify-center text-[var(--color-foreground)] shadow-sm">
-              <item.icon className="w-5 h-5" />
-            </div>
-            <p className="text-[var(--color-muted-foreground)] text-xs font-medium">{item.label}</p>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
 
+// ── MiniSpinner ───────────────────────────────────────────────────────────
+
 function MiniSpinner({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("w-4 h-4 animate-spin", className)}
+      className={cn('w-4 h-4 animate-spin', className)}
       viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
     >
       <path d="M12 2a10 10 0 0 1 10 10" />
     </svg>
   )
 }
-

@@ -29,10 +29,10 @@ interface NavItem {
 }
 
 const NAV_LINKS: NavItem[] = [
-  { label: 'Collection', href: '/products' },
-  { label: 'AI Stylist', href: '/outfit' },
-  { label: 'Design Studio', href: '/design' },
-  { label: 'Membership', href: '/membership' },
+  { label: 'Bộ sưu tập', href: '/products' },
+  { label: 'Trợ lý Phong cách', href: '/outfit' },
+  { label: 'Phòng thiết kế', href: '/design' },
+  { label: 'Thành viên', href: '/membership' },
   { label: 'Về ALTERA', href: '/about' },
 ]
 
@@ -163,10 +163,10 @@ export function Navbar() {
           ) : (
             <div className="hidden md:flex items-center gap-2 ml-3">
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/auth/login">Sign in</Link>
+                <Link to="/auth/login">Đăng nhập</Link>
               </Button>
               <Button variant="primary" size="sm" asChild>
-                <Link to="/auth/register">Get started</Link>
+                <Link to="/auth/register">Bắt đầu</Link>
               </Button>
             </div>
           )}
@@ -227,7 +227,7 @@ export function Navbar() {
                   className="text-sm font-medium"
                   onClick={() => setMobileOpen(false)}
                 >
-                  Try AI Stylist
+                  Trải nghiệm AI Stylist
                 </Link>
               </div>
 
@@ -262,7 +262,7 @@ export function Navbar() {
                     }
                   >
                     <Palette className="h-4 w-4" />
-                    Thiết kế của tôi
+                    Bộ sưu tập thiết kế
                   </NavLink>
                 </div>
               )}
@@ -286,16 +286,16 @@ export function Navbar() {
                       onClick={() => { handleLogout(); setMobileOpen(false) }}
                     >
                       <LogOut className="h-4 w-4 mr-2" />
-                      Sign out
+                      Đăng xuất
                     </Button>
                   </>
                 ) : (
                   <>
                     <Button variant="outline" size="md" asChild className="w-full">
-                      <Link to="/auth/login" onClick={() => setMobileOpen(false)}>Sign in</Link>
+                      <Link to="/auth/login" onClick={() => setMobileOpen(false)}>Đăng nhập</Link>
                     </Button>
                     <Button variant="primary" size="md" asChild className="w-full">
-                      <Link to="/auth/register" onClick={() => setMobileOpen(false)}>Get started</Link>
+                      <Link to="/auth/register" onClick={() => setMobileOpen(false)}>Bắt đầu</Link>
                     </Button>
                   </>
                 )}
