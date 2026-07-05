@@ -1,6 +1,9 @@
 {
   "name": "outfit-ai-backend",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=18"
+  },
   "description": "Backend for Outfit Ideas + Custom Shirt + AI Recommendation",
   "main": "src/server.js",
   "scripts": {

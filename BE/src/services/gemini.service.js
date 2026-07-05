@@ -3,8 +3,6 @@ const { GEMINI_API_KEY } = require('../config/env');
 const logger = require('../utils/logger');
 
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
-const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
-const GEMINI_IMAGE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
 
 let genAI = null;
 
@@ -153,91 +151,17 @@ const sendChatMessage = async (systemPrompt, messageHistory, userMessage, option
 };
 
 const buildGeminiImageRequest = (prompt) => ({
-  model: GEMINI_IMAGE_MODEL,
+  model: GEMINI_MODEL,
   input: [{ type: 'text', text: prompt }],
-  response_format: {
-    type: 'image',
-    mime_type: 'image/png',
-  },
 });
 
-const extractGeminiImageData = (payload) => {
-  const directImage = payload?.output_image || payload?.outputImage;
-  if (directImage?.data) {
-    return {
-      mimeType: directImage.mime_type || directImage.mimeType || 'image/png',
-      data: directImage.data,
-    };
-  }
+const extractGeminiImageData = () => null;
 
-  const blocks = payload?.output || payload?.content || payload?.response?.candidates?.[0]?.content?.parts || [];
-  const imageBlock = Array.isArray(blocks)
-    ? blocks.find((block) => block?.type === 'image' || block?.inlineData || block?.inline_data)
-    : null;
-
-  const inlineData = imageBlock?.inlineData || imageBlock?.inline_data || imageBlock;
-  if (inlineData?.data) {
-    return {
-      mimeType: inlineData.mime_type || inlineData.mimeType || 'image/png',
-      data: inlineData.data,
-    };
-  }
-
-  return null;
-};
-
-const generateImage = async (prompt) => {
-  if (!GEMINI_API_KEY) {
-    throw new AiServiceError('Gemini API unavailable', {
-      code: 'AI_SERVICE_UNAVAILABLE',
-      cause: new Error('GEMINI_API_KEY is not configured'),
-    });
-  }
-
-  try {
-    if (typeof fetch !== 'function') {
-      throw new AiServiceError('Global fetch is not available. Please run Node.js 18 or newer.', {
-        statusCode: 500,
-        code: 'AI_RUNTIME_UNSUPPORTED',
-      });
-    }
-
-    const response = await fetch(GEMINI_IMAGE_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': GEMINI_API_KEY,
-      },
-      body: JSON.stringify(buildGeminiImageRequest(prompt)),
-    });
-
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const message = payload?.error?.message || `Gemini image request failed with status ${response.status}`;
-      throw new AiServiceError(message, { statusCode: 503, code: 'AI_SERVICE_UNAVAILABLE' });
-    }
-
-    const imageData = extractGeminiImageData(payload);
-    if (!imageData?.data) {
-      throw new AiServiceError('Gemini returned no image data', {
-        statusCode: 502,
-        code: 'AI_INVALID_RESPONSE',
-      });
-    }
-
-    return imageData;
-  } catch (error) {
-    if (error instanceof AiServiceError) {
-      logger.error('Gemini image error [%s]: %s', error.code, error.message);
-      if (error.cause) logger.error(error.cause);
-      throw error;
-    }
-
-    logger.error('Gemini image request failed: %s', error?.message || 'Unknown error');
-    logger.error(error);
-    throw new AiServiceError('Gemini API unavailable', { cause: error });
-  }
+const generateImage = async () => {
+  throw new AiServiceError('Image generation is disabled for this backend. Gemini is configured for text and chat responses only.', {
+    statusCode: 501,
+    code: 'AI_IMAGE_GENERATION_UNSUPPORTED',
+  });
 };
 
 module.exports = {
