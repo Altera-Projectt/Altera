@@ -41,8 +41,6 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'products/:id', element: <ProductDetailPage /> },
-      { path: 'outfit', element: <OutfitPage /> },
-      { path: 'design', element: <DesignStudioPage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'membership', element: <MembershipPage /> },
       {
@@ -57,6 +55,8 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: 'orders', element: <OrdersPage /> },
+          { path: 'outfit', element: <OutfitPage /> },
+          { path: 'design', element: <DesignStudioPage /> },
           { path: 'orders/success/:id', element: <OrderSuccessPage /> },
           { path: 'profile', element: <ProfilePage /> },
           { path: 'cart', element: <CartPage /> },

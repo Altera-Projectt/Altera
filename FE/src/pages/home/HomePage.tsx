@@ -20,6 +20,8 @@ import { ProductService } from '@/services/product.api'
 import type { Product } from '@/types/product.types'
 import { cn } from '@/utils/cn'
 
+import { useAuth } from '@/hooks/useAuth'
+
 // ── Quick-nav cards for newly added pages ─────────────────────────────────
 
 const NEW_PAGES = [
@@ -60,6 +62,7 @@ const NEW_PAGES = [
 export function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const { isAuthenticated } = useAuth()
 
   useEffect(() => {
     async function fetchFeaturedProducts() {
@@ -127,11 +130,19 @@ export function HomePage() {
             <Button asChild variant="secondary" size="lg" className="bg-white text-black hover:bg-zinc-200 uppercase font-semibold tracking-wider px-10">
               <Link to="/products">Shop Catalog</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black uppercase font-semibold tracking-wider px-10">
-              <Link to="/design" className="flex items-center gap-2">
-                3D Studio <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            {isAuthenticated ? (
+              <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black uppercase font-semibold tracking-wider px-10">
+                <Link to="/design" className="flex items-center gap-2">
+                  3D Studio <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black uppercase font-semibold tracking-wider px-10">
+                <Link to="/auth/login" state={{ from: { pathname: '/design' } }} className="flex items-center gap-2">
+                  Sign in to 3D Studio <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
           </motion.div>
         </div>
       </section>
@@ -248,16 +259,26 @@ export function HomePage() {
                 Unsure how to match colors or layers? Chat with our AI Stylist. It analyzes your aesthetic preference, weather conditions, and body fit to generate custom lookbook recommendations that coordinate seamlessly.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button asChild variant="accent" className="uppercase font-semibold tracking-wider">
-                  <Link to="/outfit" className="flex items-center gap-2">
-                    Try AI Stylist <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 uppercase font-semibold tracking-wider">
-                  <Link to="/chat" className="flex items-center gap-2">
-                    AI Chat
-                  </Link>
-                </Button>
+                {isAuthenticated ? (
+                  <>
+                    <Button asChild variant="accent" className="uppercase font-semibold tracking-wider">
+                      <Link to="/outfit" className="flex items-center gap-2">
+                        Try AI Stylist <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button asChild variant="ghost" className="text-white/70 hover:text-white hover:bg-white/10 uppercase font-semibold tracking-wider">
+                      <Link to="/chat" className="flex items-center gap-2">
+                        AI Chat
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <Button asChild variant="accent" className="uppercase font-semibold tracking-wider">
+                    <Link to="/auth/login" state={{ from: { pathname: '/outfit' } }} className="flex items-center gap-2">
+                      Sign in for AI Stylist <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -279,16 +300,26 @@ export function HomePage() {
                 Take complete creative control. Upload your own PNG/SVG graphic artworks, select premium base fabrics, apply dynamic patterns, and preview your custom streetwear apparel in full 3D.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <Button asChild variant="primary" className="uppercase font-semibold tracking-wider">
-                  <Link to="/design" className="flex items-center gap-2">
-                    Launch 3D Studio <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
-                  <Link to="/designs" className="flex items-center gap-2">
-                    <Palette className="h-4 w-4" /> My Designs
-                  </Link>
-                </Button>
+                {isAuthenticated ? (
+                  <>
+                    <Button asChild variant="primary" className="uppercase font-semibold tracking-wider">
+                      <Link to="/design" className="flex items-center gap-2">
+                        Launch 3D Studio <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="uppercase font-semibold tracking-wider">
+                      <Link to="/designs" className="flex items-center gap-2">
+                        <Palette className="h-4 w-4" /> My Designs
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <Button asChild variant="primary" className="uppercase font-semibold tracking-wider">
+                    <Link to="/auth/login" state={{ from: { pathname: '/design' } }} className="flex items-center gap-2">
+                      Sign in to Design <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                )}
               </div>
             </div>
             <div className="aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-muted)]">
