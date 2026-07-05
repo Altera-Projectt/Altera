@@ -2,15 +2,16 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { GEMINI_API_KEY } = require('../config/env');
 const logger = require('../utils/logger');
 
-const SUPPORTED_GEMINI_MODELS = ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-exp', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+const SUPPORTED_GEMINI_MODELS = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-exp', 'gemini-1.5-pro'];
 const GEMINI_MODEL = (() => {
   const configuredModel = process.env.GEMINI_MODEL?.trim();
   if (configuredModel && SUPPORTED_GEMINI_MODELS.includes(configuredModel)) {
     return configuredModel;
   }
-  return 'gemini-2.0-flash';
+  return 'gemini-1.5-flash';
 })();
 const GEMINI_MODEL_FALLBACKS = SUPPORTED_GEMINI_MODELS;
+const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
 
 let genAI = null;
 
@@ -200,11 +201,23 @@ const sendChatMessage = async (systemPrompt, messageHistory, userMessage, option
 };
 
 const buildGeminiImageRequest = (prompt) => ({
-  model: GEMINI_MODEL,
+  model: GEMINI_IMAGE_MODEL,
   input: [{ type: 'text', text: prompt }],
+  response_format: {
+    type: 'image',
+    mime_type: 'image/png',
+  },
 });
 
-const extractGeminiImageData = () => null;
+const extractGeminiImageData = (response) => {
+  const image = response?.output_image;
+  if (!image?.data) return null;
+
+  return {
+    mimeType: image.mime_type || 'image/png',
+    data: image.data,
+  };
+};
 
 const generateImage = async () => {
   throw new AiServiceError('Image generation is disabled for this backend. Gemini is configured for text and chat responses only.', {
