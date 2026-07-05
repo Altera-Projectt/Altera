@@ -1,5 +1,5 @@
 const OutfitRecommendation = require('../models/OutfitRecommendation');
-const geminiService = require('./gemini.service');
+const cerebrasService = require('./cerebras.service');
 const productService = require('./product.service');
 
 const formatCurrency = (price) => {
@@ -44,7 +44,7 @@ Trả về JSON:
   "keyPieces": ["3 món đồ cơ bản nên có trong tủ đồ theo style này"]
 }`;
 
-  const result = await geminiService.generateJson(prompt, { maxOutputTokens: 400 });
+  const result = await cerebrasService.generateJson(prompt, { maxOutputTokens: 400 });
   return {
     style: result.style || 'Minimalist',
     reason: result.reason || 'Phong cach nay phu hop voi ban.',
@@ -124,7 +124,7 @@ Trả về JSON đầy đủ:
   ]
 }`;
 
-  const aiResult = await geminiService.generateJson(prompt, { maxOutputTokens: 1200 });
+  const aiResult = await cerebrasService.generateJson(prompt, { maxOutputTokens: 1200 });
 
   return {
     style: aiResult.style || resolvedStyle,
