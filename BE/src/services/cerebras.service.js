@@ -67,6 +67,8 @@ const runWithModelFallback = async (requestFn, preferredModel) => {
 };
 
 const extractJson = (text) => {
+  logger.info('[Cerebras Raw Response]: %s', JSON.stringify(text));
+
   if (!text) {
     throw new AiServiceError('Cerebras returned an empty response', {
       statusCode: 502,
@@ -128,6 +130,7 @@ const extractJson = (text) => {
   }
 
   if (!jsonBlocks.length) {
+    logger.error('[Cerebras] Could not find JSON in response: %s', stripped);
     throw new AiServiceError('Cerebras returned an invalid JSON response', {
       statusCode: 502,
       code: 'AI_INVALID_RESPONSE',
@@ -139,6 +142,7 @@ const extractJson = (text) => {
     try {
       return JSON.parse(block);
     } catch (error) {
+      logger.error('[Cerebras] JSON parse failed on: %s', block);
       lastError = error;
     }
   }
