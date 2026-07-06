@@ -67,23 +67,87 @@ const runWithModelFallback = async (requestFn, preferredModel) => {
 };
 
 const extractJson = (text) => {
-  const jsonMatch = text?.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+  if (!text) {
+    throw new AiServiceError('Cerebras returned an empty response', {
+      statusCode: 502,
+      code: 'AI_INVALID_RESPONSE',
+    });
+  }
+
+  const trimmed = text.trim();
+
+  try {
+    return JSON.parse(trimmed);
+  } catch (_) {
+    // Fall through and try to extract a JSON object from explanatory text.
+  }
+
+  const stripped = trimmed
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '');
+
+  const jsonBlocks = [];
+  let startIndex = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < stripped.length; index += 1) {
+    const char = stripped[index];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (char === '{') {
+      if (depth === 0) startIndex = index;
+      depth += 1;
+      continue;
+    }
+
+    if (char === '}' && depth > 0) {
+      depth -= 1;
+      if (depth === 0 && startIndex !== -1) {
+        jsonBlocks.push(stripped.slice(startIndex, index + 1));
+        startIndex = -1;
+      }
+    }
+  }
+
+  if (!jsonBlocks.length) {
     throw new AiServiceError('Cerebras returned an invalid JSON response', {
       statusCode: 502,
       code: 'AI_INVALID_RESPONSE',
     });
   }
 
-  try {
-    return JSON.parse(jsonMatch[0]);
-  } catch (error) {
-    throw new AiServiceError('Cerebras returned malformed JSON', {
-      statusCode: 502,
-      code: 'AI_INVALID_RESPONSE',
-      cause: error,
-    });
+  let lastError;
+  for (const block of jsonBlocks) {
+    try {
+      return JSON.parse(block);
+    } catch (error) {
+      lastError = error;
+    }
   }
+
+  throw new AiServiceError('Cerebras returned malformed JSON', {
+    statusCode: 502,
+    code: 'AI_INVALID_RESPONSE',
+    cause: lastError,
+  });
 };
 
 const normalizeContentPart = (part) => {
