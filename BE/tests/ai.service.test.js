@@ -2,8 +2,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
   buildCatalogPromptSection,
-  buildGeminiImageRequest,
-  extractGeminiImageData,
+  buildImageRequest,
+  extractImageData,
   normalizeOutfitHistoryEntry,
 } = require('../src/services/ai.service');
 
@@ -32,17 +32,17 @@ test('normalizeOutfitHistoryEntry exposes suggestion for FE compatibility', () =
   assert.equal(entry.products.length, 1);
 });
 
-test('buildGeminiImageRequest targets Gemini image generation', () => {
-  const request = buildGeminiImageRequest('floral shirt print');
+test('buildImageRequest targets Cerebras image generation', () => {
+  const request = buildImageRequest('floral shirt print');
 
-  assert.equal(request.model, process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image');
+  assert.equal(request.model, process.env.CEREBRAS_IMAGE_MODEL || 'cerebras-image-1');
   assert.deepEqual(request.input, [{ type: 'text', text: 'floral shirt print' }]);
   assert.equal(request.response_format.type, 'image');
   assert.equal(request.response_format.mime_type, 'image/png');
 });
 
-test('extractGeminiImageData reads image output payloads', () => {
-  const image = extractGeminiImageData({
+test('extractImageData reads image output payloads', () => {
+  const image = extractImageData({
     output_image: {
       mime_type: 'image/png',
       data: 'abc123',

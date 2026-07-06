@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const cloudinaryModulePath = '../src/utils/cloudinary';
 const designAiServicePath = '../src/services/design-ai.service';
 
-test('generateDesign uses Pollinations image generation instead of Gemini', async () => {
+test('generateDesign uses Pollinations image generation instead of legacy image service', async () => {
   delete require.cache[require.resolve(cloudinaryModulePath)];
   delete require.cache[require.resolve(designAiServicePath)];
 

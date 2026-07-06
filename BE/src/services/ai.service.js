@@ -40,7 +40,7 @@ module.exports = {
   generateOutfitRecommendation,
   generatePrintImage,
   buildCatalogPromptSection: stylistService.buildCatalogPromptSection,
-  buildGeminiImageRequest: cerebrasService.buildGeminiImageRequest,
-  extractGeminiImageData: cerebrasService.extractGeminiImageData,
+  buildImageRequest: cerebrasService.buildImageRequest,
+  extractImageData: cerebrasService.extractImageData,
   normalizeOutfitHistoryEntry: stylistService.normalizeOutfitHistoryEntry,
 };
