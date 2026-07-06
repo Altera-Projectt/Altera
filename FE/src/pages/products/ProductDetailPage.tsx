@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ProductService } from '@/services/product.api'
 import type { Product } from '@/types/product.types'
 import { Button } from '@/components/ui/Button'
-import { formatPrice } from '@/utils/format'
+import { formatVND } from '@/utils/format'
 import { ArrowLeft, ShoppingBag, Heart } from 'lucide-react'
 import { CartService } from '@/services/cart.api'
 import { WishlistService } from '@/services/wishlist.api'
@@ -143,7 +143,7 @@ export function ProductDetailPage() {
           </h1>
           
           <div className="mt-4 text-2xl font-medium">
-            {formatPrice(product.price)}
+            {formatVND(product.price)}
           </div>
 
           <div className="mt-8">

@@ -1,26 +1,56 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   StylistService,
   type QuizPayload,
   type QuizResult,
   type RecommendResult,
+  type OutfitHistoryItem,
 } from '@/services/outfit.api'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Card, CardContent } from '@/components/ui/Card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Input } from '@/components/ui/Input'
+import { ColorSwatch } from '@/components/ui/ColorSwatch'
 import { cn } from '@/utils/cn'
+import { formatVND } from '@/utils/format'
 import {
   ShoppingBag, RotateCcw, ChevronRight, ChevronLeft,
-  Shirt, Footprints, Watch, Circle,
+  Shirt, Footprints, Watch, Circle, Clock, Sparkles,
 } from 'lucide-react'
-import { formatPrice } from '@/utils/format'
 
 // ── Types & constants ──────────────────────────────────────────────────────
 
 type Step = 'quiz' | 'confirm' | 'result'
+
+
+// ── Unsplash outfit image helper ──────────────────────────────────────────
+
+const UNSPLASH_STYLE_KEYWORDS: Record<string, string> = {
+  'Streetwear':    'streetwear outfit fashion street style',
+  'Minimalist':    'minimalist fashion outfit clean aesthetic',
+  'Smart Casual':  'smart casual outfit men women fashion',
+  'Vintage':       'vintage retro fashion outfit style',
+  'Sporty':        'sporty athletic fashion outfit style',
+  'Korean Casual': 'korean fashion casual outfit kfashion',
+  'Y2K':           'y2k fashion outfit 2000s aesthetic',
+  'Elegant':       'elegant fashion outfit formal style',
+  'Workwear':      'workwear office outfit business fashion',
+}
+
+const fetchOutfitImage = async (style: string): Promise<string | null> => {
+  try {
+    const keyword = encodeURIComponent(
+      UNSPLASH_STYLE_KEYWORDS[style] ?? `${style} fashion outfit`
+    )
+    // Dùng Unsplash Source API (không cần key, free)
+    const url = `https://source.unsplash.com/featured/600x800/?${keyword}`
+    return url
+  } catch {
+    return null
+  }
+}
 
 const STEPS: Step[] = ['quiz', 'confirm', 'result']
 
@@ -49,6 +79,9 @@ const SEASON_OPTIONS = [
 export function OutfitPage() {
   const navigate = useNavigate()
 
+  // ── Tab ─────────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<'quiz' | 'history'>('quiz')
+
   // ── Step state ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<Step>('quiz')
 
@@ -61,8 +94,13 @@ export function OutfitPage() {
   })
 
   // ── Results ─────────────────────────────────────────────────────────────
-  const [quizResult, setQuizResult]         = useState<QuizResult | null>(null)
+  const [quizResult, setQuizResult]           = useState<QuizResult | null>(null)
   const [recommendResult, setRecommendResult] = useState<RecommendResult | null>(null)
+  const [outfitImage, setOutfitImage]         = useState<string | null>(null)
+
+  // ── History ─────────────────────────────────────────────────────────────
+  const [history, setHistory]       = useState<OutfitHistoryItem[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   // ── Extra form (confirm step) ───────────────────────────────────────────
   const [gender, setGender]   = useState('unisex')
@@ -73,10 +111,40 @@ export function OutfitPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
 
+  // ── Cooldown timers ─────────────────────────────────────────────────────
+  const [quizCooldown, setQuizCooldown] = useState(0)
+  const [recommendCooldown, setRecommendCooldown] = useState(0)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setQuizCooldown((c) => Math.max(0, c - 1))
+      setRecommendCooldown((c) => Math.max(0, c - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   // ── Handlers ─────────────────────────────────────────────────────────────
+
+  const loadHistory = async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await StylistService.getHistory(1, 20)
+      setHistory(res.data.data.history)
+    } catch {
+      /* silent fail */
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'history') loadHistory()
+  }, [activeTab])
 
   const handleQuizSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (quizCooldown > 0) return
+
     const hasAny = Object.values(quizData).some((v) => v?.trim())
     if (!hasAny) {
       setError('Vui lòng trả lời ít nhất 1 câu hỏi.')
@@ -94,23 +162,29 @@ export function OutfitPage() {
       else setError('Đã có lỗi xảy ra, vui lòng thử lại.')
     } finally {
       setLoading(false)
+      setQuizCooldown(60) // 1 phút cooldown
     }
   }
 
   const handleRecommend = async () => {
-    if (!quizResult) return
+    if (!quizResult || recommendCooldown > 0) return
     try {
       setLoading(true)
       setError(null)
-      const res = await StylistService.recommend({
-        style: quizResult.style,
-        quizResult,
-        gender,
-        season,
-        budget,
-        occasion: quizData.occasion,
-      })
+      // Fetch outfit image in parallel
+      const [res, img] = await Promise.all([
+        StylistService.recommend({
+          style: quizResult.style,
+          quizResult,
+          gender,
+          season,
+          budget,
+          occasion: quizData.occasion,
+        }),
+        fetchOutfitImage(quizResult.style),
+      ])
       setRecommendResult(res.data.data)
+      setOutfitImage(img)
       setStep('result')
     } catch (err: any) {
       const status = err.response?.status
@@ -119,6 +193,7 @@ export function OutfitPage() {
       else setError('Đã có lỗi xảy ra, vui lòng thử lại.')
     } finally {
       setLoading(false)
+      setRecommendCooldown(60) // 1 phút cooldown
     }
   }
 
@@ -127,6 +202,7 @@ export function OutfitPage() {
     setQuizData({ favoriteItem: '', favoriteColor: '', personality: '', occasion: '' })
     setQuizResult(null)
     setRecommendResult(null)
+    setOutfitImage(null)
     setError(null)
     setGender('unisex')
     setSeason('summer')
@@ -136,7 +212,7 @@ export function OutfitPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-      {/* ── Header + Progress ── */}
+      {/* ── Header + Tab switcher ── */}
       <div className="mx-auto max-w-2xl mb-10">
         <h1 className="font-heading text-4xl font-normal uppercase tracking-widest">
           AI Stylist
@@ -145,42 +221,113 @@ export function OutfitPage() {
           Trả lời 4 câu hỏi ngắn — AI sẽ tìm ra phong cách phù hợp với bạn.
         </p>
 
-        {/* Progress bar */}
-        <div className="mt-6 flex gap-1.5">
-          {STEPS.map((s, i) => {
-            const currentIndex = STEPS.indexOf(step)
-            const isActive = i <= currentIndex
-            return (
-              <div key={s} className="flex-1">
-                <div className={cn(
-                  'h-0.5 rounded-full transition-all duration-500',
-                  isActive ? 'bg-[var(--color-foreground)]' : 'bg-[var(--color-border)]',
-                )} />
-                <p className={cn(
-                  'text-[10px] uppercase tracking-widest mt-1.5 transition-colors duration-300',
-                  isActive
-                    ? 'text-[var(--color-foreground)] font-semibold'
-                    : 'text-[var(--color-muted-foreground)]',
-                )}>
-                  {STEP_LABELS[s]}
-                </p>
-              </div>
-            )
-          })}
+        {/* Tab switcher */}
+        <div className="mt-6 flex gap-0 border-b border-[var(--color-border)]">
+          {(['quiz', 'history'] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => { setActiveTab(tab); if (tab === 'quiz') handleReset() }}
+              className={`px-5 py-2.5 text-xs font-semibold uppercase tracking-widest border-b-2 transition-all duration-200 flex items-center gap-1.5 ${
+                activeTab === tab
+                  ? 'border-[var(--color-foreground)] text-[var(--color-foreground)]'
+                  : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
+              }`}
+            >
+              {tab === 'quiz' ? <Sparkles className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+              {tab === 'quiz' ? 'Quiz phong cách' : 'Lịch sử'}
+            </button>
+          ))}
         </div>
+
+        {/* Progress bar — only on quiz tab */}
+        {activeTab === 'quiz' && (
+          <div className="mt-6 flex gap-1.5">
+            {STEPS.map((s, i) => {
+              const currentIndex = STEPS.indexOf(step)
+              const isActive = i <= currentIndex
+              return (
+                <div key={s} className="flex-1">
+                  <div className={`h-0.5 rounded-full transition-all duration-500 ${
+                    isActive ? 'bg-[var(--color-foreground)]' : 'bg-[var(--color-border)]'
+                  }`} />
+                  <p className={`text-[10px] uppercase tracking-widest mt-1.5 transition-colors duration-300 ${
+                    isActive
+                      ? 'text-[var(--color-foreground)] font-semibold'
+                      : 'text-[var(--color-muted-foreground)]'
+                  }`}>
+                    {STEP_LABELS[s]}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Error banner ── */}
-      {error && (
+      {error && activeTab === 'quiz' && (
         <div className="mx-auto max-w-2xl mb-6 p-3 rounded-[var(--radius-md)] border border-[var(--color-error)]/30 bg-red-50 text-[var(--color-error)] text-sm">
           {error}
         </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* TAB: LỊCH SỬ                                                      */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'history' && (
+        <div className="mx-auto max-w-2xl">
+          {historyLoading ? (
+            <div className="py-16 text-center text-sm text-[var(--color-muted-foreground)] tracking-wide">
+              Đang tải lịch sử...
+            </div>
+          ) : history.length === 0 ? (
+            <EmptyState
+              icon={Clock}
+              title="Chưa có lịch sử"
+              description="Bạn chưa lưu gợi ý phong cách nào. Thử làm quiz để nhận gợi ý!"
+              actionLabel="Làm quiz ngay"
+              onAction={() => setActiveTab('quiz')}
+            />
+          ) : (
+            <div className="space-y-4">
+              {history.map((item) => (
+                <Card key={item._id} className="p-5 hover:border-[var(--color-foreground)] transition-colors duration-300">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1">Phong cách</p>
+                      <h3 className="font-heading text-lg font-semibold uppercase tracking-wide">{item.style}</h3>
+                    </div>
+                    <span className="text-xs text-[var(--color-muted-foreground)]">
+                      {new Date(item.createdAt).toLocaleDateString('vi-VN')}
+                    </span>
+                  </div>
+                  {item.aiSuggestion && (
+                    <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed line-clamp-3 mb-3">
+                      {item.aiSuggestion}
+                    </p>
+                  )}
+                  {item.tips?.length > 0 && (
+                    <ul className="space-y-1">
+                      {item.tips.slice(0, 2).map((tip, i) => (
+                        <li key={i} className="text-xs text-[var(--color-muted-foreground)] flex items-start gap-2">
+                          <span className="w-1 h-1 rounded-full bg-[var(--color-muted-foreground)] shrink-0 mt-1.5" />
+                          {tip}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* BƯỚC 1 — QUIZ                                                     */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {step === 'quiz' && (
+      {activeTab === 'quiz' && step === 'quiz' && (
         <div className="mx-auto max-w-xl">
           <form onSubmit={handleQuizSubmit} className="space-y-8">
 
@@ -254,9 +401,10 @@ export function OutfitPage() {
               size="lg"
               className="w-full uppercase tracking-widest font-semibold h-14"
               loading={loading}
+              disabled={loading || quizCooldown > 0}
             >
               {!loading && <ChevronRight className="w-4 h-4 mr-1" />}
-              Phân tích phong cách
+              {quizCooldown > 0 ? `Vui lòng đợi (${quizCooldown}s)` : 'Phân tích phong cách'}
             </Button>
           </form>
         </div>
@@ -265,7 +413,7 @@ export function OutfitPage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* BƯỚC 2 — CONFIRM                                                  */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {step === 'confirm' && quizResult && (
+      {activeTab === 'quiz' && step === 'confirm' && quizResult && (
         <div className="mx-auto max-w-2xl space-y-6">
 
           {/* Style result card */}
@@ -291,19 +439,10 @@ export function OutfitPage() {
             {/* Color palette */}
             {quizResult.colorPalette?.length > 0 && (
               <div className="mb-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
                   Bảng màu gợi ý
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {quizResult.colorPalette.map((c) => (
-                    <span
-                      key={c}
-                      className="px-3 py-1 rounded-full text-xs border border-[var(--color-border)] bg-[var(--color-muted)] text-[var(--color-foreground)] font-medium"
-                    >
-                      {c}
-                    </span>
-                  ))}
-                </div>
+                <ColorSwatch colors={quizResult.colorPalette} variant="default" />
               </div>
             )}
 
@@ -327,14 +466,10 @@ export function OutfitPage() {
             {/* Avoid colors */}
             {quizResult.avoidColors?.length > 0 && (
               <div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
                   Màu nên tránh
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {quizResult.avoidColors.map((c) => (
-                    <span key={c} className="text-xs text-[var(--color-error)] opacity-80">{c}</span>
-                  ))}
-                </div>
+                <ColorSwatch colors={quizResult.avoidColors} variant="avoid" />
               </div>
             )}
           </Card>
@@ -403,6 +538,9 @@ export function OutfitPage() {
                     'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
                   )}
                 />
+                <p className="text-xs text-[var(--color-muted-foreground)] mt-1.5">
+                  Ngân sách hiện tại: <span className="font-medium text-[var(--color-foreground)]">{formatVND(budget)}</span>
+                </p>
               </div>
             </div>
           </Card>
@@ -425,9 +563,10 @@ export function OutfitPage() {
               className="flex-1 uppercase tracking-widest font-semibold h-14 gap-2"
               loading={loading}
               onClick={handleRecommend}
+              disabled={loading || recommendCooldown > 0}
             >
               {!loading && <ChevronRight className="w-4 h-4" />}
-              Xem gợi ý outfit
+              {recommendCooldown > 0 ? `Vui lòng đợi (${recommendCooldown}s)` : 'Xem gợi ý outfit'}
             </Button>
           </div>
         </div>
@@ -436,8 +575,33 @@ export function OutfitPage() {
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* BƯỚC 3 — KẾT QUẢ                                                 */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {step === 'result' && recommendResult && (
+      {activeTab === 'quiz' && step === 'result' && recommendResult && (
         <div className="mx-auto max-w-3xl space-y-6">
+
+          {/* Outfit image from Unsplash */}
+          {outfitImage && (
+            <div className="w-full aspect-[16/7] overflow-hidden rounded-[var(--radius-lg)] relative">
+              <img
+                src={outfitImage}
+                alt={`${recommendResult.style} outfit inspiration`}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.parentElement!.style.display = 'none' }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+              <div className="absolute bottom-4 left-5">
+                <p className="text-white/60 text-[10px] uppercase tracking-widest">Inspiration</p>
+                <p className="text-white font-heading text-xl uppercase tracking-wide">{recommendResult.style}</p>
+              </div>
+              <a
+                href="https://unsplash.com"
+                target="_blank"
+                rel="noreferrer"
+                className="absolute bottom-3 right-4 text-white/40 text-[9px] hover:text-white/70 transition-colors"
+              >
+                Photo: Unsplash
+              </a>
+            </div>
+          )}
 
           {/* Card 1 — Tổng quan */}
           <Card className="p-6">
@@ -491,32 +655,32 @@ export function OutfitPage() {
           {/* Card 3 — Hướng dẫn màu sắc */}
           {recommendResult.colorGuide && (
             <Card className="p-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-5">
                 Hướng dẫn màu sắc
               </p>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                 {[
                   { label: 'Màu chính',     value: recommendResult.colorGuide.main },
                   { label: 'Màu phụ',       value: recommendResult.colorGuide.secondary },
                   { label: 'Màu điểm nhấn', value: recommendResult.colorGuide.accent },
                 ].filter((r) => r.value).map(({ label, value }) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <span className="text-xs text-[var(--color-muted-foreground)]">{label}</span>
-                    <Badge variant="secondary" className="text-xs">{value}</Badge>
+                  <div key={label}>
+                    <p className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2 font-semibold">{label}</p>
+                    <ColorSwatch colors={[value]} variant="default" size="sm" />
                   </div>
                 ))}
                 {recommendResult.colorGuide.avoid && (
-                  <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
-                    <span className="text-xs text-[var(--color-muted-foreground)]">Màu nên tránh</span>
-                    <span className="text-xs text-[var(--color-error)]">{recommendResult.colorGuide.avoid}</span>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2 font-semibold">Tránh dùng</p>
+                    <ColorSwatch colors={[recommendResult.colorGuide.avoid]} variant="avoid" size="sm" />
                   </div>
                 )}
-                {recommendResult.colorGuide.example && (
-                  <p className="text-xs text-[var(--color-muted-foreground)] italic pt-2">
-                    {recommendResult.colorGuide.example}
-                  </p>
-                )}
               </div>
+              {recommendResult.colorGuide.example && (
+                <p className="text-xs text-[var(--color-muted-foreground)] italic border-t border-[var(--color-border)] pt-3">
+                  {recommendResult.colorGuide.example}
+                </p>
+              )}
             </Card>
           )}
 
@@ -657,7 +821,7 @@ function RecommendedProductCard({
         </p>
         {product.price != null && (
           <p className="text-sm font-semibold text-[var(--color-foreground)]">
-            {formatPrice(product.price)}
+            {formatVND(product.price)}
           </p>
         )}
         {reason && (

@@ -25,6 +25,36 @@ export function formatPrice(amount: number, currency = 'VND'): string {
 }
 
 /**
+ * Alias of formatPrice for VND — for consistency across the project.
+ * @example formatVND(299000) → "299.000 ₫"
+ */
+export const formatVND = (amount: number | string | undefined | null): string => {
+  const num = Number(amount)
+  if (isNaN(num)) return '0 ₫'
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num)
+}
+
+/**
+ * Short format for large VND amounts.
+ * @example formatVNDShort(299000) → "299k ₫"
+ * @example formatVNDShort(1200000) → "1.2tr ₫"
+ */
+export const formatVNDShort = (amount: number): string => {
+  if (amount >= 1_000_000) {
+    return `${(amount / 1_000_000).toFixed(amount % 1_000_000 === 0 ? 0 : 1)}tr ₫`
+  }
+  if (amount >= 1_000) {
+    return `${(amount / 1_000).toFixed(0)}k ₫`
+  }
+  return formatVND(amount)
+}
+
+/**
  * Format a discount percentage.
  * @example formatDiscount(20) → "-20%"
  */
