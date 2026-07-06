@@ -32,6 +32,9 @@ const isModelUnavailableError = (error) => {
   return /404|not found|unsupported|does not exist|invalid model/i.test(message);
 };
 
+const isRetryableModelResponseError = (error) => error instanceof AiServiceError
+  && ['AI_EMPTY_RESPONSE', 'AI_INVALID_RESPONSE'].includes(error.code);
+
 const getModelCandidates = (preferredModel) => {
   const candidates = [];
   if (preferredModel) candidates.push(preferredModel);
@@ -51,7 +54,8 @@ const runWithModelFallback = async (requestFn, preferredModel) => {
       return await requestFn(model);
     } catch (error) {
       lastError = error;
-      if (!isModelUnavailableError(error) || index === candidates.length - 1) {
+      const shouldTryNextModel = isModelUnavailableError(error) || isRetryableModelResponseError(error);
+      if (!shouldTryNextModel || index === candidates.length - 1) {
         throw error;
       }
 
@@ -80,6 +84,32 @@ const extractJson = (text) => {
       cause: error,
     });
   }
+};
+
+const normalizeContentPart = (part) => {
+  if (typeof part === 'string') return part;
+  if (!part || typeof part !== 'object') return '';
+
+  if (typeof part.text === 'string') return part.text;
+  if (typeof part.content === 'string') return part.content;
+  if (typeof part.value === 'string') return part.value;
+
+  return '';
+};
+
+const extractResponseText = (data) => {
+  const choice = data?.choices?.[0];
+  const content = choice?.message?.content ?? choice?.text ?? data?.output_text;
+
+  if (Array.isArray(content)) {
+    return content.map(normalizeContentPart).join('').trim();
+  }
+
+  if (typeof content === 'string') {
+    return content.trim();
+  }
+
+  return '';
 };
 
 const requestChatCompletion = async ({ model, messages, maxOutputTokens = 800, stream = false }) => {
@@ -112,9 +142,11 @@ const requestChatCompletion = async ({ model, messages, maxOutputTokens = 800, s
   }
 
   const data = await response.json();
-  const text = data?.choices?.[0]?.message?.content;
+  const text = extractResponseText(data);
 
-  if (typeof text !== 'string' || !text.trim()) {
+  if (!text) {
+    const finishReason = data?.choices?.[0]?.finish_reason || data?.choices?.[0]?.finishReason || 'unknown';
+    logger.warn('Cerebras model %s returned empty content. finish_reason=%s', model, finishReason);
     throw new AiServiceError('Cerebras returned an empty response', {
       statusCode: 502,
       code: 'AI_EMPTY_RESPONSE',
