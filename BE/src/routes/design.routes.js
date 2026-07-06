@@ -84,7 +84,7 @@ router.post(
  *       201:
  *         description: AI generated image URL and design ID returned
  *       503:
- *         description: Gemini API unavailable
+ *         description: Cerebras API unavailable
  */
 router.post('/generate', generateDesign);
 

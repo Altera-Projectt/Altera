@@ -11,5 +11,6 @@ module.exports = {
     API_KEY: process.env.CLOUDINARY_API_KEY,
     API_SECRET: process.env.CLOUDINARY_API_SECRET,
   },
-  GEMINI_API_KEY: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+  CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
+  CEREBRAS_BASE_URL: process.env.CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1',
 };

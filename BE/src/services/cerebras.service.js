@@ -3,14 +3,14 @@ const logger = require('../utils/logger');
 
 const SUPPORTED_CEREBRAS_MODELS = ['gpt-oss-120b', 'gemma-4-31b', 'zai-glm-4.7'];
 const CEREBRAS_MODEL = (() => {
-  const configuredModel = (process.env.CEREBRAS_MODEL || process.env.GEMINI_MODEL || process.env.AI_MODEL)?.trim();
+  const configuredModel = (process.env.CEREBRAS_MODEL || process.env.AI_MODEL)?.trim();
   if (configuredModel && SUPPORTED_CEREBRAS_MODELS.includes(configuredModel)) {
     return configuredModel;
   }
   return 'gpt-oss-120b';
 })();
 const CEREBRAS_MODEL_FALLBACKS = SUPPORTED_CEREBRAS_MODELS;
-const GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
+const CEREBRAS_IMAGE_MODEL = process.env.CEREBRAS_IMAGE_MODEL || 'cerebras-image-1';
 
 class AiServiceError extends Error {
   constructor(message, { statusCode = 503, code = 'AI_SERVICE_UNAVAILABLE', cause } = {}) {
@@ -23,8 +23,8 @@ class AiServiceError extends Error {
 }
 
 const getApiConfig = () => ({
-  apiKey: CEREBRAS_API_KEY || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
-  baseUrl: CEREBRAS_BASE_URL || process.env.CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1',
+  apiKey: CEREBRAS_API_KEY,
+  baseUrl: CEREBRAS_BASE_URL || 'https://api.cerebras.ai/v1',
 });
 
 const isModelUnavailableError = (error) => {
@@ -195,8 +195,8 @@ const sendChatMessage = async (systemPrompt, messageHistory, userMessage, option
   }
 };
 
-const buildGeminiImageRequest = (prompt) => ({
-  model: GEMINI_IMAGE_MODEL,
+const buildImageRequest = (prompt) => ({
+  model: CEREBRAS_IMAGE_MODEL,
   input: [{ type: 'text', text: prompt }],
   response_format: {
     type: 'image',
@@ -204,7 +204,7 @@ const buildGeminiImageRequest = (prompt) => ({
   },
 });
 
-const extractGeminiImageData = (response) => {
+const extractImageData = (response) => {
   const image = response?.output_image;
   if (!image?.data) return null;
 
@@ -223,8 +223,8 @@ const generateImage = async () => {
 
 module.exports = {
   AiServiceError,
-  buildGeminiImageRequest,
-  extractGeminiImageData,
+  buildImageRequest,
+  extractImageData,
   generateImage,
   generateJson,
   generateText,

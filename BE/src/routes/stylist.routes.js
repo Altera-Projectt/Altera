@@ -37,7 +37,7 @@ router.use(protect);
  *       200:
  *         description: Detected style returned
  *       503:
- *         description: Gemini API unavailable
+ *         description: Cerebras API unavailable
  */
 router.post('/quiz', stylistController.quiz);
 
@@ -78,7 +78,7 @@ router.post('/quiz', stylistController.quiz);
  *       400:
  *         description: Style is required
  *       503:
- *         description: Gemini API unavailable
+ *         description: Cerebras API unavailable
  */
 router.post('/recommend', stylistController.recommend);
 

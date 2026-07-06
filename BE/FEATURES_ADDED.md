@@ -3,7 +3,7 @@
 ## 🚀 New Features Added
 
 ### 1. **AI Chat System** (New)
-Complete conversational AI chatbot using Gemini API with topic-based responses.
+Complete conversational AI chatbot using Cerebras API with topic-based responses.
 
 **Files Created:**
 - [src/models/Chat.js](src/models/Chat.js) - Chat & Message schema
