@@ -4,7 +4,7 @@ import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatPrice } from '@/utils/format'
+import { formatVND } from '@/utils/format'
 
 export function CartPage() {
   const { cart, fetchCart, loading } = useCartStore()
@@ -134,7 +134,7 @@ export function CartPage() {
                       {item.productId?.name || 'Unknown Product'}
                     </h3>
                     <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-                      Unit Price: {formatPrice(item.price ?? item.productId?.price ?? 0)}
+                      Unit Price: {formatVND(item.price ?? item.productId?.price ?? 0)}
                     </p>
                   </div>
 
@@ -184,7 +184,7 @@ export function CartPage() {
             <div className="space-y-4 text-sm mb-6">
               <div className="flex justify-between text-[var(--color-muted-foreground)]">
                 <span>Subtotal ({cart.totalItems} items)</span>
-                <span className="font-medium text-[var(--color-foreground)]">{formatPrice(cart.totalPrice || 0)}</span>
+                <span className="font-medium text-[var(--color-foreground)]">{formatVND(cart.totalPrice || 0)}</span>
               </div>
               <div className="flex justify-between text-[var(--color-muted-foreground)]">
                 <span>Shipping</span>
@@ -195,7 +195,7 @@ export function CartPage() {
             <div className="border-t border-[var(--color-border)] pt-4 mb-8">
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span className="text-[var(--color-primary)]">{formatPrice(cart.totalPrice || 0)}</span>
+                <span className="text-[var(--color-primary)]">{formatVND(cart.totalPrice || 0)}</span>
               </div>
             </div>
 

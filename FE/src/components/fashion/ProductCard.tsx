@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { Heart, ShoppingBag } from 'lucide-react'
 import type { Product } from '@/types/product.types'
-import { formatPrice } from '@/utils/format'
+import { formatVND } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { CartService } from '@/services/cart.api'
 import { WishlistService } from '@/services/wishlist.api'
@@ -146,7 +146,7 @@ export function ProductCard({ product, className, isWishlisted = false, onWishli
             {product.name}
           </Link>
           <span className="font-body text-sm font-semibold whitespace-nowrap">
-            {formatPrice(product.price)}
+            {formatVND(product.price)}
           </span>
         </div>
         <div className="mt-1 flex items-center justify-between text-xs text-[var(--color-muted-foreground)]">

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { CartService } from '@/services/cart.api'
 import { OrderService } from '@/services/order.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatPrice } from '@/utils/format'
+import { formatVND } from '@/utils/format'
 import { toast } from 'sonner'
 import type { CartItem } from '@/types/cart.types'
 import type { PaymentMethod } from '@/types/order.types'
@@ -306,7 +306,7 @@ export function CheckoutPage() {
                         <p className="text-xs text-[var(--color-muted-foreground)]">SL: {item.quantity}</p>
                       </div>
                       <span className="text-sm font-semibold whitespace-nowrap">
-                        {formatPrice((item.price ?? item.productId?.price ?? 0) * item.quantity)}
+                        {formatVND((item.price ?? item.productId?.price ?? 0) * item.quantity)}
                       </span>
                     </div>
                   )
@@ -317,7 +317,7 @@ export function CheckoutPage() {
               <div className="border-t border-[var(--color-border)] pt-4 space-y-3 text-sm mb-6">
                 <div className="flex justify-between text-[var(--color-muted-foreground)]">
                   <span>Tạm tính</span>
-                  <span className="font-medium text-[var(--color-foreground)]">{formatPrice(totalPrice)}</span>
+                  <span className="font-medium text-[var(--color-foreground)]">{formatVND(totalPrice)}</span>
                 </div>
                 <div className="flex justify-between text-[var(--color-muted-foreground)]">
                   <span>Phí vận chuyển</span>
@@ -328,7 +328,7 @@ export function CheckoutPage() {
               <div className="border-t border-[var(--color-border)] pt-4 mb-8">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Tổng cộng</span>
-                  <span className="text-[var(--color-primary)]">{formatPrice(totalPrice)}</span>
+                  <span className="text-[var(--color-primary)]">{formatVND(totalPrice)}</span>
                 </div>
               </div>
 

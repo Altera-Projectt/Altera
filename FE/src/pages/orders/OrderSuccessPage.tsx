@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { CheckCircle, Package, MapPin, CreditCard, Truck, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { OrderService } from '@/services/order.api'
-import { formatPrice } from '@/utils/format'
+import { formatVND } from '@/utils/format'
 import type { Order } from '@/types/order.types'
 
 // ── Helper to format payment method ───────────────────────────────────────
@@ -125,7 +125,7 @@ export function OrderSuccessPage() {
                     <span className="text-[var(--color-foreground)]">
                       {name} <span className="text-[var(--color-muted-foreground)]">× {qty}</span>
                     </span>
-                    <span className="font-medium">{formatPrice(price * qty)}</span>
+                    <span className="font-medium">{formatVND(price * qty)}</span>
                   </div>
                 )
               })}
@@ -137,7 +137,7 @@ export function OrderSuccessPage() {
         <div className="p-6 border-b border-[var(--color-border)]">
           <div className="flex justify-between font-bold text-lg">
             <span>Tổng cộng</span>
-            <span className="text-[var(--color-primary)]">{formatPrice(totalPrice)}</span>
+            <span className="text-[var(--color-primary)]">{formatVND(totalPrice)}</span>
           </div>
         </div>
 

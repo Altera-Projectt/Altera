@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { WishlistService, type WishlistProduct } from '@/services/wishlist.api'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatPrice } from '@/utils/format'
+import { formatVND } from '@/utils/format'
 import { toast } from 'sonner'
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -201,7 +201,7 @@ export function WishlistPage() {
                     {product.name}
                   </Link>
                   <span className="text-sm font-semibold whitespace-nowrap">
-                    {formatPrice(product.price)}
+                    {formatVND(product.price)}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-xs text-[var(--color-muted-foreground)]">
