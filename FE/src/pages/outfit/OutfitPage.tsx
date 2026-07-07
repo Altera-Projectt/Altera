@@ -618,7 +618,7 @@ export function OutfitPage() {
             )}
             {recommendResult.outfitNote && (
               <div className="border-l-2 border-[var(--color-border)] pl-4">
-                <p className="text-sm text-[var(--color-foreground)] leading-relaxed font-serif">
+                <p className="font-sans text-[15px] font-normal text-[var(--color-foreground)] leading-7">
                   {recommendResult.outfitNote}
                 </p>
               </div>
