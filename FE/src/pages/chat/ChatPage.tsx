@@ -508,10 +508,10 @@ function MessageBubble({ message }: { message: ChatMessage }) {
               'border border-[var(--color-border)]',
               'rounded-[4px_16px_16px_16px]',
             ],
-      )}>
+        )}>
         <div className={cn(
-          'text-[14px] leading-7 whitespace-pre-wrap break-words',
-          !isUser && 'font-serif',
+          'font-sans text-[15px] leading-7 whitespace-pre-wrap break-words',
+          isUser ? 'font-medium' : 'font-normal',
         )}>
           {message.text}
         </div>
