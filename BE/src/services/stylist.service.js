@@ -1,6 +1,7 @@
 const OutfitRecommendation = require('../models/OutfitRecommendation');
 const cerebrasService = require('./cerebras.service');
 const productService = require('./product.service');
+const logger = require('../utils/logger');
 
 const formatCurrency = (price) => {
   const amount = Number(price || 0);
@@ -18,6 +19,57 @@ const buildCatalogPromptSection = (products = []) => {
   });
 
   return `Available products in the shop:\n${lines.join('\n')}`;
+};
+
+const getProductNameByCategory = (products, categories) => {
+  const categoryList = Array.isArray(categories) ? categories : [categories];
+  return products.find((product) => categoryList.includes(product.category))?.name || null;
+};
+
+const buildFallbackRecommendation = (resolvedStyle, derivedQuizResult, products = [], occasion) => {
+  const colorPalette = Array.isArray(derivedQuizResult?.colorPalette) ? derivedQuizResult.colorPalette : [];
+  const keyPieces = Array.isArray(derivedQuizResult?.keyPieces) ? derivedQuizResult.keyPieces : [];
+  const avoidColors = Array.isArray(derivedQuizResult?.avoidColors) ? derivedQuizResult.avoidColors : [];
+
+  const mainColor = colorPalette[0] || 'đen';
+  const secondaryColor = colorPalette[1] || 'trắng';
+  const accentColor = colorPalette[2] || 'xám';
+  const top = getProductNameByCategory(products, 'SHIRT') || keyPieces[0] || 'áo basic vừa vặn';
+  const bottom = getProductNameByCategory(products, 'PANTS') || keyPieces[1] || 'quần tối màu dễ phối';
+  const shoes = getProductNameByCategory(products, 'SHOES') || keyPieces[2] || 'sneaker tối giản';
+  const accessories = getProductNameByCategory(products, 'ACCESSORY') || 'túi hoặc đồng hồ tối giản';
+  const occasionText = occasion || 'hằng ngày';
+
+  return {
+    style: resolvedStyle,
+    reason: derivedQuizResult?.reason || `Phong cách ${resolvedStyle} phù hợp với thói quen và màu sắc bạn đã chọn.`,
+    outfitNote: `Bạn có thể phối ${top} cùng ${bottom}, thêm ${shoes} để giữ tổng thể gọn và đúng tinh thần ${resolvedStyle}. Với dịp ${occasionText}, hãy ưu tiên ${mainColor} làm màu chính, phối ${secondaryColor} để dễ mặc hơn và dùng ${accentColor} như điểm nhấn nhỏ. Bộ này đủ chỉn chu để ra ngoài nhưng vẫn thoải mái cho hoạt động trong ngày.`,
+    colorGuide: {
+      main: mainColor,
+      secondary: secondaryColor,
+      accent: accentColor,
+      avoid: avoidColors[0] || 'màu quá chói nếu bạn muốn giữ tổng thể dễ phối',
+      example: `${top} màu ${mainColor} + ${bottom} màu ${secondaryColor} + ${shoes} màu trung tính.`,
+    },
+    weatherTips: 'Thời tiết nóng ẩm nên chọn cotton, linen hoặc chất vải thoáng. Khi trời lạnh, layer thêm áo khoác mỏng để giữ form mà không bị nặng nề.',
+    bodyTips: 'Ưu tiên form vừa người hoặc hơi rộng nhẹ để dễ vận động. Nếu muốn trông cao hơn, hãy chọn quần cạp vừa/cao và phối giày cùng tông với quần.',
+    tips: [
+      `Giữ 1 màu chủ đạo là ${mainColor}, các món còn lại nên trung tính để outfit không bị rối.`,
+      `Dùng ${accessories} làm điểm nhấn thay vì thêm quá nhiều phụ kiện cùng lúc.`,
+      'Chọn chất liệu ít nhăn và dễ giặt để outfit dùng được thường xuyên hơn.',
+    ],
+    completeOutfit: {
+      top,
+      bottom,
+      shoes,
+      accessories,
+    },
+    recommendedProducts: products,
+    productReasoning: products.map((product) => ({
+      productName: product.name,
+      reason: `${product.name} dễ phối với phong cách ${resolvedStyle} và phù hợp để xây dựng outfit ${occasionText}.`,
+    })),
+  };
 };
 
 const analyzeQuiz = async ({ favoriteItem, favoriteColor, personality, occasion }) => {
@@ -124,7 +176,13 @@ Trả về JSON đầy đủ:
   ]
 }`;
 
-  const aiResult = await cerebrasService.generateJson(prompt, { maxOutputTokens: 1200 });
+  let aiResult;
+  try {
+    aiResult = await cerebrasService.generateJson(prompt, { maxOutputTokens: 1200 });
+  } catch (error) {
+    logger.warn('Cerebras stylist recommendation failed, using fallback. %s', error?.message || 'Unknown error');
+    return buildFallbackRecommendation(resolvedStyle, derivedQuizResult, products, occasion);
+  }
 
   return {
     style: aiResult.style || resolvedStyle,
