@@ -47,10 +47,8 @@ export function ProductsPage() {
 
   const categories: { label: string; value: Product['category'] | undefined }[] = [
     { label: 'All', value: undefined },
+    { label: 'T-Shirts', value: 'T-Shirt' },
     { label: 'Shirts', value: 'SHIRT' },
-    { label: 'Pants', value: 'PANTS' },
-    { label: 'Shoes', value: 'SHOES' },
-    { label: 'Accessories', value: 'ACCESSORY' },
   ]
 
   return (

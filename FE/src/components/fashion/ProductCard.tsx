@@ -145,12 +145,34 @@ export function ProductCard({ product, className, isWishlisted = false, onWishli
           >
             {product.name}
           </Link>
-          <span className="font-body text-sm font-semibold whitespace-nowrap">
-            {formatVND(product.price)}
-          </span>
+          <div className="flex flex-col items-end whitespace-nowrap">
+            {product.discountPrice ? (
+              <>
+                <span className="font-body text-sm font-semibold text-rose-500">
+                  {formatVND(product.discountPrice)}
+                </span>
+                <span className="font-body text-xs text-[var(--color-muted-foreground)] line-through">
+                  {formatVND(product.price)}
+                </span>
+              </>
+            ) : (
+              <span className="font-body text-sm font-semibold">
+                {formatVND(product.price)}
+              </span>
+            )}
+          </div>
         </div>
         <div className="mt-1 flex items-center justify-between text-xs text-[var(--color-muted-foreground)]">
           <span className="uppercase tracking-widest">{product.category}</span>
+          {product.sizes && product.sizes.length > 0 && (
+            <div className="flex gap-1">
+              {product.sizes.map(size => (
+                <span key={size} className="px-1 border border-[var(--color-border)] rounded-sm text-[10px]">
+                  {size}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
