@@ -5,6 +5,33 @@ const cerebrasService = require('../src/services/cerebras.service');
 const productService = require('../src/services/product.service');
 const stylistService = require('../src/services/stylist.service');
 
+test('analyzeQuiz returns a local fallback when Cerebras quiz analysis fails', async () => {
+  const originalGenerateJson = cerebrasService.generateJson;
+
+  cerebrasService.generateJson = async () => {
+    throw new cerebrasService.AiServiceError('Cerebras returned an invalid JSON response', {
+      statusCode: 502,
+      code: 'AI_INVALID_RESPONSE',
+    });
+  };
+
+  try {
+    const result = await stylistService.analyzeQuiz({
+      favoriteItem: 'áo phông',
+      favoriteColor: 'đen',
+      personality: 'chiến',
+      occasion: 'đi làm',
+    });
+
+    assert.equal(result.style, 'Smart Casual');
+    assert.match(result.reason, /Smart Casual/);
+    assert.deepEqual(result.colorPalette, ['đen', 'trắng', 'xám']);
+    assert.ok(result.keyPieces.length > 0);
+  } finally {
+    cerebrasService.generateJson = originalGenerateJson;
+  }
+});
+
 test('recommend returns a fallback outfit when Cerebras recommendation JSON is invalid', async () => {
   const originalGenerateJson = cerebrasService.generateJson;
   const originalGetStylistProducts = productService.getStylistProducts;

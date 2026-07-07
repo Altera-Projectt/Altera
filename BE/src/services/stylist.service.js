@@ -26,6 +26,76 @@ const getProductNameByCategory = (products, categories) => {
   return products.find((product) => categoryList.includes(product.category))?.name || null;
 };
 
+const normalizeAnswerText = (value) => String(value || '').trim().toLowerCase();
+
+const includesAny = (text, keywords) => keywords.some((keyword) => text.includes(keyword));
+
+const buildFallbackQuizResult = ({ favoriteItem, favoriteColor, personality, occasion } = {}) => {
+  const item = normalizeAnswerText(favoriteItem);
+  const color = normalizeAnswerText(favoriteColor);
+  const trait = normalizeAnswerText(personality);
+  const event = normalizeAnswerText(occasion);
+  const combined = [item, color, trait, event].join(' ');
+
+  let style = 'Minimalist';
+
+  if (includesAny(combined, ['đi làm', 'cong so', 'công sở', 'van phong', 'văn phòng', 'meeting', 'lich su', 'lịch sự'])) {
+    style = 'Smart Casual';
+  } else if (includesAny(combined, ['chiến', 'ca tinh', 'cá tính', 'nổi bật', 'noi bat', 'hoodie', 'baggy', 'street', 'skate'])) {
+    style = 'Streetwear';
+  } else if (includesAny(combined, ['sport', 'gym', 'the thao', 'thể thao', 'năng động', 'nang dong'])) {
+    style = 'Sporty';
+  } else if (includesAny(combined, ['vintage', 'retro', 'co dien', 'cổ điển'])) {
+    style = 'Vintage';
+  } else if (includesAny(combined, ['korean', 'hàn', 'han quoc', 'hàn quốc', 'oppa'])) {
+    style = 'Korean Casual';
+  } else if (includesAny(combined, ['y2k', '2000', 'crop', 'baby tee'])) {
+    style = 'Y2K';
+  } else if (includesAny(combined, ['sang', 'thanh lịch', 'thanh lich', 'elegant', 'váy', 'dam', 'đầm'])) {
+    style = 'Elegant';
+  } else if (includesAny(combined, ['workwear', 'cargo', 'utility', 'bụi', 'bui'])) {
+    style = 'Workwear';
+  }
+
+  const paletteByColor = {
+    đen: ['đen', 'trắng', 'xám'],
+    den: ['đen', 'trắng', 'xám'],
+    trắng: ['trắng', 'be', 'đen'],
+    trang: ['trắng', 'be', 'đen'],
+    pastel: ['xanh pastel', 'trắng', 'hồng nhạt'],
+    be: ['be', 'nâu nhạt', 'trắng'],
+    nâu: ['nâu', 'kem', 'xanh rêu'],
+    nau: ['nâu', 'kem', 'xanh rêu'],
+    xanh: ['xanh navy', 'trắng', 'xám'],
+    đỏ: ['đỏ đô', 'đen', 'trắng'],
+    do: ['đỏ đô', 'đen', 'trắng'],
+  };
+
+  const matchedPaletteKey = Object.keys(paletteByColor).find((key) => color.includes(key));
+  const colorPalette = matchedPaletteKey ? paletteByColor[matchedPaletteKey] : ['đen', 'trắng', 'xám'];
+
+  const keyPiecesByStyle = {
+    Streetwear: ['áo phông oversize', 'quần baggy', 'sneaker chunky'],
+    Minimalist: ['áo basic trơn', 'quần suông tối màu', 'sneaker trắng'],
+    'Smart Casual': ['áo sơ mi', 'quần chinos', 'giày tối giản'],
+    Vintage: ['áo khoác denim', 'quần jeans ống đứng', 'giày retro'],
+    Sporty: ['áo thun thoáng khí', 'quần jogger', 'sneaker thể thao'],
+    'Korean Casual': ['áo cardigan mỏng', 'quần ống rộng', 'giày loafer hoặc sneaker trắng'],
+    Y2K: ['baby tee hoặc áo croptop', 'quần jeans cạp thấp/vừa', 'phụ kiện ánh kim'],
+    Elegant: ['áo blouse hoặc sơ mi lụa', 'quần tây/váy midi', 'giày loafer hoặc kitten heels'],
+    Workwear: ['áo khoác utility', 'quần cargo', 'boots hoặc sneaker chắc form'],
+  };
+
+  return {
+    style,
+    reason: `Dựa trên câu trả lời của bạn, ${style} là hướng phối đồ hợp lý vì vừa bám thói quen mặc hằng ngày vừa dễ áp dụng cho ${event || 'nhiều hoàn cảnh'}. Bạn có thể bắt đầu bằng các món cơ bản, màu dễ phối rồi thêm một điểm nhấn nhỏ để outfit rõ cá tính hơn.`,
+    keywords: [style, colorPalette[0], event || 'hằng ngày'],
+    colorPalette,
+    avoidColors: ['neon quá chói', 'quá nhiều màu nổi trong cùng một outfit'],
+    keyPieces: keyPiecesByStyle[style],
+  };
+};
+
 const buildFallbackRecommendation = (resolvedStyle, derivedQuizResult, products = [], occasion) => {
   const colorPalette = Array.isArray(derivedQuizResult?.colorPalette) ? derivedQuizResult.colorPalette : [];
   const keyPieces = Array.isArray(derivedQuizResult?.keyPieces) ? derivedQuizResult.keyPieces : [];
@@ -96,7 +166,14 @@ Trả về JSON:
   "keyPieces": ["3 món đồ cơ bản nên có trong tủ đồ theo style này"]
 }`;
 
-  const result = await cerebrasService.generateJson(prompt, { maxOutputTokens: 400 });
+  let result;
+  try {
+    result = await cerebrasService.generateJson(prompt, { maxOutputTokens: 400 });
+  } catch (error) {
+    logger.warn('Cerebras stylist quiz failed, using fallback. %s', error?.message || 'Unknown error');
+    return buildFallbackQuizResult({ favoriteItem, favoriteColor, personality, occasion });
+  }
+
   return {
     style: result.style || 'Minimalist',
     reason: result.reason || 'Phong cach nay phu hop voi ban.',
