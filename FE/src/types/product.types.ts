@@ -18,14 +18,27 @@ export interface ProductVariant {
 export interface Product {
   _id: string
   name: string
-  category: 'SHIRT' | 'PANTS' | 'SHOES' | 'ACCESSORY'
+  slug?: string
+  category: 'T-Shirt' | 'SHIRT' | string
+  style?: string
+  brand?: string
   price: number
+  discountPrice?: number
   imageUrl: string
   description: string
+  material?: string
+  fit?: string
+  gender?: string
+  colors?: string[]
+  sizes?: string[]
+  rating?: number
+  sold?: number
   stock: number
+  isFeatured?: boolean
   isActive: boolean
-  createdAt: string
-  updatedAt: string
+  __v?: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface ProductReview {
@@ -40,7 +53,7 @@ export interface ProductReview {
 // ── Filters ────────────────────────────────────────────────────────────────
 
 export interface ProductFilters {
-  category?: 'SHIRT' | 'PANTS' | 'SHOES' | 'ACCESSORY'
+  category?: string
   search?: string
   page?: number
   limit?: number
