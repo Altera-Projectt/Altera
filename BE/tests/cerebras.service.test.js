@@ -57,3 +57,53 @@ test('generateText retries the next model when Cerebras returns empty content', 
     global.fetch = originalFetch;
   }
 });
+
+test('generateJson extracts JSON from markdown and explanatory text', async () => {
+  const originalFetch = global.fetch;
+  const service = loadService();
+
+  global.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      choices: [
+        {
+          message: {
+            content: 'Da day la ket qua cua ban:\n```json\n{ "style": "Streetwear" }\n```\nChuc ban mac dep!',
+          },
+        },
+      ],
+    }),
+  });
+
+  try {
+    const result = await service.generateJson('style');
+    assert.deepEqual(result, { style: 'Streetwear' });
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test('generateJson extracts a top-level JSON array from markdown', async () => {
+  const originalFetch = global.fetch;
+  const service = loadService();
+
+  global.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      choices: [
+        {
+          message: {
+            content: '```json\n[{ "style": "Streetwear" }, { "style": "Minimal" }]\n```',
+          },
+        },
+      ],
+    }),
+  });
+
+  try {
+    const result = await service.generateJson('styles');
+    assert.deepEqual(result, [{ style: 'Streetwear' }, { style: 'Minimal' }]);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});

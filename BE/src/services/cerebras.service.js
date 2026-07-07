@@ -85,46 +85,53 @@ const extractJson = (text) => {
   }
 
   const stripped = trimmed
-    .replace(/```json\s*/gi, '')
-    .replace(/```\s*/g, '');
+    .replace(/```(?:json)?\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
 
   const jsonBlocks = [];
   let startIndex = -1;
-  let depth = 0;
+  const stack = [];
   let inString = false;
   let escaped = false;
+  const closingByOpening = {
+    '{': '}',
+    '[': ']',
+  };
 
   for (let index = 0; index < stripped.length; index += 1) {
     const char = stripped[index];
 
-    if (escaped) {
+    if (stack.length > 0 && escaped) {
       escaped = false;
       continue;
     }
 
-    if (char === '\\' && inString) {
+    if (stack.length > 0 && char === '\\' && inString) {
       escaped = true;
       continue;
     }
 
-    if (char === '"') {
+    if (stack.length > 0 && char === '"') {
       inString = !inString;
       continue;
     }
 
     if (inString) continue;
 
-    if (char === '{') {
-      if (depth === 0) startIndex = index;
-      depth += 1;
+    if (closingByOpening[char]) {
+      if (stack.length === 0) startIndex = index;
+      stack.push(closingByOpening[char]);
       continue;
     }
 
-    if (char === '}' && depth > 0) {
-      depth -= 1;
-      if (depth === 0 && startIndex !== -1) {
+    if (stack.length > 0 && char === stack[stack.length - 1]) {
+      stack.pop();
+      if (stack.length === 0 && startIndex !== -1) {
         jsonBlocks.push(stripped.slice(startIndex, index + 1));
         startIndex = -1;
+        inString = false;
+        escaped = false;
       }
     }
   }
