@@ -89,7 +89,7 @@ export function HomePage() {
       <section className="relative flex h-[90vh] min-h-[600px] w-full items-center justify-center overflow-hidden bg-zinc-950">
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1600&auto=format&fit=crop&q=80"
+            src="/home1.jpg"
             alt="ALTERA Hero Visual"
             className="h-full w-full object-cover object-center opacity-40 brightness-75"
           />
@@ -226,7 +226,7 @@ export function HomePage() {
             </div>
             <div className="aspect-[4/5] overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-muted)] shadow-xl">
               <img
-                src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=800&auto=format&fit=crop&q=80"
+                src="/home2.jpg"
                 alt="Sustainable production"
                 className="h-full w-full object-cover transition-transform duration-1000 hover:scale-105"
                 loading="lazy"
@@ -242,7 +242,7 @@ export function HomePage() {
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
             <div className="order-2 lg:order-1 aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] bg-zinc-900">
               <img
-                src="https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&auto=format&fit=crop&q=80"
+                src="/home3.jpg"
                 alt="AI Outfit recommendation"
                 className="h-full w-full object-cover brightness-90"
                 loading="lazy"
@@ -324,7 +324,7 @@ export function HomePage() {
             </div>
             <div className="aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] bg-[var(--color-muted)]">
               <img
-                src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=800&auto=format&fit=crop&q=80"
+                src="/home4.jpg"
                 alt="3D design interface preview"
                 className="h-full w-full object-cover"
                 loading="lazy"
