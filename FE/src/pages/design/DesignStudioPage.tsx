@@ -72,6 +72,8 @@ function getShirtHex(color: string): string {
   return SHIRT_COLOR_OPTIONS.find((c) => c.value.toLowerCase() === color.toLowerCase())?.hex ?? '#ffffff'
 }
 
+
+
 // ── Toast (inline, no extra deps) ──────────────────────────────────────────
 
 function useToast() {
@@ -453,7 +455,7 @@ function GenerateForm({
           <div className="h-1 w-full rounded-full bg-[var(--color-muted)] overflow-hidden">
             <div
               className="h-full bg-[var(--color-primary)] transition-all duration-1000"
-              style={{ width: `${(cooldown / 60) * 100}%` }}
+              style={{ width: `${(cooldown / 20) * 100}%` }}
             />
           </div>
           <p className="text-[10px] uppercase tracking-widest text-center text-[var(--color-muted-foreground)] mt-2">
@@ -869,7 +871,7 @@ export function DesignStudioPage() {
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [reuseInitial, setReuseInitial] = useState<Partial<FormValues> | undefined>(undefined)
 
-  const COOLDOWN_SECONDS = 60
+  const COOLDOWN_SECONDS = 20
   const [cooldown, setCooldown] = useState(0)
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 

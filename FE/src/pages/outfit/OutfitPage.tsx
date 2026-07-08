@@ -162,7 +162,7 @@ export function OutfitPage() {
       else setError('Đã có lỗi xảy ra, vui lòng thử lại.')
     } finally {
       setLoading(false)
-      setQuizCooldown(60) // 1 phút cooldown
+      setQuizCooldown(20) // 20 giây cooldown
     }
   }
 
@@ -193,7 +193,7 @@ export function OutfitPage() {
       else setError('Đã có lỗi xảy ra, vui lòng thử lại.')
     } finally {
       setLoading(false)
-      setRecommendCooldown(60) // 1 phút cooldown
+      setRecommendCooldown(20) // 20 giây cooldown
     }
   }
 
