@@ -3,11 +3,27 @@ const { uploadImage } = require('../utils/cloudinary');
 
 const getProducts = async (req, res, next) => {
   try {
-    const { category, minPrice, maxPrice, search, page = 1, limit = 12, sort = '-createdAt' } = req.query;
+    const {
+      category,
+      style,
+      fit,
+      gender,
+      color,
+      minPrice,
+      maxPrice,
+      search,
+      page = 1,
+      limit = 12,
+      sort = '-createdAt',
+    } = req.query;
 
     const query = { isActive: true };
 
     if (category) query.category = category;
+    if (style) query.style = style;
+    if (fit) query.fit = fit;
+    if (gender) query.gender = gender;
+    if (color) query['colors.name'] = color;
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);

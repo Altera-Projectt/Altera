@@ -8,7 +8,8 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "seed": "node src/seeds/run.seed.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
