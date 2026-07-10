@@ -2,43 +2,48 @@
  * ALTERA — Product Types
  */
 
-
-/* 
-export type ProductSize = 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | 'XXXL'
-export type ProductGender = 'MEN' | 'WOMEN' | 'UNISEX'
-
-export interface ProductVariant {
-  size: ProductSize
-  color: string
+export interface ProductColor {
+  name: string
+  hex: string
+  imageUrl?: string
   stock: number
-  sku?: string
 }
-*/
+
+export interface ProductSize {
+  label: string
+  stock: number
+  measurements?: {
+    chest?: number
+    length?: number
+    shoulder?: number
+  }
+}
 
 export interface Product {
   _id: string
   name: string
   slug?: string
-  category: 'T-Shirt' | 'SHIRT' | string
-  style?: string
-  brand?: string
-  price: number
-  discountPrice?: number
-  imageUrl: string
   description: string
-  material?: string
+  category: 'T-Shirt' | 'Hoodie' | 'Pants' | 'Shorts' | 'Jacket' | 'Accessory' | 'Shoes' | string
+  style?: 'Oversize' | 'Boxy' | 'Slim' | 'Regular' | 'Crop' | 'Baby Tee' | 'Polo' | string
   fit?: string
-  gender?: string
-  colors?: string[]
-  sizes?: string[]
+  material?: string
+  brand?: string
+  gender?: 'Men' | 'Women' | 'Unisex' | string
+  price: number
+  discountPrice?: number | null
+  imageUrl: string
+  images?: string[]
+  colors?: ProductColor[]
+  sizes?: ProductSize[]
+  stock: number
+  tags?: string[]
   rating?: number
   sold?: number
-  stock: number
   isFeatured?: boolean
   isActive: boolean
-  __v?: number
-  createdAt?: string
-  updatedAt?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface ProductReview {
@@ -57,4 +62,10 @@ export interface ProductFilters {
   search?: string
   page?: number
   limit?: number
+  gender?: string
+  style?: string
+  fit?: string
+  color?: string
+  minPrice?: number
+  maxPrice?: number
 }

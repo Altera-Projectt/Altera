@@ -22,42 +22,7 @@ import { cn } from '@/utils/cn'
 
 import { useAuth } from '@/hooks/useAuth'
 
-// ── Quick-nav cards for newly added pages ─────────────────────────────────
 
-const NEW_PAGES = [
-  {
-    to: '/wishlist',
-    icon: Heart,
-    label: 'Yêu thích',
-    description: 'Sản phẩm đã lưu của bạn',
-    accent: '#e11d48',
-    bg: '#fff1f2',
-  },
-  {
-    to: '/designs',
-    icon: Palette,
-    label: 'Thiết kế của tôi',
-    description: 'Xem & quản lý thiết kế đã lưu',
-    accent: '#6366f1',
-    bg: '#eef2ff',
-  },
-  {
-    to: '/membership',
-    icon: Crown,
-    label: 'Membership',
-    description: 'Nâng cấp trải nghiệm ALTERA',
-    accent: '#000000',
-    bg: '#f5f5f5',
-  },
-  {
-    to: '/about',
-    icon: Info,
-    label: 'Về ALTERA',
-    description: 'Câu chuyện & giá trị thương hiệu',
-    accent: '#059669',
-    bg: '#ecfdf5',
-  },
-]
 
 export function HomePage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -86,105 +51,73 @@ export function HomePage() {
   return (
     <div className="flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)] overflow-hidden">
       {/* 1. Hero Section */}
-      <section className="relative flex h-[90vh] min-h-[600px] w-full items-center justify-center overflow-hidden bg-zinc-950">
-        <div className="absolute inset-0 z-0">
-          <img
-            src="/home1.jpg"
-            alt="ALTERA Hero Visual"
-            className="h-full w-full object-cover object-center opacity-40 brightness-75"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+      <section className="relative h-screen w-full overflow-hidden bg-black">
+        {/* Background image */}
+        <img
+          src="/home1.jpg"
+          alt="ALTERA Hero Visual"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-60"
+        />
+        
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/80 pointer-events-none" />
+
+        {/* Chữ chìm ALTERA khổng lồ */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-[20vw] font-black text-white/10 uppercase select-none">
+            ALTERA
+          </span>
         </div>
 
-        <div className="relative z-10 mx-auto max-w-[var(--spacing-contentMax)] px-6 text-center text-white flex flex-col items-center">
-          <motion.span
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-xs font-semibold uppercase tracking-[0.25em] text-zinc-300"
-          >
-            Gen-Z AI Fashion Platform
-          </motion.span>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.1 }}
-            className="mt-4 font-heading text-5xl font-normal uppercase tracking-widest sm:text-7xl lg:text-8xl"
-          >
-            Evolve Your Style
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-            className="mx-auto mt-6 max-w-lg text-sm font-light leading-relaxed text-zinc-300 sm:text-base"
-          >
-            Design custom clothing in 3D, get tailored outfit recommendations driven by AI, and showcase your signature aesthetic.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.3 }}
-            className="mt-12 flex flex-wrap items-center justify-center gap-6"
-          >
-            <Button asChild variant="secondary" size="lg" className="bg-white text-black hover:bg-zinc-200 uppercase font-semibold tracking-wider px-10">
-              <Link to="/products">Shop Catalog</Link>
-            </Button>
-            {isAuthenticated ? (
-              <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black uppercase font-semibold tracking-wider px-10">
-                <Link to="/design" className="flex items-center gap-2">
-                  3D Studio <ArrowRight className="h-4 w-4" />
-                </Link>
+        {/* Content */}
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-16 text-white text-center px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] mb-4 opacity-70">
+            AI Fashion Platform
+          </p>
+          <h1 className="heading-brand text-[clamp(3rem,10vw,8rem)] text-white mb-8">
+            ALTERA
+          </h1>
+          <div className="flex gap-4">
+            <Link to="/products">
+              <Button variant="primary" size="lg"
+                className="uppercase tracking-widest font-bold px-10 rounded-none">
+                SHOP NOW
               </Button>
-            ) : (
-              <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-black uppercase font-semibold tracking-wider px-10">
-                <Link to="/auth/login" state={{ from: { pathname: '/design' } }} className="flex items-center gap-2">
-                  Sign in to 3D Studio <ArrowRight className="h-4 w-4" />
-                </Link>
+            </Link>
+            <Link to="/design">
+              <Button variant="outline" size="lg"
+                className="uppercase tracking-widest font-bold px-10 rounded-none
+                  border-white text-white hover:bg-white hover:text-black">
+                DESIGN
               </Button>
-            )}
-          </motion.div>
+            </Link>
+          </div>
         </div>
       </section>
 
-      {/* 2. Quick Navigate — New Pages */}
-      <section className="py-16 border-b border-[var(--color-border)]">
-        <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
-          <div className="text-center mb-10">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-muted-foreground)]">
-              Khám phá thêm
+      {/* Marquee Text */}
+      <div className="w-full overflow-hidden border-y border-[var(--color-border)]
+        bg-[var(--color-primary)] py-3">
+        <div className="flex animate-marquee whitespace-nowrap">
+          {[...Array(2)].map((_, i) => (
+            <span key={i} className="flex items-center gap-8 pr-8
+              text-xs font-bold uppercase tracking-widest text-white">
+              <span>🔥 Freeship toàn quốc đơn từ 500K</span>
+              <span>★</span>
+              <span>New Arrivals</span>
+              <span>★</span>
+              <span>AI Design Studio</span>
+              <span>★</span>
+              <span>AI Stylist Miễn phí</span>
+              <span>★</span>
+              <span>Custom Shirt In Áo Theo Yêu Cầu</span>
+              <span>★</span>
             </span>
-            <h2 className="mt-2 font-heading text-2xl font-bold uppercase tracking-wide">
-              Tính năng mới
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {NEW_PAGES.map(({ to, icon: Icon, label, description, accent, bg }) => (
-              <Link
-                key={to}
-                to={to}
-                className="group flex flex-col items-center gap-3 p-6 rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-background)] text-center transition-all duration-300 hover:shadow-md hover:-translate-y-1 hover:border-transparent"
-                style={{ ['--hover-bg' as any]: bg }}
-              >
-                <div
-                  className="h-12 w-12 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                  style={{ backgroundColor: bg, color: accent }}
-                >
-                  <Icon className="h-6 w-6" />
-                </div>
-                <div>
-                  <p className="font-heading font-bold text-sm">{label}</p>
-                  <p className="text-xs text-[var(--color-muted-foreground)] mt-0.5 leading-snug">{description}</p>
-                </div>
-                <ArrowRight
-                  className="h-4 w-4 text-[var(--color-muted-foreground)] transition-all duration-300 group-hover:translate-x-1"
-                  style={{ color: accent }}
-                />
-              </Link>
-            ))}
-          </div>
+          ))}
         </div>
-      </section>
+      </div>
+
+
 
       {/* 3. Sustainable Fashion Section */}
       <section className="py-24 border-b border-[var(--color-border)]">
@@ -197,10 +130,7 @@ export function HomePage() {
         >
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 text-[var(--color-foreground)]">
-                <Leaf className="h-5 w-5" />
-              </div>
-              <h2 className="mt-6 font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
+              <h2 className="font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
                 Eco-Friendly &amp; Sustainable
               </h2>
               <p className="mt-6 text-sm text-[var(--color-muted-foreground)] leading-relaxed max-w-md">
@@ -249,10 +179,7 @@ export function HomePage() {
               />
             </div>
             <div className="order-1 lg:order-2">
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-rose-500">
-                <Sparkles className="h-3.5 w-3.5" /> AI Outfit Stylist
-              </span>
-              <h2 className="mt-4 font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
+              <h2 className="font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
                 Personalized AI Styling
               </h2>
               <p className="mt-6 text-sm text-zinc-400 leading-relaxed">
@@ -290,10 +217,7 @@ export function HomePage() {
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
           <div className="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:items-center">
             <div>
-              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-rose-500">
-                <Cpu className="h-3.5 w-3.5" /> 3D Design Studio
-              </span>
-              <h2 className="mt-4 font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
+              <h2 className="font-heading text-3xl font-bold uppercase tracking-wide sm:text-4xl">
                 Design Your Own Canvas
               </h2>
               <p className="mt-6 text-sm text-[var(--color-muted-foreground)] leading-relaxed">
@@ -335,62 +259,42 @@ export function HomePage() {
       </section>
 
       {/* 6. Featured Products */}
-      <section className="py-28 bg-[var(--color-background)] border-b border-[var(--color-border)]">
+      <section className="py-16">
         <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col items-center justify-between gap-6 md:flex-row mb-16"
-          >
-            <div>
-              <h2 className="font-heading text-3xl font-normal uppercase tracking-widest">
-                Featured Catalog
-              </h2>
-              <p className="mt-2 text-sm text-[var(--color-muted-foreground)]">
-                Our latest trend-setting minimalist essentials
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button asChild variant="outline" className="uppercase font-semibold tracking-wider rounded-none">
-                <Link to="/products">View All Products</Link>
-              </Button>
-            </div>
-          </motion.div>
+          <div className="flex items-end justify-between mb-8">
+            <h2 className="heading-brand text-3xl md:text-5xl">
+              New<br />Arrivals
+            </h2>
+            <Link to="/products"
+              className="text-xs font-bold uppercase tracking-widest
+                underline underline-offset-4 hover:opacity-60 transition-opacity">
+              Xem tất cả →
+            </Link>
+          </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-12">
-            {isLoading
-              ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className={cn("flex flex-col space-y-4", i === 0 || i === 3 ? "lg:col-span-7" : "lg:col-span-5")}>
-                  <div className="aspect-[3/4] w-full animate-pulse rounded-[var(--radius-md)] bg-zinc-200 relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-shimmer before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent" />
-                  <div className="h-4 w-2/3 bg-zinc-200" />
-                  <div className="h-4 w-1/3 bg-zinc-200" />
+          {/* Horizontal scroll container */}
+          <div className="snap-scroll-x gap-4 pb-4 -mx-6 px-6">
+            {isLoading ? (
+              // Skeleton cards
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="w-[260px] md:w-[300px] flex-shrink-0">
+                  <div className="aspect-[3/4] bg-[var(--color-muted)] animate-pulse rounded-none" />
+                  <div className="mt-3 h-4 w-3/4 bg-[var(--color-muted)] animate-pulse" />
+                  <div className="mt-2 h-4 w-1/2 bg-[var(--color-muted)] animate-pulse" />
                 </div>
               ))
-              : products.length > 0
-                ? products.map((product, i) => (
-                  <motion.div
-                    key={product._id}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{ duration: 0.6, delay: i * 0.1 }}
-                    className={cn(i === 0 || i === 3 ? "lg:col-span-7" : "lg:col-span-5")}
-                  >
-                    <ProductCard product={product} className="h-full w-full" />
-                  </motion.div>
-                ))
-                : (
-                  <div className="col-span-full text-center py-12 text-[var(--color-muted-foreground)]">
-                    <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-30" />
-                    <p className="text-sm">Catalog đang được cập nhật...</p>
-                    <Button asChild variant="outline" size="sm" className="mt-4">
-                      <Link to="/products">Xem tất cả sản phẩm</Link>
-                    </Button>
-                  </div>
-                )
-            }
+            ) : products.length > 0 ? (
+              products.map((product) => (
+                <div key={product._id} className="w-[260px] md:w-[300px] flex-shrink-0">
+                  <ProductCard product={product} />
+                </div>
+              ))
+            ) : (
+              <div className="w-full text-center py-12 text-[var(--color-muted-foreground)]">
+                <ShoppingBag className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">Catalog đang được cập nhật...</p>
+              </div>
+            )}
           </div>
         </div>
       </section>
