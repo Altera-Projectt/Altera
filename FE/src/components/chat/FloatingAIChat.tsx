@@ -4,7 +4,7 @@ import type { Chat, ChatMessage } from '@/types/chat.types'
 import type { AxiosError } from 'axios'
 import type { ApiError } from '@/types/api.types'
 import {
-  Sparkles, MessageSquare, Send,
+  Sparkles, Send,
   AlertCircle, X, Maximize2
 } from 'lucide-react'
 import { cn } from '@/utils/cn'
