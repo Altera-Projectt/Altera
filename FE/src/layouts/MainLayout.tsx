@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom'
 import { Navbar, Footer } from '@/components/shared'
+import { FloatingAIChat } from '@/components/chat'
 
 /**
  * ALTERA Main Layout
@@ -18,6 +19,7 @@ export function MainLayout() {
         <Outlet />
       </main>
       <Footer />
+      <FloatingAIChat />
     </div>
   )
 }
