@@ -3,14 +3,9 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowRight,
-  Sparkles,
-  Cpu,
   ShieldCheck,
-  Leaf,
-  Heart,
   Crown,
   Palette,
-  Info,
   ShoppingBag,
 } from 'lucide-react'
 
@@ -18,7 +13,6 @@ import { Button } from '@/components/ui/Button'
 import { ProductCard } from '@/components/fashion'
 import { ProductService } from '@/services/product.api'
 import type { Product } from '@/types/product.types'
-import { cn } from '@/utils/cn'
 
 import { useAuth } from '@/hooks/useAuth'
 
