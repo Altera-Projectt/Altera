@@ -1,10 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const { getProfile, updateProfile, getAllUsers, deleteAccount } = require('../controllers/user.controller');
+const {
+  getProfile,
+  updateProfile,
+  updateBasic,
+  updateMeasurements,
+  updatePreferences,
+  uploadAvatar,
+  uploadCover,
+  getActivities,
+  getAllUsers,
+  deleteAccount,
+} = require('../controllers/user.controller');
 const { protect, restrictTo } = require('../middlewares/auth.middleware');
 const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 2 * 1024 * 1024 } });
+const uploadCoverImage = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.use(protect);
 
@@ -59,6 +71,14 @@ router.get('/profile', getProfile);
  *         description: Unauthorized
  */
 router.put('/profile', upload.single('avatar'), updateProfile);
+
+// Profile dashboard endpoints. Keep /profile above for backwards compatibility.
+router.put('/me/basic', updateBasic);
+router.put('/me/measurements', updateMeasurements);
+router.put('/me/preferences', updatePreferences);
+router.post('/me/avatar', upload.single('avatar'), uploadAvatar);
+router.post('/me/cover', uploadCoverImage.single('cover'), uploadCover);
+router.get('/me/activities', getActivities);
 
 /**
  * @swagger

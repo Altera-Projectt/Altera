@@ -32,6 +32,43 @@ const UserSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    bio: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Bio cannot exceed 500 characters'],
+      default: null,
+    },
+    location: {
+      type: String,
+      trim: true,
+      maxlength: [150, 'Location cannot exceed 150 characters'],
+      default: null,
+    },
+    phone: {
+      type: String,
+      trim: true,
+      maxlength: [30, 'Phone cannot exceed 30 characters'],
+      default: null,
+    },
+    coverImage: {
+      type: String,
+      default: null,
+    },
+    measurements: {
+      height: { type: Number, min: [1, 'Height must be greater than 0'], default: null },
+      weight: { type: Number, min: [1, 'Weight must be greater than 0'], default: null },
+      shirtSize: {
+        type: String,
+        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', null],
+        default: null,
+      },
+      shoeSize: { type: String, trim: true, maxlength: 20, default: null },
+    },
+    preferences: {
+      styles: { type: [String], default: [] },
+      favoriteColors: { type: [String], default: [] },
+      avoidColors: { type: [String], default: [] },
+    },
   },
   {
     timestamps: true,

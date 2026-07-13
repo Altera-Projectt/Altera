@@ -13,10 +13,11 @@ cloudinary.config({
  * @param {string} folder - Cloudinary folder name
  * @returns {Promise<{url: string, publicId: string}>}
  */
-const uploadImage = async (filePath, folder = 'outfit_ai') => {
+const uploadImage = async (filePath, folder = 'outfit_ai', options = {}) => {
   const result = await cloudinary.uploader.upload(filePath, {
     folder,
     resource_type: 'auto',
+    ...options,
   });
   return { url: result.secure_url, publicId: result.public_id };
 };

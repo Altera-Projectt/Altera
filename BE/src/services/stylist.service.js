@@ -1,4 +1,5 @@
 const OutfitRecommendation = require('../models/OutfitRecommendation');
+const User = require('../models/User');
 const cerebrasService = require('./cerebras.service');
 const productService = require('./product.service');
 const logger = require('../utils/logger');
@@ -201,9 +202,16 @@ const recommend = async (userId, { style, gender, season, budget, occasion, quiz
 
   const products = await productService.getStylistProducts({ style: resolvedStyle, gender, season, budget, limit: 6 });
   const catalog = buildCatalogPromptSection(products);
+  const user = await User.findById(userId).select('measurements preferences').lean();
 
   const colorPaletteHint = derivedQuizResult?.colorPalette?.join(', ') || '';
   const keyPiecesHint = derivedQuizResult?.keyPieces?.join(', ') || '';
+  const measurementHint = user?.measurements
+    ? `Cao: ${user.measurements.height || 'chưa có'} cm; Nặng: ${user.measurements.weight || 'chưa có'} kg; Size áo: ${user.measurements.shirtSize || 'chưa có'}; Size giày: ${user.measurements.shoeSize || 'chưa có'}`
+    : 'Chưa có';
+  const preferenceStyles = user?.preferences?.styles?.join(', ') || 'Chưa có';
+  const favoriteColors = user?.preferences?.favoriteColors?.join(', ') || 'Chưa có';
+  const avoidColors = user?.preferences?.avoidColors?.join(', ') || 'Chưa có';
 
   const prompt = `Bạn là ALTERA AI Stylist chuyên nghiệp tại Việt Nam.
 Hãy tư vấn phong cách ăn mặc thực tế, cụ thể và hữu ích hoàn toàn bằng tiếng Việt.
@@ -217,6 +225,10 @@ THÔNG TIN KHÁCH HÀNG:
 - Ngân sách: ${budget ? formatCurrency(budget) : 'Không giới hạn'}
 - Màu sắc phù hợp từ quiz: ${colorPaletteHint || 'Chưa có'}
 - Món đồ cơ bản cần có: ${keyPiecesHint || 'Chưa có'}
+- Chỉ số cơ thể: ${measurementHint}
+- Gu thời trang đã lưu: ${preferenceStyles}
+- Màu yêu thích đã lưu: ${favoriteColors}
+- Màu cần tránh đã lưu: ${avoidColors}
 
 ${catalog}
 
