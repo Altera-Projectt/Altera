@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
+const PAYMENT_METHODS = ['COD', 'BANK_TRANSFER', 'MOMO'];
+const PAYMENT_STATUSES = ['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'EXPIRED'];
 
 const OrderItemSchema = new mongoose.Schema(
   {
@@ -67,6 +69,11 @@ const OrderSchema = new mongoose.Schema(
       required: [true, 'Total price is required'],
       min: [0, 'Total price cannot be negative'],
     },
+    checkoutKey: { type: String, default: null, select: false },
+    paymentMethod: { type: String, enum: PAYMENT_METHODS, default: 'COD' },
+    paymentStatus: { type: String, enum: PAYMENT_STATUSES, default: 'PENDING' },
+    paymentReference: { type: String, default: null, index: true },
+    paidAt: { type: Date, default: null },
     status: {
       type: String,
       enum: {
@@ -105,6 +112,7 @@ OrderSchema.pre('save', function (next) {
 });
 
 OrderSchema.index({ userId: 1, createdAt: -1 });
+OrderSchema.index({ userId: 1, checkoutKey: 1 }, { unique: true, partialFilterExpression: { checkoutKey: { $type: 'string' } } });
 OrderSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Order', OrderSchema);

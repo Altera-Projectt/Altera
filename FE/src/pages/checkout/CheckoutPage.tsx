@@ -7,7 +7,7 @@ import { ShoppingBag, MapPin, CreditCard, Truck, ArrowLeft, CheckCircle } from '
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { CartService } from '@/services/cart.api'
-import { OrderService } from '@/services/order.api'
+import { OrderService, PaymentService } from '@/services/order.api'
 import { useCartStore } from '@/store/cartStore'
 import { formatVND } from '@/utils/format'
 import { toast } from 'sonner'
@@ -60,6 +60,7 @@ export function CheckoutPage() {
   }, [cart])
 
   const onSubmit = async (values: CheckoutFormValues) => {
+    let createdOrderId: string | undefined
     if (!cartItems || cartItems.length === 0) {
       toast.error('Giỏ hàng của bạn đang trống!')
       return
@@ -67,6 +68,8 @@ export function CheckoutPage() {
 
     try {
       setSubmitting(true)
+      const checkoutKey = sessionStorage.getItem('altera-checkout-key') || crypto.randomUUID()
+      sessionStorage.setItem('altera-checkout-key', checkoutKey)
       const response = await OrderService.createOrder({
         items: cartItems.map((item) => ({
           productId: item.productId._id,
@@ -75,14 +78,19 @@ export function CheckoutPage() {
         shippingAddress: {
           fullName: values.fullName,
           phone: values.phone,
-          address: values.address,
+          street: values.address,
           city: values.city,
+          province: values.city,
+          country: 'Vietnam',
         },
         paymentMethod,
+        checkoutKey,
       })
 
       const order = response.data.data
       const orderId = (order as any)?._id || (order as any)?.order?._id
+      createdOrderId = orderId
+      sessionStorage.removeItem('altera-checkout-key')
 
       // Clear cart
       try {
@@ -93,9 +101,15 @@ export function CheckoutPage() {
       }
 
       toast.success('Đặt hàng thành công!')
+      if (paymentMethod === 'MOMO') {
+        const payment = await PaymentService.createMomo(orderId)
+        window.location.assign(payment.data.data.paymentUrl)
+        return
+      }
       navigate(`/orders/success/${orderId}`)
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Đặt hàng thất bại, vui lòng thử lại!')
+      if (createdOrderId) navigate(`/orders/success/${createdOrderId}`)
     } finally {
       setSubmitting(false)
     }
@@ -271,6 +285,12 @@ export function CheckoutPage() {
                   {paymentMethod === 'BANK_TRANSFER' && (
                     <CheckCircle className="h-5 w-5 text-[var(--color-primary)] flex-shrink-0" />
                   )}
+                </label>
+                <label htmlFor="payment-momo" className={`flex items-center gap-4 p-5 rounded-[var(--radius-lg)] border-2 cursor-pointer transition-all ${paymentMethod === 'MOMO' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-muted-foreground)]'}`}>
+                  <input id="payment-momo" type="radio" name="paymentMethod" value="MOMO" checked={paymentMethod === 'MOMO'} onChange={() => setPaymentMethod('MOMO')} className="sr-only" />
+                  <CreditCard className="h-5 w-5 text-[var(--color-muted-foreground)]" />
+                  <div className="flex-1"><div className="font-semibold text-sm">Thanh toán MoMo</div><div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">Thanh toán an toàn qua cổng MoMo</div></div>
+                  {paymentMethod === 'MOMO' && <CheckCircle className="h-5 w-5 text-[var(--color-primary)]" />}
                 </label>
               </div>
             </section>

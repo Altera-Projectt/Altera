@@ -2,6 +2,8 @@ const { body } = require('express-validator');
 const { handleValidationErrors } = require('./auth.validator');
 
 const createOrderValidator = [
+  body('paymentMethod').optional().isIn(['COD', 'BANK_TRANSFER', 'MOMO']).withMessage('Invalid payment method'),
+  body('checkoutKey').optional().isUUID().withMessage('Invalid checkout key'),
   body('items')
     .isArray({ min: 1 }).withMessage('Order must have at least one item'),
 

@@ -9,21 +9,36 @@ export interface ShippingAddress {
   address?: string
   street?: string
   city: string
+  province?: string
   country?: string
 }
 
-export type PaymentMethod = 'COD' | 'BANK_TRANSFER'
+export type PaymentMethod = 'COD' | 'BANK_TRANSFER' | 'MOMO'
 
 export interface CreateOrderPayload {
   items: OrderItem[]
   shippingAddress: ShippingAddress
   paymentMethod?: PaymentMethod
+  checkoutKey?: string
 }
 
 export interface Order {
   _id: string
   // Cho phép backend mở rộng sau này
   [key: string]: any
+}
+
+export interface TransferDetails {
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
+  amount: number
+  orderId: string
+  paymentContent: string
+  paymentReference: string
+  qrCodeUrl: string
+  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'EXPIRED'
 }
 
 export interface OrdersResponse {

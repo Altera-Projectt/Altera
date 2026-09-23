@@ -16,5 +16,11 @@ export const OrderService = {
     api.get<ApiResponse<{ order: Order }>>(`/orders/${id}`),
 
   createOrder: (payload: CreateOrderPayload) =>
-    api.post<ApiResponse<Order>>('/orders', payload),
+  api.post<ApiResponse<{ order: Order; payment: { paymentReference: string; paymentMethod: string; paymentStatus: string; transfer: import('@/types/order.types').TransferDetails | null } }>>('/orders', payload),
+}
+
+export const PaymentService = {
+  status: (orderId: string) => api.get<ApiResponse<{ orderId: string; amount: number; paymentMethod: string; paymentStatus: string; paymentReference: string; transactionId: string | null; failureReason: string | null; transfer: import('@/types/order.types').TransferDetails | null }>>(`/payments/${orderId}/status`),
+  createMomo: (orderId: string) => api.post<ApiResponse<{ paymentUrl: string; paymentReference: string }>>(`/payments/${orderId}/momo`),
+  retryBank: (orderId: string) => api.post<ApiResponse<import('@/types/order.types').TransferDetails>>(`/payments/${orderId}/bank/retry`),
 }

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const Payment = require('../models/Payment');
 
 const pagination = (query) => {
   const page = Math.max(Number.parseInt(query.page, 10) || 1, 1);
@@ -78,7 +79,10 @@ exports.listOrders = async (req, res, next) => {
       query.$or = clauses;
     }
     const [orders, total] = await Promise.all([Order.find(query).populate('userId', 'fullName email').sort({ createdAt: -1 }).skip(skip).limit(limit), Order.countDocuments(query)]);
-    res.json({ success: true, data: { orders, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } } });
+    const payments = await Payment.find({ orderId: { $in: orders.map((order) => order._id) } }).sort({ createdAt: -1 }).lean();
+    const latestPayment = new Map();
+    for (const payment of payments) if (!latestPayment.has(String(payment.orderId))) latestPayment.set(String(payment.orderId), payment);
+    res.json({ success: true, data: { orders: orders.map((order) => { const payment = latestPayment.get(String(order._id)); return { ...order.toObject(), transactionId: payment?.transactionId || null }; }), pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } } });
   } catch (error) { next(error); }
 };
 
@@ -87,7 +91,8 @@ exports.getOrder = async (req, res, next) => {
     if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid order ID' });
     const order = await Order.findById(req.params.id).populate('userId', 'fullName email').populate('items.productId', 'name imageUrl').populate('items.designId', 'previewImage customImage');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    res.json({ success: true, data: { order } });
+    const payment = await Payment.findOne({ orderId: order._id }).sort({ createdAt: -1 });
+    res.json({ success: true, data: { order, payment } });
   } catch (error) { next(error); }
 };
 

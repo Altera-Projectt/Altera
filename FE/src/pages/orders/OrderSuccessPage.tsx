@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CheckCircle, Package, MapPin, CreditCard, Truck, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { OrderService } from '@/services/order.api'
+import { OrderService, PaymentService } from '@/services/order.api'
 import { formatVND } from '@/utils/format'
 import type { Order } from '@/types/order.types'
 
@@ -22,6 +22,9 @@ export function OrderSuccessPage() {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [payment, setPayment] = useState<any>(null)
+  const [retrying, setRetrying] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -34,6 +37,8 @@ export function OrderSuccessPage() {
         // Handle both { order: Order } and Order directly
         const orderData = (data as any)?.order ?? data
         setOrder(orderData)
+        const paymentResponse = await PaymentService.status(id)
+        setPayment(paymentResponse.data.data)
       } catch (err: any) {
         setError(err?.response?.data?.message || 'Không tìm thấy đơn hàng')
       } finally {
@@ -42,6 +47,35 @@ export function OrderSuccessPage() {
     }
     fetchOrder()
   }, [id])
+
+  useEffect(() => {
+    if (!id || !order || order.paymentMethod === 'COD' || payment?.paymentStatus !== 'PENDING') return
+    let attempts = 0
+    const timer = window.setInterval(async () => {
+      attempts += 1
+      try {
+        const response = await PaymentService.status(id)
+        setPayment(response.data.data)
+        if (response.data.data.paymentStatus !== 'PENDING' || attempts >= 120) window.clearInterval(timer)
+      } catch { if (attempts >= 120) window.clearInterval(timer) }
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [id, order, payment?.paymentStatus])
+
+  const retryPayment = async () => {
+    if (!id) return
+    setRetrying(true)
+    try {
+      if (order?.paymentMethod === 'MOMO') {
+        const response = await PaymentService.createMomo(id)
+        window.location.assign(response.data.data.paymentUrl)
+      } else {
+        const response = await PaymentService.retryBank(id)
+        setPayment({ ...payment, ...response.data.data, paymentStatus: 'PENDING' })
+      }
+    } catch (err: any) { setActionError(err?.response?.data?.message || 'Không thể thử lại thanh toán.') }
+    finally { setRetrying(false) }
+  }
 
   // ── Loading ──────────────────────────────────────────────────────────────
 
@@ -94,7 +128,7 @@ export function OrderSuccessPage() {
             <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500" />
           </span>
         </div>
-        <h1 className="font-heading text-4xl font-bold mb-3">Đặt hàng thành công!</h1>
+        <h1 className="font-heading text-4xl font-bold mb-3">{order.paymentMethod === 'COD' ? 'Đặt hàng thành công!' : payment?.paymentStatus === 'PAID' ? 'Thanh toán thành công!' : payment?.paymentStatus === 'FAILED' ? 'Thanh toán không thành công' : 'Đang chờ thanh toán'}</h1>
         <p className="text-[var(--color-muted-foreground)] text-lg">
           Cảm ơn bạn đã tin tưởng ALTERA. Đơn hàng của bạn đang được xử lý.
         </p>
@@ -167,12 +201,22 @@ export function OrderSuccessPage() {
             )}
             {formatPaymentMethod(order.paymentMethod)}
           </div>
+          <p className="mt-3 text-sm">Trạng thái thanh toán: <strong>{payment?.paymentStatus || order.paymentStatus || 'PENDING'}</strong></p>
+          {payment?.transactionId && <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">Mã giao dịch: {payment.transactionId}</p>}
+          {payment?.failureReason && <p className="mt-2 text-sm text-red-700">{payment.failureReason}</p>}
         </div>
+
+        {payment?.transfer && payment.paymentStatus !== 'PAID' && <div className="border-t border-[var(--color-border)] p-6">
+          <h2 className="font-heading font-bold">Thanh toán chuyển khoản</h2>
+          <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start"><img src={payment.transfer.qrCodeUrl} alt="VietQR payment code" className="h-52 w-52 rounded border object-contain"/><div className="space-y-2 text-sm"><p>Ngân hàng: <strong>{payment.transfer.bankName}</strong></p><p>Số tài khoản: <strong>{payment.transfer.accountNumber}</strong> <button className="ml-2 underline" onClick={() => navigator.clipboard.writeText(payment.transfer.accountNumber)}>Sao chép</button></p><p>Tên tài khoản: <strong>{payment.transfer.accountName}</strong></p><p>Số tiền: <strong>{formatVND(payment.transfer.amount)}</strong></p><p>Nội dung: <strong>{payment.transfer.paymentContent}</strong> <button className="ml-2 underline" onClick={() => navigator.clipboard.writeText(payment.transfer.paymentContent)}>Sao chép</button></p><p className="pt-2 text-amber-700">Đang chờ ngân hàng xác nhận…</p></div></div>
+        </div>}
 
       </div>
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4">
+        {actionError && <p role="alert" className="text-red-700">{actionError}</p>}
+        {payment && (['FAILED','EXPIRED','CANCELLED'].includes(payment.paymentStatus) || (order.paymentMethod === 'MOMO' && payment.paymentStatus === 'PENDING')) && <Button variant="outline" size="lg" className="flex-1" loading={retrying} onClick={retryPayment}>{order.paymentMethod === 'MOMO' && payment.paymentStatus === 'PENDING' ? 'Tiếp tục thanh toán MoMo' : 'Thử lại thanh toán'}</Button>}
         <Button
           variant="outline"
           size="lg"

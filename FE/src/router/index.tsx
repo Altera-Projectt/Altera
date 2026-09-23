@@ -29,7 +29,7 @@ import { MyDesignsPage } from '@/pages/design/MyDesignsPage'
 // Admin Pages
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { AdminProductsPage } from '@/pages/admin/AdminProductsPage'
-import { AdminOrdersPage } from '@/pages/admin/AdminOrdersPage'
+import { AdminPaymentOrdersPage as AdminOrdersPage } from '@/pages/admin/AdminPaymentOrdersPage'
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
 import { AdminCustomersPage } from '@/pages/admin/AdminCustomersPage'
 
