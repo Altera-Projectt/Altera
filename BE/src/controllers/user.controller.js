@@ -197,7 +197,8 @@ const getAllUsers = async (req, res, next) => {
 
 const deleteAccount = async (req, res, next) => {
   try {
-    const user = await User.findByIdAndDelete(req.user._id);
+    // Preserve order ownership/history; account removal is a reversible deactivation.
+    const user = await User.findByIdAndUpdate(req.user._id, { isActive: false }, { new: true });
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });

@@ -1,10 +1,11 @@
+import { useEffect, useState } from 'react'
+import { AdminService } from '@/services/admin.api'
+import { formatVND } from '@/utils/format'
 export function AdminProductsPage() {
-  return (
-    <div>
-      <h1 className="font-heading text-3xl font-bold">Manage Products</h1>
-      <p className="mt-4 text-[var(--color-muted-foreground)]">
-        Placeholder for Admin Products Management.
-      </p>
-    </div>
-  )
+ const [items,setItems]=useState<any[]>([]);const [search,setSearch]=useState('');const [status,setStatus]=useState('');const [error,setError]=useState('');const [loading,setLoading]=useState(true)
+ const load=()=>{setLoading(true);AdminService.products({search,status:status||undefined}).then(r=>setItems(r.data.data.products)).catch(e=>setError(e.response?.data?.message||'Could not load products.')).finally(()=>setLoading(false))};useEffect(()=>{load()},[search,status])
+ const create=async()=>{const name=window.prompt('Product name');if(!name)return;const category=window.prompt('Category (T-Shirt, Hoodie, Pants, Shorts, Jacket, Accessory, Shoes)','T-Shirt');if(!category)return;const price=Number(window.prompt('Price in VND','0'));if(!Number.isFinite(price)||price<0){setError('Enter a valid price.');return}const stock=Number(window.prompt('Stock quantity','0'));try{await AdminService.createProduct({name,category,price,stock});load()}catch(e:any){setError(e.response?.data?.message||'Could not create product.')}}
+ const edit=async(p:any)=>{const name=window.prompt('Product name',p.name);if(!name)return;const price=Number(window.prompt('Price in VND',String(p.price)));if(!Number.isFinite(price)||price<0){setError('Enter a valid price.');return}const stock=Number(window.prompt('Stock quantity',String(p.stock)));try{await AdminService.updateProduct(p._id,{name,price,stock});load()}catch(e:any){setError(e.response?.data?.message||'Could not update product.')}}
+ const remove=async(p:any)=>{if(!window.confirm(`Deactivate “${p.name}”?`))return;try{await AdminService.deleteProduct(p._id);load()}catch(e:any){setError(e.response?.data?.message||'Could not deactivate product.')}}
+ return <section><div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="font-heading text-3xl font-bold">Products</h1><p className="mt-2 text-sm text-[var(--color-muted-foreground)]">Manage the existing catalog.</p></div><button onClick={create} className="rounded-lg bg-black px-4 py-2 text-white">Add product</button></div><div className="my-6 flex gap-3"><input aria-label="Search products" placeholder="Search products" value={search} onChange={e=>setSearch(e.target.value)} className="rounded-lg border px-3 py-2"/><select aria-label="Filter product status" value={status} onChange={e=>setStatus(e.target.value)} className="rounded-lg border px-3 py-2"><option value="">All status</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>{error&&<p role="alert" className="mb-3 text-red-600">{error}</p>}{loading?<p>Loading products…</p>:items.length===0?<p className="rounded-xl border p-8 text-center">No products found.</p>:<div className="overflow-x-auto rounded-xl border"><table className="w-full text-left text-sm"><thead className="bg-gray-50"><tr>{['Product','Category','Price','Stock','Status','Action'].map(x=><th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{items.map(p=><tr key={p._id} className="border-t"><td className="p-3">{p.name}</td><td className="p-3">{p.category}</td><td className="p-3">{formatVND(p.price)}</td><td className="p-3">{p.stock}</td><td className="p-3">{p.isActive?'Active':'Inactive'}</td><td className="space-x-3 p-3"><button className="underline" onClick={()=>edit(p)}>Edit</button>{p.isActive&&<button className="text-red-700 underline" onClick={()=>remove(p)}>Deactivate</button>}</td></tr>)}</tbody></table></div>}</section>
 }

@@ -52,7 +52,7 @@ export function LoginPage() {
       
       storeLogin(user, token)
       toast.success(response.data.message || 'Successfully signed in.')
-      navigate(from, { replace: true })
+      navigate(user.role === 'ADMIN' ? '/admin/dashboard' : from, { replace: true })
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>
       const errorMessage = axiosError.response?.data?.message || 'Authentication failed. Please check your credentials.'

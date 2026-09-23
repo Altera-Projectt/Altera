@@ -14,9 +14,10 @@ import { Button } from '@/components/ui'
 // ── Admin Sidebar Nav Links ────────────────────────────────────────────────
 
 const ADMIN_LINKS = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Products', href: '/admin/products', icon: Package },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+  { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Users', href: '/admin/users', icon: Users },
 ]
 

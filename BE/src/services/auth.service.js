@@ -29,6 +29,12 @@ const login = async ({ email, password }) => {
     throw error;
   }
 
+  if (user.isActive === false) {
+    const error = new Error('This account has been deactivated');
+    error.statusCode = 401;
+    throw error;
+  }
+
   const isPasswordMatch = await user.comparePassword(password);
   if (!isPasswordMatch) {
     const error = new Error('Invalid email or password');

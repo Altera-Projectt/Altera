@@ -30,6 +30,9 @@ const getOrderById = async (req, res, next) => {
 const updateOrderStatus = async (req, res, next) => {
   try {
     const { status, note } = req.body;
+    if (!['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid order status' });
+    }
     const order = await orderService.updateOrderStatus(req.params.id, status, note);
     res.status(200).json({ success: true, message: 'Order status updated', data: { order } });
   } catch (error) {

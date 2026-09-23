@@ -17,6 +17,7 @@ const orderRoutes = require('./routes/order.routes');
 const cartRoutes = require('./routes/cart.routes');
 const chatRoutes = require('./routes/chat.routes');
 const stylistRoutes = require('./routes/stylist.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, {
 const API = '/api/v1';
 app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/users`, userRoutes);
+app.use(`${API}/admin`, adminRoutes);
 app.use(`${API}/products`, productRoutes);
 app.use(`${API}/designs`, designRoutes);
 app.use(`${API}/outfits`, outfitRoutes);

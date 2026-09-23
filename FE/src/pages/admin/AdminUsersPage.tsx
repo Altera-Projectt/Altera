@@ -1,10 +1,9 @@
+import { useEffect, useState } from 'react'
+import { AdminService } from '@/services/admin.api'
 export function AdminUsersPage() {
-  return (
-    <div>
-      <h1 className="font-heading text-3xl font-bold">Manage Users</h1>
-      <p className="mt-4 text-[var(--color-muted-foreground)]">
-        Placeholder for Admin Users Management.
-      </p>
-    </div>
-  )
+  const [items, setItems] = useState<any[]>([]); const [search, setSearch] = useState(''); const [role, setRole] = useState(''); const [status, setStatus] = useState(''); const [error, setError] = useState(''); const [loading, setLoading] = useState(true)
+  const load = () => { setLoading(true); AdminService.users({ search, role: role || undefined, status: status || undefined }).then(r => setItems(r.data.data.users)).catch(e => setError(e.response?.data?.message || 'Could not load users.')).finally(() => setLoading(false)) }
+  useEffect(() => { load() }, [search, role, status])
+  const toggle = async (u: any) => { try { await AdminService.updateUser(u._id, { isActive: u.isActive === false }); load() } catch (e: any) { setError(e.response?.data?.message || 'Could not update user.') } }
+  return <section><h1 className="font-heading text-3xl font-bold">Users</h1><div className="my-6 flex flex-wrap gap-3"><input aria-label="Search users" placeholder="Search name or email" value={search} onChange={e => setSearch(e.target.value)} className="rounded-lg border px-3 py-2"/><select aria-label="Filter by role" value={role} onChange={e => setRole(e.target.value)} className="rounded-lg border px-3 py-2"><option value="">All roles</option><option>USER</option><option>ADMIN</option></select><select aria-label="Filter by status" value={status} onChange={e => setStatus(e.target.value)} className="rounded-lg border px-3 py-2"><option value="">All status</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>{error && <p role="alert" className="mb-3 text-red-600">{error}</p>}{loading ? <p>Loading users…</p> : items.length === 0 ? <p className="rounded-xl border p-8 text-center">No users found.</p> : <div className="overflow-x-auto rounded-xl border"><table className="w-full text-left text-sm"><thead className="bg-gray-50"><tr>{['ID','Name','Email','Role','Status','Joined','Action'].map(x=><th key={x} className="p-3">{x}</th>)}</tr></thead><tbody>{items.map(u=><tr key={u._id} className="border-t"><td className="p-3">{u._id.slice(-7)}</td><td className="p-3">{u.fullName}</td><td className="p-3">{u.email}</td><td className="p-3">{u.role}</td><td className="p-3">{u.isActive === false ? 'Inactive' : 'Active'}</td><td className="p-3">{new Date(u.createdAt).toLocaleDateString()}</td><td className="p-3">{u.role !== 'ADMIN' && <button className="underline" onClick={()=>toggle(u)}>{u.isActive === false ? 'Activate' : 'Deactivate'}</button>}</td></tr>)}</tbody></table></div>}</section>
 }
