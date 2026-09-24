@@ -1,5 +1,28 @@
 const paymentService = require('../services/payment.service');
 
+exports.adminList = async (req, res, next) => {
+  try {
+    const data = await paymentService.listAdminPayments(req.query);
+    res.json({ success: true, data });
+  } catch (error) { next(error); }
+};
+
+exports.confirmPayment = async (req, res, next) => {
+  try {
+    if (req.body.transactionId !== undefined && (typeof req.body.transactionId !== 'string' || req.body.transactionId.trim().length > 120)) return res.status(400).json({ success: false, message: 'Transaction ID must be a string of at most 120 characters.' });
+    const data = await paymentService.confirmPayment(req.params.orderId, req.user._id, req.body.transactionId?.trim());
+    res.json({ success: true, message: 'Payment confirmed.', data });
+  } catch (error) { next(error); }
+};
+
+exports.rejectPayment = async (req, res, next) => {
+  try {
+    if (req.body.reason !== undefined && (typeof req.body.reason !== 'string' || req.body.reason.trim().length > 300)) return res.status(400).json({ success: false, message: 'Reason must be a string of at most 300 characters.' });
+    const data = await paymentService.rejectPayment(req.params.orderId, req.user._id, req.body.reason?.trim());
+    res.json({ success: true, message: 'Payment rejected.', data });
+  } catch (error) { next(error); }
+};
+
 exports.status = async (req, res, next) => {
   try {
     const result = await paymentService.getOrderPayment(req.params.orderId, req.user._id, req.user.role);

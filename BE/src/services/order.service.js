@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Payment = require('../models/Payment');
 const Cart = require('../models/Cart');
+const mongoose = require('mongoose');
 const paymentService = require('./payment.service');
 
 /**
@@ -36,7 +37,7 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
     const product = await Product.findById(productId);
 
     if (!product) {
-      const error = new Error(`Product not found: ${item.productId}`);
+      const error = new Error(`Product not found: ${productId}`);
       error.statusCode = 404;
       throw error;
     }
@@ -152,44 +153,34 @@ const getOrderById = async (orderId, userId, role) => {
  * Update order status (Admin only)
  */
 const updateOrderStatus = async (orderId, status, note) => {
-  const order = await Order.findById(orderId);
-  if (!order) {
-    const error = new Error('Order not found');
-    error.statusCode = 404;
-    throw error;
-  }
+  const session = await mongoose.startSession();
+  let updatedOrder;
+  try {
+    await session.withTransaction(async () => {
+      const order = await Order.findById(orderId).session(session);
+      if (!order) { const error = new Error('Order not found'); error.statusCode = 404; throw error; }
+      const allowedTransitions = { PENDING: ['CONFIRMED', 'CANCELLED'], CONFIRMED: ['SHIPPING', 'CANCELLED'], SHIPPING: ['DELIVERED'], DELIVERED: [], CANCELLED: [] };
+      if (!allowedTransitions[order.status].includes(status)) { const error = new Error(`Cannot change status from ${order.status} to ${status}`); error.statusCode = 400; throw error; }
 
-  // Prevent illegal status transitions
-  const allowedTransitions = {
-    PENDING: ['CONFIRMED', 'CANCELLED'],
-    CONFIRMED: ['SHIPPING', 'CANCELLED'],
-    SHIPPING: ['DELIVERED'],
-    DELIVERED: [],
-    CANCELLED: [],
-  };
+      if (status === 'CANCELLED') {
+        await paymentService.cancelOrderPayment(order, session);
+        for (const item of order.items) await Product.findByIdAndUpdate(item.productId, { $inc: { stock: item.quantity } }, { session });
+      }
 
-  if (!allowedTransitions[order.status].includes(status)) {
-    const error = new Error(`Cannot change status from ${order.status} to ${status}`);
-    error.statusCode = 400;
-    throw error;
-  }
-
-  // Restore stock if cancelled
-  if (status === 'CANCELLED') {
-    for (const item of order.items) {
-      await Product.findByIdAndUpdate(item.productId, {
-        $inc: { stock: item.quantity },
-      });
-    }
-  }
-
-  order.status = status;
-  if (note) {
-    order.statusHistory[order.statusHistory.length - 1].note = note;
-  }
-
-  await order.save();
-  return order;
+      order.status = status;
+      if (status === 'DELIVERED' && order.paymentMethod === 'COD' && order.paymentStatus === 'PENDING') {
+        const payment = await Payment.findOne({ orderId: order._id, paymentMethod: 'COD' }).sort({ createdAt: -1 }).session(session);
+        if (payment?.paymentStatus === 'PENDING') {
+          const paid = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', paidAt: new Date() } }, { new: true, session });
+          if (paid) { order.paymentStatus = 'PAID'; order.paidAt = paid.paidAt; }
+        }
+      }
+      if (note && order.statusHistory.length) order.statusHistory[order.statusHistory.length - 1].note = note;
+      await order.save({ session });
+      updatedOrder = order;
+    });
+    return updatedOrder;
+  } finally { await session.endSession(); }
 };
 
 module.exports = { createOrder, getUserOrders, getOrderById, updateOrderStatus };

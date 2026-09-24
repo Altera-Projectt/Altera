@@ -29,7 +29,8 @@ import { MyDesignsPage } from '@/pages/design/MyDesignsPage'
 // Admin Pages
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { AdminProductsPage } from '@/pages/admin/AdminProductsPage'
-import { AdminPaymentOrdersPage as AdminOrdersPage } from '@/pages/admin/AdminPaymentOrdersPage'
+import { AdminOrdersPage } from '@/pages/admin/AdminOrdersPage'
+import { AdminPaymentOrdersPage } from '@/pages/admin/AdminPaymentOrdersPage'
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
 import { AdminCustomersPage } from '@/pages/admin/AdminCustomersPage'
 
@@ -83,6 +84,7 @@ export const router = createBrowserRouter([
           { path: 'dashboard', element: <AdminDashboardPage /> },
           { path: 'products', element: <AdminProductsPage /> },
           { path: 'orders', element: <AdminOrdersPage /> },
+          { path: 'payments', element: <AdminPaymentOrdersPage /> },
           { path: 'customers', element: <AdminCustomersPage /> },
           { path: 'users', element: <AdminUsersPage /> },
         ],

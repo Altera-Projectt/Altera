@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Package,
   ShoppingCart,
+  CreditCard,
   Users,
   LogOut,
   ChevronLeft,
@@ -17,6 +18,7 @@ const ADMIN_LINKS = [
   { label: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { label: 'Products', href: '/admin/products', icon: Package },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+  { label: 'Payments', href: '/admin/payments', icon: CreditCard },
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Users', href: '/admin/users', icon: Users },
 ]

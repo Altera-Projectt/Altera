@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const env = require('../config/env');
@@ -10,10 +11,17 @@ const equalSignature = (actual, expected) => {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 };
 const paymentError = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
-const expireAttempt = async (payment) => {
-  payment.paymentStatus = 'EXPIRED';
-  await payment.save();
-  await Order.updateOne({ _id: payment.orderId, paymentReference: payment.paymentReference, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'EXPIRED' } });
+const expireAttempt = async (payment, session) => {
+  if (!session) {
+    const ownSession = await mongoose.startSession();
+    try { return await ownSession.withTransaction(() => expireAttempt(payment, ownSession)); }
+    finally { await ownSession.endSession(); }
+  }
+  const expired = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'EXPIRED' } }, { new: true, ...(session ? { session } : {}) });
+  if (!expired) return false;
+  payment.paymentStatus = expired.paymentStatus;
+  await Order.updateOne({ _id: payment.orderId, paymentReference: payment.paymentReference, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'EXPIRED' } }, session ? { session } : {});
+  return true;
 };
 
 const assertConfigured = (method) => {
@@ -72,58 +80,163 @@ const getOrderPayment = async (orderId, userId, role) => {
   if (!payment && order.paymentMethod === 'COD') return { order, payment: { paymentMethod: 'COD', paymentStatus: order.paymentStatus || 'PENDING', paymentReference: null, transactionId: null }, transfer: null };
   if (!payment) throw paymentError('Payment not found', 404);
   if (payment.expiresAt && payment.paymentStatus === 'PENDING' && payment.expiresAt <= new Date()) {
-    payment.paymentStatus = 'EXPIRED'; await payment.save();
-    await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'EXPIRED' } });
+    if (await expireAttempt(payment)) order.paymentStatus = 'EXPIRED';
   }
   return { order, payment, transfer: payment.paymentMethod === 'BANK_TRANSFER' ? transferDetails(payment) : null };
 };
 
 const initiateMomo = async (orderId, userId) => {
-  const { order, payment } = await getOrderPayment(orderId, userId, 'USER');
-  if (order.paymentMethod !== 'MOMO') throw paymentError('This order does not use MoMo.');
-  if (payment.paymentStatus === 'PAID') throw paymentError('This order has already been paid.');
-  let attempt = payment;
-  if (['FAILED', 'EXPIRED', 'CANCELLED'].includes(payment.paymentStatus)) {
-    const reference = newReference();
-    attempt = await Payment.create({ orderId: order._id, userId, paymentMethod: 'MOMO', paymentStatus: 'PENDING', amount: order.totalPrice, paymentReference: reference, provider: 'MOMO', providerOrderId: reference, expiresAt: new Date(Date.now() + 30 * 60 * 1000) });
-    order.paymentReference = reference; order.paymentStatus = 'PENDING'; await order.save();
-  }
+  const session = await mongoose.startSession();
+  let attempt;
+  try {
+    await session.withTransaction(async () => {
+      const order = await Order.findById(orderId).session(session);
+      if (!order) throw paymentError('Order not found', 404);
+      if (order.userId.toString() !== userId.toString()) throw paymentError('Access denied. This order belongs to another user.', 403);
+      if (order.paymentMethod !== 'MOMO') throw paymentError('This order does not use MoMo.');
+      if (order.status === 'CANCELLED') throw paymentError('A cancelled order cannot be retried.', 409);
+      const payment = await Payment.findOne({ orderId: order._id }).sort({ createdAt: -1 }).session(session);
+      if (!payment) throw paymentError('Payment not found', 404);
+      if (payment.paymentStatus === 'PENDING' && payment.expiresAt && payment.expiresAt <= new Date()) await expireAttempt(payment, session);
+      if (payment.paymentStatus === 'PAID') throw paymentError('This order has already been paid.');
+      attempt = payment;
+      if (['FAILED', 'EXPIRED', 'CANCELLED'].includes(payment.paymentStatus)) {
+        const reference = newReference();
+        attempt = await Payment.create([{ orderId: order._id, userId, paymentMethod: 'MOMO', paymentStatus: 'PENDING', amount: order.totalPrice, paymentReference: reference, provider: 'MOMO', providerOrderId: reference, expiresAt: new Date(Date.now() + 30 * 60 * 1000) }], { session }).then((docs) => docs[0]);
+        order.paymentReference = reference; order.paymentStatus = 'PENDING'; await order.save({ session });
+      }
+    });
+  } finally { await session.endSession(); }
   return createMomoRequest(attempt);
 };
 
 const retryBankPayment = async (orderId, userId) => {
-  const { order, payment } = await getOrderPayment(orderId, userId, 'USER');
-  if (order.paymentMethod !== 'BANK_TRANSFER') throw paymentError('This order does not use bank transfer.');
-  if (payment.paymentStatus === 'PAID') throw paymentError('This order has already been paid.');
-  if (payment.paymentStatus === 'PENDING') return transferDetails(payment);
-  const reference = newReference();
-  const next = await Payment.create({ orderId: order._id, userId, paymentMethod: 'BANK_TRANSFER', paymentStatus: 'PENDING', amount: order.totalPrice, paymentReference: reference, provider: 'VIETQR', providerOrderId: reference, expiresAt: new Date(Date.now() + 30 * 60 * 1000) });
-  order.paymentReference = reference; order.paymentStatus = 'PENDING'; await order.save();
-  return transferDetails(next);
+  const session = await mongoose.startSession();
+  let attempt;
+  try {
+    await session.withTransaction(async () => {
+      const order = await Order.findById(orderId).session(session);
+      if (!order) throw paymentError('Order not found', 404);
+      if (order.userId.toString() !== userId.toString()) throw paymentError('Access denied. This order belongs to another user.', 403);
+      if (order.paymentMethod !== 'BANK_TRANSFER') throw paymentError('This order does not use bank transfer.');
+      if (order.status === 'CANCELLED') throw paymentError('A cancelled order cannot be retried.', 409);
+      const payment = await Payment.findOne({ orderId: order._id }).sort({ createdAt: -1 }).session(session);
+      if (!payment) throw paymentError('Payment not found', 404);
+      if (payment.paymentStatus === 'PENDING' && payment.expiresAt && payment.expiresAt <= new Date()) await expireAttempt(payment, session);
+      if (payment.paymentStatus === 'PAID') throw paymentError('This order has already been paid.');
+      attempt = payment;
+      if (payment.paymentStatus !== 'PENDING') {
+        const reference = newReference();
+        attempt = await Payment.create([{ orderId: order._id, userId, paymentMethod: 'BANK_TRANSFER', paymentStatus: 'PENDING', amount: order.totalPrice, paymentReference: reference, provider: 'VIETQR', providerOrderId: reference, expiresAt: new Date(Date.now() + 30 * 60 * 1000) }], { session }).then((docs) => docs[0]);
+        order.paymentReference = reference; order.paymentStatus = 'PENDING'; await order.save({ session });
+      }
+    });
+  } finally { await session.endSession(); }
+  return transferDetails(attempt);
+};
+
+const listAdminPayments = async ({ status, method, page = 1, limit = 20 } = {}) => {
+  const query = {};
+  if (status && ['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(status)) query.paymentStatus = status;
+  if (method && ['COD', 'BANK_TRANSFER', 'MOMO'].includes(method)) query.paymentMethod = method;
+  const pageNumber = Math.max(Number.parseInt(page, 10) || 1, 1);
+  const pageLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 20, 1), 100);
+  const [payments, total] = await Promise.all([
+    Payment.find(query).sort({ createdAt: -1 }).skip((pageNumber - 1) * pageLimit).limit(pageLimit).lean(),
+    Payment.countDocuments(query),
+  ]);
+  const orders = await Order.find({ _id: { $in: payments.map((payment) => payment.orderId) } }).populate('userId', 'fullName email').lean();
+  const orderById = new Map(orders.map((order) => [String(order._id), order]));
+  return { payments: payments.map((payment) => ({ ...payment, order: orderById.get(String(payment.orderId)) || null })), pagination: { total, page: pageNumber, limit: pageLimit, totalPages: Math.ceil(total / pageLimit) } };
+};
+
+const getPendingAdminPayment = async (orderId, method, session) => {
+  const order = await Order.findById(orderId).session(session);
+  if (!order) throw paymentError('Order not found.', 404);
+  if (order.status === 'CANCELLED') throw paymentError('A cancelled order cannot have its payment changed.', 409);
+  const payment = await Payment.findOne({ orderId: order._id }).sort({ createdAt: -1 }).session(session);
+  if (!payment) throw paymentError('Payment not found.', 404);
+  if (payment.paymentStatus !== 'PENDING') throw paymentError(`Payment is already ${payment.paymentStatus}.`, 409);
+  if (method && payment.paymentMethod !== method) throw paymentError(`Only ${method} payments can be changed here.`, 400);
+  if (order.paymentReference && payment.paymentReference !== order.paymentReference) throw paymentError('This payment attempt is no longer active.', 409);
+  if (order.paymentStatus !== 'PENDING') throw paymentError(`Order payment is already ${order.paymentStatus}.`, 409);
+  return { order, payment };
+};
+
+const confirmPayment = async (orderId, adminId, transactionId) => {
+  const session = await mongoose.startSession();
+  let result;
+  try {
+    await session.withTransaction(async () => {
+      const { order, payment } = await getPendingAdminPayment(orderId, 'BANK_TRANSFER', session);
+      const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', transactionId: transactionId || null, paidAt: new Date() } }, { new: true, session });
+      if (!updated) throw paymentError('Payment has already been processed.', 409);
+      const orderUpdate = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: updated.paidAt, ...(order.status === 'PENDING' ? { status: 'CONFIRMED' } : {}) } }, { session });
+      if (!orderUpdate.modifiedCount) throw paymentError('Order payment status changed. Refresh and try again.', 409);
+      result = { order: await Order.findById(order._id).session(session), payment: updated };
+    });
+    return result;
+  } finally { await session.endSession(); }
+};
+
+const rejectPayment = async (orderId, adminId, reason) => {
+  const session = await mongoose.startSession();
+  let result;
+  try {
+    await session.withTransaction(async () => {
+      const { order, payment } = await getPendingAdminPayment(orderId, 'BANK_TRANSFER', session);
+      const failureReason = reason ? String(reason).trim().slice(0, 300) : 'Rejected by administrator';
+      const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'FAILED', failureReason } }, { new: true, session });
+      if (!updated) throw paymentError('Payment has already been processed.', 409);
+      const orderUpdate = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'FAILED' } }, { session });
+      if (!orderUpdate.modifiedCount) throw paymentError('Order payment status changed. Refresh and try again.', 409);
+      result = { order: await Order.findById(order._id).session(session), payment: updated };
+    });
+    return result;
+  } finally { await session.endSession(); }
+};
+
+const cancelOrderPayment = async (order, session) => {
+  if (order.paymentStatus === 'PAID') throw paymentError('This paid order needs a refund before it can be cancelled.', 409);
+  const payment = await Payment.findOne({ orderId: order._id }).sort({ createdAt: -1 }).session(session);
+  if (!payment) { if (order.paymentStatus === 'PENDING') order.paymentStatus = 'CANCELLED'; return null; }
+  if (payment.paymentStatus === 'PAID') throw paymentError('This paid order needs a refund before it can be cancelled.', 409);
+  if (payment.paymentStatus === 'CANCELLED') throw paymentError('This order payment has already been cancelled.', 409);
+  if (payment.paymentStatus === 'PENDING') {
+    const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'CANCELLED' } }, { new: true, session });
+    if (!updated) throw paymentError('Payment status changed. Refresh and try again.', 409);
+  }
+  if (order.paymentStatus === 'PENDING') order.paymentStatus = 'CANCELLED';
+  return payment;
 };
 
 const momoNotification = async (body) => {
   const data = `accessKey=${env.MOMO_ACCESS_KEY}&amount=${body.amount}&extraData=${body.extraData || ''}&message=${body.message}&orderId=${body.orderId}&orderInfo=${body.orderInfo}&orderType=${body.orderType}&partnerCode=${body.partnerCode}&payType=${body.payType}&requestId=${body.requestId}&responseTime=${body.responseTime}&resultCode=${body.resultCode}&transId=${body.transId}`;
   if (body.partnerCode !== env.MOMO_PARTNER_CODE || !equalSignature(body.signature, sign(data, env.MOMO_SECRET_KEY))) throw paymentError('Invalid MoMo signature', 401);
-  const payment = await Payment.findOne({ provider: 'MOMO', providerOrderId: body.orderId });
-  if (!payment) throw paymentError('Payment reference not found', 404);
-  if (payment.paymentStatus === 'PAID') return { duplicate: true };
-  if (payment.paymentStatus !== 'PENDING') return { duplicate: true };
-  if (payment.expiresAt && payment.expiresAt <= new Date()) { await expireAttempt(payment); return { expired: true }; }
-  const order = await Order.findById(payment.orderId);
-  if (!order || Number(body.amount) !== order.totalPrice || Number(body.amount) !== payment.amount) throw paymentError('Payment amount does not match the order.');
-  if (Number(body.resultCode) === 0) {
-    let updated;
-    try {
-      updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', transactionId: String(body.transId), paidAt: new Date(), providerResponse: { resultCode: body.resultCode, responseTime: body.responseTime } } }, { new: true });
-    } catch (error) { if (error.code === 11000) return { duplicate: true }; throw error; }
-    if (!updated) return { duplicate: true };
-    await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } });
-  } else {
-    payment.paymentStatus = 'FAILED'; payment.failureReason = String(body.message || 'MoMo payment failed').slice(0, 300); await payment.save();
-    await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'FAILED' } });
-  }
-  return { duplicate: false };
+  const session = await mongoose.startSession();
+  try {
+    return await session.withTransaction(async () => {
+      const payment = await Payment.findOne({ provider: 'MOMO', providerOrderId: body.orderId }).session(session);
+      if (!payment) throw paymentError('Payment reference not found', 404);
+      if (payment.paymentStatus !== 'PENDING') return { duplicate: true };
+      if (payment.expiresAt && payment.expiresAt <= new Date()) { await expireAttempt(payment, session); return { expired: true }; }
+      const order = await Order.findById(payment.orderId).session(session);
+      if (!order || Number(body.amount) !== order.totalPrice || Number(body.amount) !== payment.amount) throw paymentError('Payment amount does not match the order.');
+      if (order.status === 'CANCELLED' || order.paymentStatus !== 'PENDING' || order.paymentReference !== payment.paymentReference) return { stale: true };
+      if (Number(body.resultCode) === 0) {
+        const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', transactionId: String(body.transId), paidAt: new Date(), providerResponse: { resultCode: body.resultCode, responseTime: body.responseTime } } }, { new: true, session });
+        if (!updated) return { duplicate: true };
+        const changed = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } }, { session });
+        if (!changed.modifiedCount) throw paymentError('Order payment status changed while processing MoMo notification.', 409);
+      } else {
+        const failed = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'FAILED', failureReason: String(body.message || 'MoMo payment failed').slice(0, 300) } }, { new: true, session });
+        if (!failed) return { duplicate: true };
+        const changed = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'FAILED' } }, { session });
+        if (!changed.modifiedCount) throw paymentError('Order payment status changed while processing MoMo notification.', 409);
+      }
+      return { duplicate: false };
+    });
+  } finally { await session.endSession(); }
 };
 
 const bankNotification = async (req) => {
@@ -133,22 +246,27 @@ const bankNotification = async (req) => {
   const data = req.body || {};
   const content = String(data.content || '').toUpperCase();
   const ref = String(data.orderId || content.match(/ALT[A-F0-9]{10}/)?.[0] || '').trim().toUpperCase();
-  const payment = await Payment.findOne({ provider: 'VIETQR', paymentReference: ref });
-  if (!payment) throw paymentError('Payment reference not found', 404);
-  if (payment.paymentStatus === 'PAID') return { duplicate: true };
-  if (payment.paymentStatus !== 'PENDING') return { duplicate: true };
-  if (payment.expiresAt && payment.expiresAt <= new Date()) { await expireAttempt(payment); return { expired: true }; }
-  if (String(data.transType).toUpperCase() !== 'C' || String(data.bankaccount) !== String(env.BANK_ACCOUNT_NUMBER) || Number(data.amount) !== payment.amount) throw paymentError('Bank transaction does not match payment reference, account, or amount.');
-  if (!content.includes(payment.paymentReference.toUpperCase())) throw paymentError('Bank transfer content does not match payment reference.');
+  if (String(data.transType).toUpperCase() !== 'C' || String(data.bankaccount) !== String(env.BANK_ACCOUNT_NUMBER)) throw paymentError('Bank transaction does not match payment account or transaction type.');
   const transactionId = String(data.transactionid || data.referencenumber || '');
   if (!transactionId) throw paymentError('Transaction ID is required.');
+  const session = await mongoose.startSession();
   try {
-    const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', transactionId, paidAt: new Date(), providerResponse: { referenceNumber: data.referencenumber, transactionTime: data.transactiontime } } }, { new: true });
-    if (!updated) return { duplicate: true };
-  } catch (error) { if (error.code === 11000) return { duplicate: true }; throw error; }
-  const order = await Order.findById(payment.orderId);
-  if (order) await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } });
-  return { duplicate: false };
+    return await session.withTransaction(async () => {
+      const payment = await Payment.findOne({ provider: 'VIETQR', paymentReference: ref }).session(session);
+      if (!payment) throw paymentError('Payment reference not found', 404);
+      if (payment.paymentStatus !== 'PENDING') return { duplicate: true };
+      if (payment.expiresAt && payment.expiresAt <= new Date()) { await expireAttempt(payment, session); return { expired: true }; }
+      if (Number(data.amount) !== payment.amount) throw paymentError('Bank transaction amount does not match payment.');
+      if (!content.includes(payment.paymentReference.toUpperCase())) throw paymentError('Bank transfer content does not match payment reference.');
+      const order = await Order.findById(payment.orderId).session(session);
+      if (!order || order.status === 'CANCELLED' || order.paymentStatus !== 'PENDING' || order.paymentReference !== payment.paymentReference) return { stale: true };
+      const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', transactionId, paidAt: new Date(), providerResponse: { referenceNumber: data.referencenumber, transactionTime: data.transactiontime } } }, { new: true, session });
+      if (!updated) return { duplicate: true };
+      const changed = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } }, { session });
+      if (!changed.modifiedCount) throw paymentError('Order payment status changed while processing bank notification.', 409);
+      return { duplicate: false };
+    });
+  } finally { await session.endSession(); }
 };
 
-module.exports = { assertConfigured, createPayment, transferDetails, createMomoRequest, getOrderPayment, initiateMomo, retryBankPayment, momoNotification, bankNotification };
+module.exports = { assertConfigured, createPayment, transferDetails, createMomoRequest, getOrderPayment, initiateMomo, retryBankPayment, listAdminPayments, confirmPayment, rejectPayment, cancelOrderPayment, momoNotification, bankNotification };

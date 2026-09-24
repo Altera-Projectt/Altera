@@ -20,6 +20,7 @@ const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải ít nhất 2 ký tự'),
   phone: z.string().min(9, 'Số điện thoại không hợp lệ').max(15, 'Số điện thoại không hợp lệ'),
   address: z.string().min(5, 'Địa chỉ phải ít nhất 5 ký tự'),
+  province: z.string().min(2, 'Tỉnh / thành phố không được để trống'),
   city: z.string().min(2, 'Thành phố không được để trống'),
 })
 
@@ -80,7 +81,7 @@ export function CheckoutPage() {
           phone: values.phone,
           street: values.address,
           city: values.city,
-          province: values.city,
+          province: values.province,
           country: 'Vietnam',
         },
         paymentMethod,
@@ -108,8 +109,9 @@ export function CheckoutPage() {
       }
       navigate(`/orders/success/${orderId}`)
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Đặt hàng thất bại, vui lòng thử lại!')
-      if (createdOrderId) navigate(`/orders/success/${createdOrderId}`)
+      const message = err?.response?.data?.message || 'Đặt hàng thất bại, vui lòng thử lại!'
+      toast.error(message)
+      if (createdOrderId) navigate(`/orders/success/${createdOrderId}${paymentMethod === 'MOMO' ? `?paymentError=${encodeURIComponent(message)}` : ''}`)
     } finally {
       setSubmitting(false)
     }
@@ -191,8 +193,15 @@ export function CheckoutPage() {
                   {...register('address')}
                 />
                 <Input
-                  label="Thành phố / Tỉnh"
-                  placeholder="Hồ Chí Minh"
+                  label="Tỉnh / Thành phố"
+                  placeholder="TP. Hồ Chí Minh"
+                  required
+                  error={errors.province?.message}
+                  {...register('province')}
+                />
+                <Input
+                  label="Quận / Huyện, Thành phố"
+                  placeholder="Quận 1"
                   required
                   error={errors.city?.message}
                   {...register('city')}

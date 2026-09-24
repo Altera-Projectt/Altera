@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+﻿import { useEffect, useState } from 'react'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Package, MapPin, CreditCard, Truck, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { OrderService, PaymentService } from '@/services/order.api'
@@ -11,6 +11,7 @@ import type { Order } from '@/types/order.types'
 function formatPaymentMethod(method?: string) {
   if (method === 'COD') return 'Thanh toán khi nhận hàng (COD)'
   if (method === 'BANK_TRANSFER') return 'Chuyển khoản ngân hàng'
+  if (method === 'MOMO') return 'Thanh toán MoMo'
   return method || '—'
 }
 
@@ -19,12 +20,16 @@ function formatPaymentMethod(method?: string) {
 export function OrderSuccessPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [payment, setPayment] = useState<any>(null)
   const [retrying, setRetrying] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [pollingDone, setPollingDone] = useState(false)
+  const momoResultCode = searchParams.get('resultCode')
+  const paymentError = searchParams.get('paymentError')
 
   useEffect(() => {
     if (!id) return
@@ -56,15 +61,22 @@ export function OrderSuccessPage() {
       try {
         const response = await PaymentService.status(id)
         setPayment(response.data.data)
-        if (response.data.data.paymentStatus !== 'PENDING' || attempts >= 120) window.clearInterval(timer)
-      } catch { if (attempts >= 120) window.clearInterval(timer) }
+        if (response.data.data.paymentStatus !== 'PENDING' || attempts >= 360) { window.clearInterval(timer); setPollingDone(attempts >= 360) }
+      } catch { if (attempts >= 360) { window.clearInterval(timer); setPollingDone(true) } }
     }, 5000)
     return () => window.clearInterval(timer)
   }, [id, order, payment?.paymentStatus])
 
+  const refreshPayment = async () => {
+    if (!id) return
+    try { const response = await PaymentService.status(id); setPayment(response.data.data); setPollingDone(response.data.data.paymentStatus === 'PENDING') }
+    catch (err: any) { setActionError(err?.response?.data?.message || 'Không thể kiểm tra trạng thái thanh toán.') }
+  }
+
   const retryPayment = async () => {
     if (!id) return
     setRetrying(true)
+    setPollingDone(false)
     try {
       if (order?.paymentMethod === 'MOMO') {
         const response = await PaymentService.createMomo(id)
@@ -128,10 +140,11 @@ export function OrderSuccessPage() {
             <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500" />
           </span>
         </div>
-        <h1 className="font-heading text-4xl font-bold mb-3">{order.paymentMethod === 'COD' ? 'Đặt hàng thành công!' : payment?.paymentStatus === 'PAID' ? 'Thanh toán thành công!' : payment?.paymentStatus === 'FAILED' ? 'Thanh toán không thành công' : 'Đang chờ thanh toán'}</h1>
+        <h1 className="font-heading text-4xl font-bold mb-3">{order.paymentMethod === 'COD' ? 'Đặt hàng thành công!' : payment?.paymentStatus === 'PAID' ? 'Thanh toán thành công!' : payment?.paymentStatus === 'FAILED' ? 'Thanh toán không thành công' : payment?.paymentStatus === 'CANCELLED' || payment?.paymentStatus === 'EXPIRED' ? 'Thanh toán chưa hoàn tất' : momoResultCode && momoResultCode !== '0' ? 'MoMo chưa xác nhận thanh toán thành công' : 'Đang chờ thanh toán'}</h1>
         <p className="text-[var(--color-muted-foreground)] text-lg">
           Cảm ơn bạn đã tin tưởng ALTERA. Đơn hàng của bạn đang được xử lý.
         </p>
+        {payment?.paymentStatus !== 'PAID' && (paymentError || (momoResultCode && momoResultCode !== '0')) && <p role="alert" className="mt-3 text-red-700">{paymentError || `MoMo trả về mã kết quả ${momoResultCode}. Trạng thái cuối cùng sẽ được xác nhận từ máy chủ.`}</p>}
 
         <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-muted)] rounded-full text-sm font-medium">
           <Package className="h-4 w-4" />
@@ -184,6 +197,7 @@ export function OrderSuccessPage() {
             {shipping.fullName && <p className="font-medium text-[var(--color-foreground)]">{shipping.fullName}</p>}
             {shipping.phone && <p>{shipping.phone}</p>}
             {(shipping.address || shipping.street) && <p>{shipping.address ?? shipping.street}</p>}
+            {shipping.province && <p>{shipping.province}</p>}
             {shipping.city && <p>{shipping.city}</p>}
           </div>
         </div>
@@ -204,6 +218,7 @@ export function OrderSuccessPage() {
           <p className="mt-3 text-sm">Trạng thái thanh toán: <strong>{payment?.paymentStatus || order.paymentStatus || 'PENDING'}</strong></p>
           {payment?.transactionId && <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">Mã giao dịch: {payment.transactionId}</p>}
           {payment?.failureReason && <p className="mt-2 text-sm text-red-700">{payment.failureReason}</p>}
+          {pollingDone && payment?.paymentStatus === 'PENDING' && <div className="mt-3"><p className="text-sm">Chưa nhận được kết quả thanh toán.</p><Button className="mt-2" variant="outline" onClick={refreshPayment}>Kiểm tra lại</Button></div>}
         </div>
 
         {payment?.transfer && payment.paymentStatus !== 'PAID' && <div className="border-t border-[var(--color-border)] p-6">
