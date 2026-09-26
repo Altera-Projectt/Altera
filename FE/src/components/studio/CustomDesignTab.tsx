@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Copy, Eye, EyeOff, Italic, Lock, Plus, RotateCw, Trash2, Underline, Unlock, Upload, X, Save, FolderOpen } from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Copy, Eye, EyeOff, Italic, Lock, Plus, RotateCw, Trash2, Underline, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
-import { DesignService, type CustomDesignDraft, type UploadedCustomImage } from '@/services/design.api'
+import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
@@ -19,7 +19,6 @@ type TextLayer = {
 type ImageLayer = { id: string; type: 'image'; name: string; visible: boolean; locked: boolean; zIndex: number; src: string; x: number; y: number; rotation: number; scaleX: number; scaleY: number; opacity: number }
 type DesignLayer = TextLayer | ImageLayer
 type DesignState = { frontDesign: { layers: DesignLayer[] }; backDesign: { layers: DesignLayer[] } }
-const STORAGE_KEY = 'altera-custom-design-v1'
 const FONTS = ['Inter', 'Roboto', 'Montserrat', 'Poppins', 'Bebas Neue', 'Arial']
 const EFFECTS: TextEffect[] = ['Straight', 'Wave', 'Pinch', 'Tilt Right', 'Tilt Left', 'Curve Up', 'Flag', 'Inflate', 'Curve Down']
 
@@ -41,9 +40,9 @@ const makeText = (): TextLayer => ({
 })
 const makeImage = (src: string): ImageLayer => ({ id: crypto.randomUUID(), type: 'image', name: 'Image', visible: true, locked: false, zIndex: Date.now(), src, x: 50, y: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 })
 
-function readDesign(): DesignState {
+function readDesign(storageKey: string): DesignState {
   try {
-    const value = localStorage.getItem(STORAGE_KEY)
+    const value = localStorage.getItem(storageKey) ?? (storageKey.endsWith('-guest') ? localStorage.getItem('altera-custom-design-v1') : null)
     if (value) {
       const parsed = JSON.parse(value) as DesignState
       const normalize = (value: DesignLayer[] | { layers?: DesignLayer[] } | undefined) => (Array.isArray(value) ? value : value?.layers ?? []).map((layer, index) => ({
@@ -56,6 +55,14 @@ function readDesign(): DesignState {
     }
   } catch { /* Start with an empty design if saved data is unavailable. */ }
   return { frontDesign: { layers: [] }, backDesign: { layers: [] } }
+}
+
+const errorMessage = (error: unknown, fallback: string) => {
+  if (error && typeof error === 'object' && 'response' in error) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response
+    if (typeof response?.data?.message === 'string') return response.data.message
+  }
+  return fallback
 }
 
 function readSelection() {
@@ -77,7 +84,12 @@ function effectTransform(effect: TextEffect): string {
 }
 
 export function CustomDesignTab() {
-  const [design, setDesign] = useState<DesignState>(readDesign)
+  const userId = useAuthStore((state) => state.user?._id)
+  return <CustomDesignEditor key={userId ?? 'guest'} storageKey={`altera-custom-design-v2-${userId ?? 'guest'}`} />
+}
+
+function CustomDesignEditor({ storageKey }: { storageKey: string }) {
+  const [design, setDesign] = useState<DesignState>(() => readDesign(storageKey))
   const [undoStack, setUndoStack] = useState<DesignState[]>([])
   const [redoStack, setRedoStack] = useState<DesignState[]>([])
   const [drafts, setDrafts] = useState<CustomDesignDraft[]>([])
@@ -86,6 +98,13 @@ export function CustomDesignTab() {
   const [draftNameInput, setDraftNameInput] = useState('')
   const [showDraftName, setShowDraftName] = useState(false)
   const [showDraftGallery, setShowDraftGallery] = useState(false)
+  const [showTemplateGallery, setShowTemplateGallery] = useState(false)
+  const [templates, setTemplates] = useState<DesignTemplate[]>([])
+  const [templateLoading, setTemplateLoading] = useState(false)
+  const [templateError, setTemplateError] = useState('')
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [templateCategory, setTemplateCategory] = useState('All')
+  const [templateDetail, setTemplateDetail] = useState<DesignTemplate | null>(null)
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [draftError, setDraftError] = useState('')
   const [savedSelection] = useState(readSelection)
@@ -109,7 +128,6 @@ export function CustomDesignTab() {
   const fetchCart = useCartStore((state) => state.fetchCart)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const authenticatedUserId = useAuthStore((state) => state.user?._id)
-  const draftOwner = useRef(authenticatedUserId)
   const drag = useRef<{ id: string; x: number; y: number; left: number; top: number } | null>(null)
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
   const selected = current.find((layer) => layer.id === selectedId) ?? null
@@ -133,7 +151,7 @@ export function CustomDesignTab() {
       }
     }).catch(() => { if (active) setError('Unable to load products. Please try again.') }).finally(() => { if (active) setLoadingProducts(false) })
     return () => { active = false }
-  }, [])
+  }, [savedSelection.colorName, savedSelection.productId, savedSelection.quantity, savedSelection.size, savedSelection.technique])
 
   useEffect(() => {
     DesignService.getCustomImages().then(({ data }) => setUploads(data.data.images)).catch(() => setError('Unable to load uploaded images.'))
@@ -152,7 +170,7 @@ export function CustomDesignTab() {
     return (product.discountPrice ?? product.price) + selectedTechnique.price + (printSide === 'BOTH' ? selectedTechnique.additionalSidePrice : 0)
   }, [product, selectedTechnique, printSide])
 
-  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(design)) }, [design])
+  useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(design)) }, [design, storageKey])
   useEffect(() => { if (product?._id) localStorage.setItem('altera-custom-selection-v1', JSON.stringify({ productId: product._id, colorName, size, printSide, technique, quantity })) }, [product?._id, colorName, size, printSide, technique, quantity])
   const update = (id: string, patch: Partial<TextLayer> | Partial<ImageLayer>) => { const next = { ...design, [side]: { layers: design[side].layers.map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) } }; commit(next) }
   const addText = () => { const layer = { ...makeText(), name: `Text ${design[side].layers.filter((item) => item.type === 'text').length + 1}`, zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 }; commit({ ...design, [side]: { layers: [...design[side].layers, layer] } }); setSelectedId(layer.id) }
@@ -167,7 +185,7 @@ export function CustomDesignTab() {
       const { data } = await DesignService.uploadCustomImage(file)
       setUploads((currentUploads) => [data.data.image, ...currentUploads])
       setError('')
-    } catch (uploadError: any) { setError(uploadError?.response?.data?.message ?? 'Could not upload this image.') }
+    } catch (uploadError: unknown) { setError(errorMessage(uploadError, 'Could not upload this image.')) }
     finally { setUploading(false); if (fileInput.current) fileInput.current.value = '' }
   }
   const addUploadedImage = (image: UploadedCustomImage) => { const layer = { ...makeImage(image.url), name: image.filename, zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 }; commit({ ...design, [side]: { layers: [...design[side].layers, layer] } }); setSelectedId(layer.id); setError('') }
@@ -175,7 +193,7 @@ export function CustomDesignTab() {
     const inUse = [...design.frontDesign.layers, ...design.backDesign.layers].some((layer) => layer.type === 'image' && layer.src === image.url)
     if (inUse && !window.confirm('This image is being used in your design. Delete anyway?')) return
     try { await DesignService.deleteCustomImage(image._id, inUse); setUploads((items) => items.filter((item) => item._id !== image._id)); setError('') }
-    catch (deleteError: any) { setError(deleteError?.response?.data?.message ?? 'Could not delete this image.') }
+    catch (deleteError: unknown) { setError(errorMessage(deleteError, 'Could not delete this image.')) }
   }
   const removeText = () => { if (!selectedId || selected?.locked) return; commit({ ...design, [side]: { layers: design[side].layers.filter((layer) => layer.id !== selectedId) } }); setSelectedId(null) }
   const changeLayer = (id: string, patch: Partial<DesignLayer>) => commit({ ...design, [side]: { layers: design[side].layers.map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) } })
@@ -187,20 +205,50 @@ export function CustomDesignTab() {
   const duplicate = (layer: DesignLayer) => { const copy = { ...layer, id: crypto.randomUUID(), name: `${layer.name} copy`, x: Math.min(100, layer.x + 3), y: Math.min(100, layer.y + 3), zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 } as DesignLayer; commit({ ...design, [side]: { layers: [...design[side].layers, copy] } }); setSelectedId(copy.id) }
   const toggleVisibility = (layer: DesignLayer) => changeLayer(layer.id, { visible: !layer.visible })
   const changeSide = (next: 'frontDesign' | 'backDesign') => { setSide(next); setSelectedId(null) }
+  const loadTemplates = async () => {
+    setTemplateLoading(true); setTemplateError('')
+    try { const response = await DesignService.listDesignTemplates(); setTemplates(response.data.data.templates) }
+    catch (loadError: unknown) { setTemplateError(errorMessage(loadError, 'Could not load templates.')) }
+    finally { setTemplateLoading(false) }
+  }
+  const openTemplate = async (template: DesignTemplate) => {
+    try { const response = await DesignService.getDesignTemplate(template._id); setTemplateDetail(response.data.data.template) }
+    catch (openError: unknown) { setTemplateError(errorMessage(openError, 'Could not open this template preview.')) }
+  }
+  const applyTemplate = (template: DesignTemplate) => {
+    const hasDesign = design.frontDesign.layers.length > 0 || design.backDesign.layers.length > 0
+    if (hasDesign && !window.confirm('Apply template and replace current design?')) return
+    const cloneLayers = (layers: Record<string, unknown>[] = []) => layers.map((item, index) => ({
+      ...item, id: crypto.randomUUID(), name: String(item.name || `${item.type === 'text' ? 'Text' : 'Layer'} ${index + 1}`),
+      visible: item.visible ?? true, locked: item.locked ?? false, zIndex: typeof item.zIndex === 'number' ? item.zIndex : index,
+    })) as DesignLayer[]
+    const frontLayers = cloneLayers(template.frontDesign?.layers ?? [])
+    const backLayers = cloneLayers(template.backDesign?.layers ?? [])
+    commit({ frontDesign: { layers: frontLayers }, backDesign: { layers: backLayers } })
+    const nextSide = frontLayers.length ? 'frontDesign' : 'backDesign'
+    setSide(nextSide); setSelectedId((nextSide === 'frontDesign' ? frontLayers : backLayers)[0]?.id ?? null)
+    setTemplateDetail(null); setShowTemplateGallery(false)
+  }
+  const filteredTemplates = templates.filter((template) => {
+    const matchesCategory = templateCategory === 'All' || template.category.toLowerCase() === templateCategory.toLowerCase()
+    const query = templateSearch.trim().toLowerCase()
+    const matchesSearch = !query || [template.name, template.category, template.style, ...template.tags].some((value) => value.toLowerCase().includes(query))
+    return matchesCategory && matchesSearch
+  })
 
-  const draftPayload = (name = draftName) => ({
+  const draftPayload = useCallback((name = draftName) => ({
     name, productId: product?._id ?? null,
     color: selectedColor ? { name: selectedColor.name, hex: selectedColor.hex } : null,
     size, printSide, printingTechnique: technique,
     frontDesign: { layers: design.frontDesign.layers, background: null },
     backDesign: { layers: design.backDesign.layers, background: null },
     thumbnail: makeDraftThumbnail(selectedColor?.hex ?? '#ffffff', design[side].layers),
-  })
-  const refreshDrafts = async () => {
+  }), [draftName, product?._id, selectedColor, size, printSide, technique, design, side])
+  const refreshDrafts = useCallback(async () => {
     if (!isAuthenticated) { setDrafts([]); return }
     try { const response = await DesignService.listCustomDrafts(); setDrafts(response.data.data.drafts) }
     catch { setDraftError('Could not load drafts. Please try again.') }
-  }
+  }, [isAuthenticated])
   const saveDraft = async () => {
     const name = draftNameInput.trim()
     if (!name) { setDraftError('Enter a name for this draft.'); return }
@@ -216,7 +264,7 @@ export function CustomDesignTab() {
       setDraftStatus('saved')
       setShowDraftName(false)
       await refreshDrafts()
-    } catch (saveError: any) { setDraftError(saveError?.response?.data?.message ?? 'Could not save this draft.'); setDraftStatus('failed') }
+    } catch (saveError: unknown) { setDraftError(errorMessage(saveError, 'Could not save this draft.')); setDraftStatus('failed') }
   }
   const openDraft = async (draft: CustomDesignDraft) => {
     try {
@@ -237,44 +285,40 @@ export function CustomDesignTab() {
       setUndoStack([]); setRedoStack([])
       setDraftId(saved._id); setDraftName(saved.name); setDraftStatus('saved')
       setShowDraftGallery(false); setDraftError('')
-    } catch (openError: any) { setDraftError(openError?.response?.data?.message ?? 'Could not open this draft.') }
+    } catch (openError: unknown) { setDraftError(errorMessage(openError, 'Could not open this draft.')) }
   }
   const renameDraft = async (draft: CustomDesignDraft) => {
     const name = window.prompt('Design name', draft.name)?.trim()
     if (!name || name === draft.name) return
     try { const response = await DesignService.updateCustomDraft(draft._id, { name }); setDrafts((items) => items.map((item) => item._id === draft._id ? response.data.data.draft : item)); if (draftId === draft._id) setDraftName(name) }
-    catch (renameError: any) { setDraftError(renameError?.response?.data?.message ?? 'Could not rename this draft.') }
+    catch (renameError: unknown) { setDraftError(errorMessage(renameError, 'Could not rename this draft.')) }
   }
   const duplicateDraft = async (draft: CustomDesignDraft) => {
     try { const response = await DesignService.duplicateCustomDraft(draft._id); setDrafts((items) => [response.data.data.draft, ...items]) }
-    catch (duplicateError: any) { setDraftError(duplicateError?.response?.data?.message ?? 'Could not duplicate this draft.') }
+    catch (duplicateError: unknown) { setDraftError(errorMessage(duplicateError, 'Could not duplicate this draft.')) }
   }
   const deleteDraft = async (draft: CustomDesignDraft) => {
     if (!window.confirm('Are you sure you want to delete this design?')) return
     try { await DesignService.deleteCustomDraft(draft._id); setDrafts((items) => items.filter((item) => item._id !== draft._id)); if (draftId === draft._id) { setDraftId(null); setDraftName(''); setDraftStatus('idle') } }
-    catch (deleteError: any) { setDraftError(deleteError?.response?.data?.message ?? 'Could not delete this draft.') }
+    catch (deleteError: unknown) { setDraftError(errorMessage(deleteError, 'Could not delete this draft.')) }
   }
 
   useEffect(() => {
-    if (draftOwner.current !== authenticatedUserId) {
-      draftOwner.current = authenticatedUserId
-      setDrafts([]); setDraftId(null); setDraftName(''); setDraftStatus('idle')
-      setDesign({ frontDesign: { layers: [] }, backDesign: { layers: [] } })
-      setUndoStack([]); setRedoStack([]); setSelectedId(null)
-    }
-    if (isAuthenticated) void refreshDrafts()
-    else { setDrafts([]); setDraftId(null); setDraftName(''); setDraftStatus('idle') }
+    if (!isAuthenticated) return
+    let active = true
+    DesignService.listCustomDrafts().then(({ data }) => { if (active) setDrafts(data.data.drafts) }).catch(() => { if (active) setDraftError('Could not load drafts. Please try again.') })
+    return () => { active = false }
   }, [isAuthenticated, authenticatedUserId])
   useEffect(() => {
     if (!draftId || !isAuthenticated || !product) return
-    setDraftStatus('saving')
+    const statusTimer = window.setTimeout(() => setDraftStatus('saving'), 0)
     const timer = window.setTimeout(() => {
       DesignService.updateCustomDraft(draftId, draftPayload())
         .then(({ data }) => { setDraftStatus('saved'); setDrafts((items) => items.map((item) => item._id === draftId ? data.data.draft : item)) })
         .catch(() => setDraftStatus('failed'))
     }, 1500)
-    return () => window.clearTimeout(timer)
-  }, [draftId, isAuthenticated, design, product?._id, colorName, size, printSide, technique, side])
+    return () => { window.clearTimeout(statusTimer); window.clearTimeout(timer) }
+  }, [draftId, isAuthenticated, product, draftPayload])
   const selectProduct = (next: Product | null) => {
     setProduct(next)
     setColorName(next?.colors?.find((item) => item.stock > 0)?.name ?? '')
@@ -316,8 +360,8 @@ export function CustomDesignTab() {
       await fetchCart()
       if (orderNow) navigate('/checkout')
       else setError('Added to cart successfully.')
-    } catch (requestError: any) {
-      setError(requestError?.response?.data?.message ?? 'Could not add this design to cart.')
+    } catch (requestError: unknown) {
+      setError(errorMessage(requestError, 'Could not add this design to cart.'))
     } finally { setSubmitting(false) }
   }
 
@@ -326,12 +370,19 @@ export function CustomDesignTab() {
     {draftError && <p role="status" className="text-sm text-red-600">{draftError}</p>}
     {!drafts.length ? <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">No saved drafts yet.</p> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{drafts.map((draft) => <article key={draft._id} className="overflow-hidden rounded-lg border">
       {draft.thumbnail ? <img src={draft.thumbnail} alt={`${draft.name} preview`} className="aspect-[3/4] w-full bg-gray-100 object-contain"/> : <div className="flex aspect-[3/4] items-center justify-center bg-gray-100 text-sm text-gray-400">No preview</div>}
-      <div className="space-y-2 p-3"><h3 className="truncate font-medium">{draft.name}</h3><p className="text-xs text-gray-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(draft.updatedAt))}</p><div className="flex flex-wrap gap-2"><button onClick={() => void openDraft(draft)} className="rounded bg-black px-3 py-1.5 text-xs text-white">Open</button><button onClick={() => void renameDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Rename</button><button onClick={() => void duplicateDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Duplicate</button><button onClick={() => void deleteDraft(draft)} className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-600">Delete</button></div></div>
+      <div className="space-y-2 p-3"><h3 className="truncate font-medium">{draft.name}</h3><p className="text-xs text-gray-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(draft.updatedAt))}</p><div className="flex flex-wrap gap-2"><button disabled={loadingProducts} onClick={() => void openDraft(draft)} className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50">{loadingProducts ? 'Loading…' : 'Open'}</button><button onClick={() => void renameDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Rename</button><button onClick={() => void duplicateDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Duplicate</button><button onClick={() => void deleteDraft(draft)} className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-600">Delete</button></div></div>
     </article>)}</div>}
+  </section> : showTemplateGallery ? <section className="relative space-y-5 rounded-xl border bg-white p-5">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Template Gallery</h2><p className="text-sm text-gray-500">Choose a starting point and keep every layer editable.</p></div><button onClick={() => setShowTemplateGallery(false)} className="rounded border px-4 py-2 text-sm">Back to editor</button></div>
+    <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_220px]"><label className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/><input aria-label="Search templates" placeholder="Search name, category, style, or tag" value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} className="w-full rounded border py-2 pl-9 pr-3 text-sm"/></label><select aria-label="Filter templates by category" value={templateCategory} onChange={(event) => setTemplateCategory(event.target.value)} className="rounded border px-3 py-2 text-sm"><option>All</option>{[...new Set(templates.map((template) => template.category))].sort().map((category) => <option key={category}>{category}</option>)}</select></div>
+    {templateError && <p role="status" className="text-sm text-red-600">{templateError}</p>}
+    {templateLoading ? <p className="py-10 text-center text-sm text-gray-500">Loading templates…</p> : !filteredTemplates.length ? <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">No templates match these filters.</p> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{filteredTemplates.map((template) => <button key={template._id} onClick={() => void openTemplate(template)} className="overflow-hidden rounded-lg border text-left transition hover:border-black hover:shadow-sm"><img src={template.thumbnail} alt={`${template.name} preview`} loading="lazy" className="aspect-[4/5] w-full bg-gray-100 object-cover"/><span className="block truncate px-3 pt-2 text-sm font-semibold">{template.name}</span><span className="block px-3 pb-3 text-xs text-gray-500">{template.category} · {template.style}</span></button>)}</div>}
+    {templateDetail && <div role="dialog" aria-modal="true" aria-labelledby="template-detail-title" className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/50 p-4" onClick={() => setTemplateDetail(null)}><article className="grid w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2" onClick={(event) => event.stopPropagation()}><img src={templateDetail.thumbnail} alt={`${templateDetail.name} preview`} className="max-h-[70vh] min-h-64 w-full bg-gray-100 object-cover"/><div className="flex flex-col p-5"><div className="flex items-start justify-between gap-2"><h3 id="template-detail-title" className="text-lg font-semibold">{templateDetail.name}</h3><button aria-label="Close template preview" onClick={() => setTemplateDetail(null)} className="rounded border p-1"><X size={16}/></button></div><p className="mt-2 text-xs font-medium uppercase tracking-wide text-gray-500">{templateDetail.category} · {templateDetail.style}</p><p className="mt-4 flex-1 text-sm text-gray-600">{templateDetail.description}</p><p className="mt-3 text-xs text-gray-500">{templateDetail.tags.join(' · ')}</p><button onClick={() => applyTemplate(templateDetail)} className="mt-5 rounded bg-black px-4 py-3 text-sm font-semibold text-white">Use This Template</button></div></article></div>}
   </section> : <div className="grid gap-6 lg:grid-cols-[290px_minmax(300px,1fr)_300px]">
     <aside className="space-y-4 rounded-xl border border-[var(--color-border)] bg-white p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide">Product</h2>
       <div className="grid grid-cols-2 gap-2"><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'My T-Shirt Design'); setDraftError(''); setShowDraftName(true) }} className="flex items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Save Draft</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Drafts</button></div>
+      <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded border px-3 py-2 text-sm font-medium">Template Gallery</button>
       {draftId && <p role="status" className="text-xs text-gray-500">{draftStatus === 'saving' ? 'Saving…' : draftStatus === 'saved' ? `Saved · ${draftName}` : draftStatus === 'failed' ? 'Save failed' : ''}</p>}
       {showDraftName && <div role="dialog" aria-modal="true" aria-labelledby="draft-name-title" className="space-y-2 rounded-lg border bg-gray-50 p-3"><h3 id="draft-name-title" className="text-sm font-semibold">Design name</h3><input autoFocus maxLength={100} value={draftNameInput} onChange={(event) => setDraftNameInput(event.target.value)} className="w-full rounded border bg-white px-3 py-2 text-sm" placeholder="My T-Shirt Design"/>{draftError && <p className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowDraftName(false)} className="rounded border px-3 py-1.5 text-xs">Cancel</button><button onClick={() => void saveDraft()} className="rounded bg-black px-3 py-1.5 text-xs text-white">Save</button></div></div>}
       {loadingProducts ? <p className="text-sm text-gray-500">Loading products…</p> : products.length === 0 ? <p className="text-sm text-gray-500">No active T-shirt products are available.</p> : <select aria-label="Product" value={product?._id ?? ''} onChange={(e) => selectProduct(products.find((item) => item._id === e.target.value) ?? null)} className="w-full rounded border p-2 text-sm">{products.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>}

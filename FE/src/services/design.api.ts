@@ -89,6 +89,21 @@ export interface CustomDesignDraft {
   updatedAt: string
 }
 
+export interface DesignTemplate {
+  _id: string
+  name: string
+  thumbnail: string
+  category: string
+  style: string
+  tags: string[]
+  description: string
+  frontDesign: { layers: Record<string, unknown>[] }
+  backDesign: { layers: Record<string, unknown>[] }
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 // ── Service ────────────────────────────────────────────────────────────────
 
 export const DesignService = {
@@ -105,6 +120,8 @@ export const DesignService = {
   updateCustomDraft: (id: string, payload: Partial<CustomDesignDraft>) => api.put<ApiResponse<{ draft: CustomDesignDraft }>>(`/designs/custom/drafts/${id}`, payload),
   duplicateCustomDraft: (id: string) => api.post<ApiResponse<{ draft: CustomDesignDraft }>>(`/designs/custom/drafts/${id}/duplicate`),
   deleteCustomDraft: (id: string) => api.delete<ApiResponse<void>>(`/designs/custom/drafts/${id}`),
+  listDesignTemplates: (params?: { search?: string; category?: string; style?: string }) => api.get<ApiResponse<{ templates: DesignTemplate[] }>>('/templates', { params }),
+  getDesignTemplate: (id: string) => api.get<ApiResponse<{ template: DesignTemplate }>>(`/templates/${id}`),
   /** AI generate a new design from prompt */
   generateDesign: (payload: GenerateDesignPayload) =>
     api.post<ApiResponse<GenerateDesignResponse>>('/designs/generate', payload),

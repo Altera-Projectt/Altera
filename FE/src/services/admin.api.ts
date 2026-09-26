@@ -16,4 +16,8 @@ export const AdminService = {
   createProduct: (data: FormData | Record<string, unknown>) => api.post('/admin/products', data),
   updateProduct: (id: string, data: FormData | Record<string, unknown>) => api.put(`/admin/products/${id}`, data),
   deleteProduct: (id: string) => api.delete(`/admin/products/${id}`),
+  templates: () => api.get('/admin/templates'),
+  createTemplate: (data: Record<string, unknown>) => api.post('/admin/templates', data),
+  updateTemplate: (id: string, data: Record<string, unknown>) => api.put(`/admin/templates/${id}`, data),
+  deleteTemplate: (id: string) => api.delete(`/admin/templates/${id}`),
 }

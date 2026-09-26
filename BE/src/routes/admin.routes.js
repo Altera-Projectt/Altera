@@ -5,6 +5,7 @@ const admin = require('../controllers/admin.controller');
 const order = require('../controllers/order.controller');
 const product = require('../controllers/product.controller');
 const payment = require('../controllers/payment.controller');
+const templates = require('../controllers/design-template.controller');
 const { createProductValidator, updateProductValidator } = require('../validators/product.validator');
 const multer = require('multer');
 const upload = multer({ dest: 'src/uploads/' });
@@ -26,5 +27,9 @@ router.get('/products', admin.listProducts);
 router.post('/products', upload.single('image'), createProductValidator, product.createProduct);
 router.put('/products/:id', upload.single('image'), updateProductValidator, product.updateProduct);
 router.delete('/products/:id', product.deleteProduct);
+router.get('/templates', templates.adminList);
+router.post('/templates', templates.create);
+router.put('/templates/:id', templates.update);
+router.delete('/templates/:id', templates.remove);
 
 module.exports = router;
