@@ -31,6 +31,7 @@ import {
   type GenerateDesignResponse,
 } from '@/services/design.api'
 import { cn } from '@/utils/cn'
+import { CustomDesignTab } from '@/components/studio/CustomDesignTab'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -854,7 +855,7 @@ export function DesignStudioPage() {
   const { toasts, show: showToast } = useToast()
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'create' | 'library'>('create')
+  const [activeTab, setActiveTab] = useState<'create' | 'custom' | 'library'>('create')
   const [viewState, setViewState] = useState<'form' | 'result'>('form')
   const [generating, setGenerating] = useState(false)
   const [refining, setRefining] = useState(false)
@@ -1059,7 +1060,7 @@ export function DesignStudioPage() {
 
       {/* Tab buttons */}
       <div className="mb-8 flex gap-2 border-b border-[var(--color-border)] pb-0">
-        {(['create', 'library'] as const).map((tab) => (
+        {(['create', 'custom', 'library'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
@@ -1073,6 +1074,8 @@ export function DesignStudioPage() {
           >
             {tab === 'create' ? (
               <><Wand2 className="h-4 w-4" /> Phác thảo mới</>
+            ) : tab === 'custom' ? (
+              <>TYPO / CUSTOM DESIGN</>
             ) : (
               <><BookOpen className="h-4 w-4" /> Thư viện của tôi</>
             )}
@@ -1113,6 +1116,8 @@ export function DesignStudioPage() {
           cooldown={cooldown}
         />
       )}
+
+      {activeTab === 'custom' && <CustomDesignTab />}
 
       {activeTab === 'library' && (
         <LibraryTab
