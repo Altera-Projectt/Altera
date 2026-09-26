@@ -4,6 +4,19 @@ const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCEL
 const PAYMENT_METHODS = ['COD', 'BANK_TRANSFER', 'MOMO'];
 const PAYMENT_STATUSES = ['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'EXPIRED'];
 
+const DesignSideSchema = new mongoose.Schema({
+  layers: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  background: { type: String, default: null },
+}, { _id: false });
+const CustomizationSchema = new mongoose.Schema({
+  color: { name: String, hex: String },
+  size: String,
+  printSide: { type: String, enum: ['FRONT', 'BACK', 'BOTH'] },
+  printingTechnique: String,
+  frontDesign: { type: DesignSideSchema, default: () => ({}) },
+  backDesign: { type: DesignSideSchema, default: () => ({}) },
+}, { _id: false });
+
 const OrderItemSchema = new mongoose.Schema(
   {
     productId: {
@@ -28,6 +41,7 @@ const OrderItemSchema = new mongoose.Schema(
     },
     name: { type: String }, // snapshot at order time
     imageUrl: { type: String }, // snapshot at order time
+    customization: { type: CustomizationSchema, default: undefined },
   },
   { _id: false }
 );

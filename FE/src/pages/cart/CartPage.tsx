@@ -104,10 +104,11 @@ export function CartPage() {
           <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden">
             {(cart.items || []).map((item) => {
               const productId = item.productId?._id
-              const isUpdating = updating === productId
+              const itemKey = item._id ?? productId
+              const isUpdating = updating === itemKey
               
               return (
-                <div key={productId} className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-[var(--color-background)] border-b border-[var(--color-border)] last:border-0 relative transition-colors hover:bg-[var(--color-muted)]/10">
+                <div key={itemKey} className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-[var(--color-background)] border-b border-[var(--color-border)] last:border-0 relative transition-colors hover:bg-[var(--color-muted)]/10">
                   
                   {isUpdating && (
                     <div className="absolute inset-0 bg-black/5 dark:bg-black/20 z-10 flex items-center justify-center backdrop-blur-[1px]">
@@ -136,6 +137,7 @@ export function CartPage() {
                     <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
                       Unit Price: {formatVND(item.price ?? item.productId?.price ?? 0)}
                     </p>
+                    {item.customization && <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{item.customization.color.name} · {item.customization.size} · {item.customization.printSide} · {item.customization.printingTechnique}</p>}
                   </div>
 
                   {/* Quantity & Delete */}
@@ -143,7 +145,7 @@ export function CartPage() {
                     <div className="flex items-center border border-[var(--color-border)] rounded-[var(--radius-sm)] overflow-hidden">
                       <button
                         type="button"
-                        onClick={() => handleUpdateQuantity(productId!, item.quantity - 1)}
+                        onClick={() => handleUpdateQuantity(itemKey!, item.quantity - 1)}
                         disabled={isUpdating || item.quantity <= 1}
                         className="h-8 w-8 flex items-center justify-center bg-[var(--color-neutral)] hover:bg-[var(--color-muted)] disabled:opacity-50 transition-colors"
                       >
@@ -154,7 +156,7 @@ export function CartPage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleUpdateQuantity(productId!, item.quantity + 1)}
+                        onClick={() => handleUpdateQuantity(itemKey!, item.quantity + 1)}
                         disabled={isUpdating}
                         className="h-8 w-8 flex items-center justify-center bg-[var(--color-neutral)] hover:bg-[var(--color-muted)] disabled:opacity-50 transition-colors"
                       >
@@ -164,7 +166,7 @@ export function CartPage() {
 
                     <button
                       type="button"
-                      onClick={() => handleRemoveItem(productId!)}
+                      onClick={() => handleRemoveItem(itemKey!)}
                       disabled={isUpdating}
                       className="h-8 w-8 flex items-center justify-center text-[var(--color-muted-foreground)] hover:text-rose-500 hover:bg-rose-500/10 rounded-[var(--radius-sm)] transition-colors"
                     >

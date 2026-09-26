@@ -4,6 +4,10 @@ const CATEGORIES = ['T-Shirt', 'Hoodie', 'Pants', 'Shorts', 'Jacket', 'Accessory
 const STYLES = ['Oversize', 'Boxy', 'Slim', 'Regular', 'Crop', 'Baby Tee', 'Polo', 'Henley'];
 const FITS = ['Oversized', 'Boxy', 'Regular', 'Slim', 'Relaxed'];
 const GENDERS = ['Men', 'Women', 'Unisex'];
+const DEFAULT_PRINTING_TECHNIQUES = [
+  { code: 'DTF', name: 'DTF · Direct To Film', price: 80000, additionalSidePrice: 40000, customizationPrice: 0 },
+  { code: 'DTG', name: 'DTG · Direct To Garment', price: 120000, additionalSidePrice: 60000, customizationPrice: 0 },
+];
 
 const ProductSchema = new mongoose.Schema(
   {
@@ -54,6 +58,10 @@ const ProductSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Price is required'],
       min: [0, 'Price cannot be negative'],
+    },
+    printingTechniques: {
+      type: [{ code: String, name: String, price: { type: Number, min: 0 }, additionalSidePrice: { type: Number, min: 0, default: 0 }, customizationPrice: { type: Number, min: 0, default: 0 } }],
+      default: DEFAULT_PRINTING_TECHNIQUES,
     },
     discountPrice: {
       type: Number,

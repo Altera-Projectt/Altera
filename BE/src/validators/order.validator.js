@@ -11,6 +11,9 @@ const createOrderValidator = [
     .notEmpty().withMessage('Product ID is required')
     .isMongoId().withMessage('Invalid product ID'),
 
+  body('items.*.cartItemId')
+    .optional().isMongoId().withMessage('Invalid cart item ID'),
+
   body('items.*.quantity')
     .notEmpty().withMessage('Quantity is required')
     .isInt({ min: 1 }).withMessage('Quantity must be at least 1'),

@@ -31,6 +31,7 @@ export interface Product {
   brand?: string
   gender?: 'Men' | 'Women' | 'Unisex' | string
   price: number
+  printingTechniques?: PrintingTechnique[]
   discountPrice?: number | null
   imageUrl: string
   images?: string[]
@@ -44,6 +45,14 @@ export interface Product {
   isActive: boolean
   createdAt: string
   updatedAt: string
+}
+
+export interface PrintingTechnique {
+  code: string
+  name: string
+  price: number
+  additionalSidePrice: number
+  customizationPrice: number
 }
 
 export interface ProductReview {

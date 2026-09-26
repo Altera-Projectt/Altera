@@ -1,5 +1,18 @@
 const mongoose = require('mongoose');
 
+const DesignSideSchema = new mongoose.Schema({
+  layers: { type: [mongoose.Schema.Types.Mixed], default: [] },
+  background: { type: String, default: null },
+}, { _id: false });
+const CustomizationSchema = new mongoose.Schema({
+  color: { name: { type: String, required: true }, hex: { type: String, required: true } },
+  size: { type: String, required: true },
+  printSide: { type: String, enum: ['FRONT', 'BACK', 'BOTH'], required: true },
+  printingTechnique: { type: String, required: true },
+  frontDesign: { type: DesignSideSchema, default: () => ({}) },
+  backDesign: { type: DesignSideSchema, default: () => ({}) },
+}, { _id: false });
+
 const CartItemSchema = new mongoose.Schema(
   {
     productId: {
@@ -17,8 +30,9 @@ const CartItemSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    customization: { type: CustomizationSchema, default: undefined },
   },
-  { _id: false }
+  { _id: true }
 );
 
 const CartSchema = new mongoose.Schema(

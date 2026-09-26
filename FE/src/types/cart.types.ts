@@ -8,9 +8,22 @@ export interface CartItemProduct {
 }
 
 export interface CartItem {
+  _id?: string
+  id?: string
   productId: CartItemProduct
   quantity: number
   price: number
+  customization?: ProductCustomization
+}
+
+export interface ProductCustomization {
+  color: { name: string; hex: string }
+  size: string
+  printSide: 'FRONT' | 'BACK' | 'BOTH'
+  printingTechnique: string
+  frontDesign: { layers: unknown[]; background: string | null }
+  backDesign: { layers: unknown[]; background: string | null }
+  estimatedPrice?: number
 }
 
 export interface Cart {
@@ -26,6 +39,7 @@ export interface CartResponse {
 export interface AddCartPayload {
   productId: string
   quantity: number
+  customization?: ProductCustomization
 }
 
 export interface UpdateCartPayload {

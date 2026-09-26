@@ -1,6 +1,7 @@
 export interface OrderItem {
   productId: string
   quantity: number
+  cartItemId?: string
 }
 
 export interface ShippingAddress {

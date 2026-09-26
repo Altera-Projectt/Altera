@@ -75,6 +75,7 @@ export function CheckoutPage() {
         items: cartItems.map((item) => ({
           productId: item.productId._id,
           quantity: item.quantity,
+          ...(item._id && { cartItemId: item._id }),
         })),
         shippingAddress: {
           fullName: values.fullName,
