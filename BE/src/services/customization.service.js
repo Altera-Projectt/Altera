@@ -4,6 +4,15 @@ const fail = (message) => {
   throw error;
 };
 
+const isAllowedImageSource = (src) => {
+  if (typeof src !== 'string' || src.length > 7_000_000) return false;
+  if (/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(src)) return true;
+  try {
+    const url = new URL(src);
+    return url.protocol === 'https:' && url.hostname === 'res.cloudinary.com';
+  } catch { return false; }
+};
+
 const getCustomizationPrice = (product, customization) => {
   if (!customization) return product.price;
 
@@ -22,7 +31,7 @@ const getCustomizationPrice = (product, customization) => {
   }
   for (const layer of [...front, ...back]) {
     if (layer?.type === 'text' && typeof layer.text === 'string' && layer.text.length <= 500) continue;
-    if (layer?.type === 'image' && typeof layer.src === 'string' && layer.src.length <= 7_000_000 && /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+={0,2}$/.test(layer.src)) continue;
+    if (layer?.type === 'image' && isAllowedImageSource(layer.src)) continue;
     fail('A design contains an invalid text or image layer.');
   }
   const hasFront = front.length > 0;
@@ -34,4 +43,4 @@ const getCustomizationPrice = (product, customization) => {
   return (product.discountPrice || product.price) + technique.price + (customization.printSide === 'BOTH' ? technique.additionalSidePrice : 0) + (technique.customizationPrice || 0);
 };
 
-module.exports = { getCustomizationPrice };
+module.exports = { getCustomizationPrice, isAllowedImageSource };

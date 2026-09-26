@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Plus, RotateCw, Trash2, Underline } from 'lucide-react'
+import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Plus, RotateCw, Trash2, Underline, Upload, X } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
+import { DesignService, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
 import type { Product } from '@/types/product.types'
@@ -69,6 +70,10 @@ export function CustomDesignTab() {
   const [error, setError] = useState('')
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [uploads, setUploads] = useState<UploadedCustomImage[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const fetchCart = useCartStore((state) => state.fetchCart)
   const drag = useRef<{ id: string; x: number; y: number; left: number; top: number } | null>(null)
@@ -93,6 +98,10 @@ export function CustomDesignTab() {
     return () => { active = false }
   }, [])
 
+  useEffect(() => {
+    DesignService.getCustomImages().then(({ data }) => setUploads(data.data.images)).catch(() => setError('Unable to load uploaded images.'))
+  }, [])
+
   const colors = product?.colors ?? []
   const sizes = product?.sizes ?? []
   const selectedColor = colors.find((color) => color.name === colorName) ?? null
@@ -110,23 +119,26 @@ export function CustomDesignTab() {
   useEffect(() => { if (product?._id) localStorage.setItem('altera-custom-selection-v1', JSON.stringify({ productId: product._id, colorName, size, printSide, technique, quantity })) }, [product?._id, colorName, size, printSide, technique, quantity])
   const update = (id: string, patch: Partial<TextLayer> | Partial<ImageLayer>) => setDesign((prev) => ({ ...prev, [side]: prev[side].map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) }))
   const addText = () => { const layer = makeText(); setDesign((prev) => ({ ...prev, [side]: [...prev[side], layer] })); setSelectedId(layer.id) }
-  const addImage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const uploadFile = async (file?: File) => {
     if (!file) return
-    if (!['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type) || file.size > 1.5 * 1024 * 1024) { setError('Choose a PNG, JPEG, WebP, or GIF image under 1.5 MB.'); event.target.value = ''; return }
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return
-      const layer = makeImage(reader.result)
-      const next = { ...design, [side]: [...design[side], layer] }
-      if (JSON.stringify(next).length > 4_500_000) { setError('This design is too large to save in the browser. Remove an image layer and try again.'); return }
-      setDesign(next)
-      setSelectedId(layer.id)
+    if (file.size > 10 * 1024 * 1024) { setError('Image size exceeds the 10MB limit.'); return }
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    const valid = (extension === 'png' && file.type === 'image/png') || (['jpg', 'jpeg'].includes(extension ?? '') && file.type === 'image/jpeg') || (extension === 'webp' && file.type === 'image/webp')
+    if (!valid) { setError('Choose a valid PNG, JPG, JPEG, or WEBP image.'); return }
+    setUploading(true)
+    try {
+      const { data } = await DesignService.uploadCustomImage(file)
+      setUploads((currentUploads) => [data.data.image, ...currentUploads])
       setError('')
-    }
-    reader.onerror = () => setError('Could not read this image file.')
-    reader.readAsDataURL(file)
-    event.target.value = ''
+    } catch (uploadError: any) { setError(uploadError?.response?.data?.message ?? 'Could not upload this image.') }
+    finally { setUploading(false); if (fileInput.current) fileInput.current.value = '' }
+  }
+  const addUploadedImage = (image: UploadedCustomImage) => { const layer = makeImage(image.url); setDesign((prev) => ({ ...prev, [side]: [...prev[side], layer] })); setSelectedId(layer.id); setError('') }
+  const deleteUploadedImage = async (image: UploadedCustomImage) => {
+    const inUse = [...design.frontDesign, ...design.backDesign].some((layer) => layer.type === 'image' && layer.src === image.url)
+    if (inUse && !window.confirm('This image is being used in your design. Delete anyway?')) return
+    try { await DesignService.deleteCustomImage(image._id, inUse); setUploads((items) => items.filter((item) => item._id !== image._id)); setError('') }
+    catch (deleteError: any) { setError(deleteError?.response?.data?.message ?? 'Could not delete this image.') }
   }
   const removeText = () => { if (!selectedId) return; setDesign((prev) => ({ ...prev, [side]: prev[side].filter((layer) => layer.id !== selectedId) })); setSelectedId(null) }
   const changeSide = (next: 'frontDesign' | 'backDesign') => { setSide(next); setSelectedId(null) }
@@ -151,7 +163,7 @@ export function CustomDesignTab() {
     const hasFront = design.frontDesign.length > 0
     const hasBack = design.backDesign.length > 0
     if ((printSide === 'FRONT' && !hasFront) || (printSide === 'BACK' && !hasBack) || (printSide === 'BOTH' && (!hasFront || !hasBack))) {
-      setError('Add a text layer to every selected print side before ordering.')
+      setError('Add a design layer to every selected print side before ordering.')
       return
     }
     if (quantity < 1 || quantity > stock) {
@@ -189,7 +201,17 @@ export function CustomDesignTab() {
         <div className="border-t pt-3"><p className="flex justify-between text-sm"><span>Estimated total</span><strong>{formatVND(estimatedPrice * quantity)}</strong></p><p className="mt-1 text-xs text-gray-500">Product {formatVND(product.discountPrice ?? product.price)} + print {formatVND(selectedTechnique?.price ?? 0)}{printSide === 'BOTH' ? ` + second side ${formatVND(selectedTechnique?.additionalSidePrice ?? 0)}` : ''}{selectedTechnique?.customizationPrice ? ` + customization ${formatVND(selectedTechnique.customizationPrice)}` : ''}</p>{quantity > stock && <p className="mt-1 text-xs text-red-600">Quantity exceeds available stock.</p>}</div>
       </>}
       <button onClick={addText} className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white"><Plus size={16}/>Add Text</button>
-      <label className="block w-full cursor-pointer rounded-lg border px-4 py-3 text-center text-sm font-semibold">Add Image<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={addImage}/></label>
+      <div onDragOver={(event) => { event.preventDefault(); setDragOver(true) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOver(false) }} onDrop={(event) => { event.preventDefault(); setDragOver(false); void uploadFile(event.dataTransfer.files[0]) }} className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${dragOver ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}>
+        <Upload className="mx-auto mb-2" size={20}/><p className="text-sm font-semibold">Drag and drop or click to upload</p><p className="mt-1 text-xs text-gray-500">PNG, JPG, JPEG, WEBP · Maximum 10MB</p>
+        <button type="button" disabled={uploading} onClick={() => fileInput.current?.click()} className="mt-3 rounded border px-3 py-2 text-sm disabled:opacity-50">{uploading ? 'Uploading…' : 'Choose file'}</button>
+        <input ref={fileInput} className="sr-only" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" onChange={(event) => void uploadFile(event.target.files?.[0])}/>
+      </div>
+      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Uploaded images</p>
+        {uploads.length === 0 ? <p className="text-xs text-gray-500">Your uploaded images will appear here.</p> : <div className="grid grid-cols-3 gap-2">{uploads.map((image) => <div key={image._id} className="group relative min-w-0 rounded border p-1">
+          <button type="button" onClick={() => addUploadedImage(image)} title={`Add ${image.filename} to ${side === 'frontDesign' ? 'front' : 'back'}`} className="block w-full text-left"><img src={image.thumbnailUrl || image.url} alt={image.filename} loading="lazy" className="aspect-square w-full rounded object-cover"/><span className="mt-1 block truncate text-[10px]">{image.filename}</span><span className="block text-[10px] text-gray-500">{(image.size / (1024 * 1024)).toFixed(2)} MB</span></button>
+          <button type="button" onClick={() => void deleteUploadedImage(image)} aria-label={`Delete ${image.filename}`} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 shadow"><X size={13}/></button>
+        </div>)}</div>}
+      </div>
       <div className="flex gap-2"><button onClick={() => changeSide('frontDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'frontDesign' ? 'bg-black text-white' : ''}`}>Front</button><button onClick={() => changeSide('backDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'backDesign' ? 'bg-black text-white' : ''}`}>Back</button></div>
       <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Layers · {side === 'frontDesign' ? 'Front' : 'Back'}</p>
         {current.length === 0 && <p className="text-sm text-gray-500">No text layers yet.</p>}
@@ -216,12 +238,12 @@ export function CustomDesignTab() {
         <label className="block text-sm">Opacity · {Math.round(selected.opacity * 100)}%<input className="w-full" type="range" min="0" max="1" step="0.01" value={selected.opacity} onChange={(e) => update(selected.id, { opacity: Number(e.target.value) })}/></label>
         <label className="block text-sm">Effect<select className="mt-1 w-full rounded border p-2" value={selected.effect} onChange={(e) => update(selected.id, { effect: e.target.value as TextEffect })}>{EFFECTS.map((effect) => <option key={effect}>{effect}</option>)}</select></label>
         <label className="block text-sm">Rotate · {selected.rotation}°<input className="w-full" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
-        <label className="block text-sm">Scale · {selected.scaleX.toFixed(1)}×<input className="w-full" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
+        <label className="block text-sm">Resize · {selected.scaleX.toFixed(1)}×<input className="w-full" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
       </> : selected?.type === 'image' ? <>
         <p className="text-sm font-medium">Image layer</p>
         <label className="block text-sm">Opacity · {Math.round(selected.opacity * 100)}%<input className="w-full" type="range" min="0" max="1" step="0.01" value={selected.opacity} onChange={(e) => update(selected.id, { opacity: Number(e.target.value) })}/></label>
         <label className="block text-sm">Rotate · {selected.rotation}°<input className="w-full" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
-        <label className="block text-sm">Scale · {selected.scaleX.toFixed(1)}×<input className="w-full" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
+        <label className="block text-sm">Resize · {selected.scaleX.toFixed(1)}×<input className="w-full" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
       </> : <p className="text-sm text-gray-500">Select a layer or add text/image to edit its properties.</p>}
       {selected && <button onClick={removeText} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Delete layer</button>}
       <div className="flex items-center gap-2 border-t pt-3 text-xs text-gray-500"><RotateCw size={14}/>Drag on canvas to move · use controls to resize and rotate</div>

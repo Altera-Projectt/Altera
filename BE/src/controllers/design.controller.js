@@ -1,5 +1,27 @@
 const designService = require('../services/design.service');
 const designAiService = require('../services/design-ai.service');
+const customDesignUploadService = require('../services/custom-design-upload.service');
+
+const uploadCustomImage = async (req, res, next) => {
+  try {
+    const image = await customDesignUploadService.upload(req.user._id, req.file);
+    res.status(201).json({ success: true, message: 'Image uploaded successfully.', data: { image } });
+  } catch (error) { next(error); }
+};
+
+const getCustomImages = async (req, res, next) => {
+  try {
+    const images = await customDesignUploadService.list(req.user._id);
+    res.status(200).json({ success: true, data: { images } });
+  } catch (error) { next(error); }
+};
+
+const deleteCustomImage = async (req, res, next) => {
+  try {
+    const result = await customDesignUploadService.remove(req.user._id, req.params.imageId, req.query.preserveFile === 'true');
+    res.status(200).json({ success: true, message: result.message });
+  } catch (error) { next(error); }
+};
 
 const createDesign = async (req, res, next) => {
   try {
@@ -122,4 +144,7 @@ module.exports = {
   refineDesign,
   saveDesign,
   orderDesign,
+  uploadCustomImage,
+  getCustomImages,
+  deleteCustomImage,
 };

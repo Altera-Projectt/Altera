@@ -13,13 +13,22 @@ const {
   refineDesign,
   saveDesign,
   orderDesign,
+  uploadCustomImage,
+  getCustomImages,
+  deleteCustomImage,
 } = require('../controllers/design.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+const customImageUpload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
 router.use(protect);
+
+// CUSTOM DESIGN uploads use a separate endpoint and storage flow from AI Design.
+router.post('/custom/uploads', customImageUpload.single('image'), uploadCustomImage);
+router.get('/custom/uploads', getCustomImages);
+router.delete('/custom/uploads/:imageId', deleteCustomImage);
 
 /**
  * @swagger

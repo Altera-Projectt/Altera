@@ -64,9 +64,26 @@ export interface OrderDesignPayload {
   note?: string
 }
 
+export interface UploadedCustomImage {
+  _id: string
+  url: string
+  thumbnailUrl: string
+  filename: string
+  mimeType: string
+  size: number
+  createdAt: string
+}
+
 // ── Service ────────────────────────────────────────────────────────────────
 
 export const DesignService = {
+  uploadCustomImage: (file: File) => {
+    const body = new FormData()
+    body.append('image', file)
+    return api.post<ApiResponse<{ image: UploadedCustomImage }>>('/designs/custom/uploads', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 })
+  },
+  getCustomImages: () => api.get<ApiResponse<{ images: UploadedCustomImage[] }>>('/designs/custom/uploads'),
+  deleteCustomImage: (id: string, preserveFile = false) => api.delete<ApiResponse<void>>(`/designs/custom/uploads/${id}`, { params: { preserveFile } }),
   /** AI generate a new design from prompt */
   generateDesign: (payload: GenerateDesignPayload) =>
     api.post<ApiResponse<GenerateDesignResponse>>('/designs/generate', payload),

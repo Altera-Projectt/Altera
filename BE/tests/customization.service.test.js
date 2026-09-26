@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { getCustomizationPrice } = require('../src/services/customization.service');
+const { getCustomizationPrice, isAllowedImageSource } = require('../src/services/customization.service');
 const Product = require('../src/models/Product');
 const Cart = require('../src/models/Cart');
 
@@ -52,6 +52,12 @@ test('accepts image data layers and rejects unsafe image sources', () => {
   const imageLayer = { id: 'image-1', type: 'image', src: 'data:image/png;base64,aGVsbG8=', x: 50, y: 50, scaleX: 1, scaleY: 1, rotation: 0 };
   assert.equal(getCustomizationPrice(product, customization({ frontDesign: { layers: [imageLayer] } })), 360000);
   assert.throws(() => getCustomizationPrice(product, customization({ frontDesign: { layers: [{ ...imageLayer, src: 'javascript:alert(1)' }] } })), /invalid text or image layer/);
+});
+
+test('accepts Cloudinary image URLs while rejecting arbitrary remote sources', () => {
+  assert.equal(isAllowedImageSource('https://res.cloudinary.com/demo/image/upload/sample.png'), true);
+  assert.equal(isAllowedImageSource('https://example.com/image.png'), false);
+  assert.equal(isAllowedImageSource('http://res.cloudinary.com/demo/image/upload/sample.png'), false);
 });
 
 test('rejects unsupported printing technique', () => {

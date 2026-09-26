@@ -16,6 +16,11 @@ const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
 
+  if (err.code === 'LIMIT_FILE_SIZE' && req.originalUrl.includes('/custom/uploads')) {
+    statusCode = 400;
+    message = 'Image size exceeds the 10MB limit.';
+  }
+
   // Mongoose duplicate key error
   if (err.code === 11000) {
     statusCode = 409;
