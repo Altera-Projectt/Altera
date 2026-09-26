@@ -74,6 +74,21 @@ export interface UploadedCustomImage {
   createdAt: string
 }
 
+export interface CustomDesignDraft {
+  _id: string
+  name: string
+  productId: string | { _id: string } | null
+  color: { name: string; hex: string } | null
+  size: string
+  printSide: 'FRONT' | 'BACK' | 'BOTH'
+  printingTechnique: string
+  frontDesign: { layers: Record<string, unknown>[]; background?: unknown }
+  backDesign: { layers: Record<string, unknown>[]; background?: unknown }
+  thumbnail: string
+  createdAt: string
+  updatedAt: string
+}
+
 // ── Service ────────────────────────────────────────────────────────────────
 
 export const DesignService = {
@@ -84,6 +99,12 @@ export const DesignService = {
   },
   getCustomImages: () => api.get<ApiResponse<{ images: UploadedCustomImage[] }>>('/designs/custom/uploads'),
   deleteCustomImage: (id: string, preserveFile = false) => api.delete<ApiResponse<void>>(`/designs/custom/uploads/${id}`, { params: { preserveFile } }),
+  listCustomDrafts: () => api.get<ApiResponse<{ drafts: CustomDesignDraft[] }>>('/designs/custom/drafts'),
+  createCustomDraft: (payload: Partial<CustomDesignDraft>) => api.post<ApiResponse<{ draft: CustomDesignDraft }>>('/designs/custom/drafts', payload),
+  getCustomDraft: (id: string) => api.get<ApiResponse<{ draft: CustomDesignDraft }>>(`/designs/custom/drafts/${id}`),
+  updateCustomDraft: (id: string, payload: Partial<CustomDesignDraft>) => api.put<ApiResponse<{ draft: CustomDesignDraft }>>(`/designs/custom/drafts/${id}`, payload),
+  duplicateCustomDraft: (id: string) => api.post<ApiResponse<{ draft: CustomDesignDraft }>>(`/designs/custom/drafts/${id}/duplicate`),
+  deleteCustomDraft: (id: string) => api.delete<ApiResponse<void>>(`/designs/custom/drafts/${id}`),
   /** AI generate a new design from prompt */
   generateDesign: (payload: GenerateDesignPayload) =>
     api.post<ApiResponse<GenerateDesignResponse>>('/designs/generate', payload),

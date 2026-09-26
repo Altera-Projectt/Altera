@@ -18,12 +18,21 @@ const {
   deleteCustomImage,
 } = require('../controllers/design.controller');
 const { protect } = require('../middlewares/auth.middleware');
+const customDraftController = require('../controllers/custom-design-draft.controller');
 const multer = require('multer');
 const storage = multer.memoryStorage();
 const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 const customImageUpload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024, files: 1 } });
 
 router.use(protect);
+
+// Custom Design drafts are isolated from the AI Design records and always use the authenticated owner.
+router.get('/custom/drafts', customDraftController.list);
+router.post('/custom/drafts', customDraftController.create);
+router.post('/custom/drafts/:draftId/duplicate', customDraftController.duplicate);
+router.get('/custom/drafts/:draftId', customDraftController.get);
+router.put('/custom/drafts/:draftId', customDraftController.update);
+router.delete('/custom/drafts/:draftId', customDraftController.remove);
 
 // CUSTOM DESIGN uploads use a separate endpoint and storage flow from AI Design.
 router.post('/custom/uploads', customImageUpload.single('image'), uploadCustomImage);
