@@ -6,31 +6,31 @@
 
 export const colors = {
   // Brand
-  primary: '#111111',
-  primaryForeground: '#ffffff',
+  primary: '#ffffff',
+  primaryForeground: '#111111',
 
-  secondary: '#ffffff',
-  secondaryForeground: '#111111',
+  secondary: '#27272a',
+  secondaryForeground: '#e5e5e5',
 
-  accent: '#737373', // Subdued accent for a more sophisticated look
+  accent: '#e11d48', // Keeping accent as is
   accentForeground: '#ffffff',
 
-  neutral: '#f4f4f5',
-  neutralForeground: '#111111',
+  neutral: '#27272a',
+  neutralForeground: '#e5e5e5',
 
   // Semantic
-  background: '#fafafa', // Off-white for luxury feel
-  foreground: '#111111', // Deep primary text
+  background: '#111111', 
+  foreground: '#e5e5e5', 
 
-  muted: '#f4f4f5',
-  mutedForeground: '#71717a',
+  muted: '#1a1a1a',
+  mutedForeground: '#a1a1aa',
 
-  border: '#e4e4e7',
-  input: '#e4e4e7',
-  ring: '#111111',
+  border: '#27272a',
+  input: '#27272a',
+  ring: '#52525b',
 
-  card: '#ffffff',
-  cardForeground: '#111111',
+  card: '#18181b',
+  cardForeground: '#e5e5e5',
 
   // Status
   success: '#10b981',

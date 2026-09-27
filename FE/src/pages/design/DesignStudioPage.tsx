@@ -7,7 +7,6 @@ import {
   RotateCcw,
   Wand2,
   RefreshCw,
-  BookOpen,
   Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -1072,9 +1071,9 @@ export function DesignStudioPage() {
             )}
           >
             {tab === 'create' ? (
-              <><Wand2 className="h-4 w-4" /> Phác thảo mới</>
+              <>Phác thảo mới</>
             ) : (
-              <><BookOpen className="h-4 w-4" /> Thư viện của tôi</>
+              <>Thư viện của tôi</>
             )}
           </button>
         ))}
