@@ -95,7 +95,7 @@ export function HomePage() {
         <div className="flex animate-marquee whitespace-nowrap">
           {[...Array(2)].map((_, i) => (
             <span key={i} className="flex items-center gap-8 pr-8
-              text-xs font-bold uppercase tracking-widest text-white">
+              text-xs font-bold uppercase tracking-widest text-[var(--color-primary-foreground)]">
               <span>🔥 Freeship toàn quốc đơn từ 500K</span>
               <span>★</span>
               <span>New Arrivals</span>
@@ -182,7 +182,7 @@ export function HomePage() {
               <div className="mt-8 flex flex-wrap gap-3">
                 {isAuthenticated ? (
                   <>
-                    <Button asChild variant="accent" className="uppercase font-semibold tracking-wider">
+                    <Button asChild variant="secondary" className="bg-zinc-200 text-black hover:bg-zinc-300 uppercase font-semibold tracking-wider">
                       <Link to="/outfit" className="flex items-center gap-2">
                         Try AI Stylist <ArrowRight className="h-4 w-4" />
                       </Link>
@@ -194,7 +194,7 @@ export function HomePage() {
                     </Button>
                   </>
                 ) : (
-                  <Button asChild variant="accent" className="uppercase font-semibold tracking-wider">
+                  <Button asChild variant="secondary" className="bg-zinc-200 text-black hover:bg-zinc-300 uppercase font-semibold tracking-wider">
                     <Link to="/auth/login" state={{ from: { pathname: '/outfit' } }} className="flex items-center gap-2">
                       Sign in for AI Stylist <ArrowRight className="h-4 w-4" />
                     </Link>

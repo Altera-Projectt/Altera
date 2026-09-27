@@ -7,7 +7,7 @@ import { ShoppingBag, MapPin, CreditCard, Truck, ArrowLeft, CheckCircle } from '
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { CartService } from '@/services/cart.api'
-import { OrderService, PaymentService } from '@/services/order.api'
+import { OrderService } from '@/services/order.api'
 import { useCartStore } from '@/store/cartStore'
 import { formatVND } from '@/utils/format'
 import { toast } from 'sonner'
@@ -20,8 +20,6 @@ const checkoutSchema = z.object({
   fullName: z.string().min(2, 'Họ tên phải ít nhất 2 ký tự'),
   phone: z.string().min(9, 'Số điện thoại không hợp lệ').max(15, 'Số điện thoại không hợp lệ'),
   address: z.string().min(5, 'Địa chỉ phải ít nhất 5 ký tự'),
-  province: z.string().min(2, 'Tỉnh / thành phố không được để trống'),
-  city: z.string().min(2, 'Thành phố không được để trống'),
 })
 
 type CheckoutFormValues = z.infer<typeof checkoutSchema>
@@ -81,8 +79,8 @@ export function CheckoutPage() {
           fullName: values.fullName,
           phone: values.phone,
           street: values.address,
-          city: values.city,
-          province: values.province,
+          city: '',
+          province: '',
           country: 'Vietnam',
         },
         paymentMethod,
@@ -103,16 +101,11 @@ export function CheckoutPage() {
       }
 
       toast.success('Đặt hàng thành công!')
-      if (paymentMethod === 'MOMO') {
-        const payment = await PaymentService.createMomo(orderId)
-        window.location.assign(payment.data.data.paymentUrl)
-        return
-      }
       navigate(`/orders/success/${orderId}`)
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Đặt hàng thất bại, vui lòng thử lại!'
       toast.error(message)
-      if (createdOrderId) navigate(`/orders/success/${createdOrderId}${paymentMethod === 'MOMO' ? `?paymentError=${encodeURIComponent(message)}` : ''}`)
+      if (createdOrderId) navigate(`/orders/success/${createdOrderId}`)
     } finally {
       setSubmitting(false)
     }
@@ -187,25 +180,11 @@ export function CheckoutPage() {
                   />
                 </div>
                 <Input
-                  label="Địa chỉ"
-                  placeholder="123 Đường ABC, Phường XYZ"
+                  label="Địa chỉ giao hàng"
+                  placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
                   required
                   error={errors.address?.message}
                   {...register('address')}
-                />
-                <Input
-                  label="Tỉnh / Thành phố"
-                  placeholder="TP. Hồ Chí Minh"
-                  required
-                  error={errors.province?.message}
-                  {...register('province')}
-                />
-                <Input
-                  label="Quận / Huyện, Thành phố"
-                  placeholder="Quận 1"
-                  required
-                  error={errors.city?.message}
-                  {...register('city')}
                 />
               </div>
             </section>
@@ -296,12 +275,7 @@ export function CheckoutPage() {
                     <CheckCircle className="h-5 w-5 text-[var(--color-primary)] flex-shrink-0" />
                   )}
                 </label>
-                <label htmlFor="payment-momo" className={`flex items-center gap-4 p-5 rounded-[var(--radius-lg)] border-2 cursor-pointer transition-all ${paymentMethod === 'MOMO' ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-muted-foreground)]'}`}>
-                  <input id="payment-momo" type="radio" name="paymentMethod" value="MOMO" checked={paymentMethod === 'MOMO'} onChange={() => setPaymentMethod('MOMO')} className="sr-only" />
-                  <CreditCard className="h-5 w-5 text-[var(--color-muted-foreground)]" />
-                  <div className="flex-1"><div className="font-semibold text-sm">Thanh toán MoMo</div><div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">Thanh toán an toàn qua cổng MoMo</div></div>
-                  {paymentMethod === 'MOMO' && <CheckCircle className="h-5 w-5 text-[var(--color-primary)]" />}
-                </label>
+                {/* MoMo option removed — not configured on server */}
               </div>
             </section>
 

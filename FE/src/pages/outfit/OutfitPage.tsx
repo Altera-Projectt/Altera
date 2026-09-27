@@ -17,7 +17,7 @@ import { cn } from '@/utils/cn'
 import { formatVND } from '@/utils/format'
 import {
   ShoppingBag, RotateCcw, ChevronRight, ChevronLeft,
-  Shirt, Footprints, Watch, Circle, Clock, Sparkles,
+  Shirt, Footprints, Watch, Circle, Clock,
 } from 'lucide-react'
 
 // ── Types & constants ──────────────────────────────────────────────────────
@@ -234,7 +234,6 @@ export function OutfitPage() {
                   : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
               }`}
             >
-              {tab === 'quiz' ? <Sparkles className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
               {tab === 'quiz' ? 'Quiz phong cách' : 'Lịch sử'}
             </button>
           ))}

@@ -7,8 +7,23 @@ export interface User {
   id: string
   fullName: string
   email: string
+  authProvider?: 'LOCAL' | 'GOOGLE'
   avatar: string | null
+  coverImage?: string | null
+  bio?: string
+  location?: string
   role: 'USER' | 'ADMIN'
+  measurements?: {
+    height?: number
+    weight?: number
+    shirtSize?: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL'
+    shoeSize?: string
+  }
+  preferences?: {
+    styles?: string[]
+    favoriteColors?: string[]
+    avoidColors?: string[]
+  }
   createdAt: string
   updatedAt: string
 }
@@ -33,7 +48,23 @@ export interface RegisterPayload {
 
 export interface UpdateProfilePayload {
   fullName?: string
+  bio?: string
+  location?: string
   avatar?: File
+  coverImage?: File
+}
+
+export interface UpdateMeasurementsPayload {
+  height?: number
+  weight?: number
+  shirtSize?: string
+  shoeSize?: string
+}
+
+export interface UpdatePreferencesPayload {
+  styles?: string[]
+  favoriteColors?: string[]
+  avoidColors?: string[]
 }
 
 export interface ChangePasswordPayload {

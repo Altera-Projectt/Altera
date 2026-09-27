@@ -9,34 +9,34 @@
   --font-body: "Neue Power", "Inter", ui-sans-serif, system-ui, sans-serif;
 
   /* ── Brand Colors ── */
-  --color-primary: #000000;
-  --color-primary-foreground: #ffffff;
+  --color-primary: #ffffff;
+  --color-primary-foreground: #111111;
 
-  --color-secondary: #ffffff;
-  --color-secondary-foreground: #000000;
+  --color-secondary: #27272a;
+  --color-secondary-foreground: #e5e5e5;
 
   --color-accent: #e11d48;
   --color-accent-foreground: #ffffff;
 
-  --color-neutral: #f5f5f5;
-  --color-neutral-foreground: #111111;
+  --color-neutral: #27272a;
+  --color-neutral-foreground: #e5e5e5;
 
   /* ── Semantic Colors ── */
-  --color-background: #ffffff;
-  --color-foreground: #0a0a0a;
+  --color-background: #111111;
+  --color-foreground: #e5e5e5;
 
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #737373;
+  --color-muted: #1a1a1a;
+  --color-muted-foreground: #a1a1aa;
 
-  --color-border: #e5e5e5;
-  --color-input: #e5e5e5;
-  --color-ring: #000000;
+  --color-border: #27272a;
+  --color-input: #27272a;
+  --color-ring: #52525b;
 
-  --color-card: #ffffff;
-  --color-card-foreground: #0a0a0a;
+  --color-card: #18181b;
+  --color-card-foreground: #e5e5e5;
 
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0a0a0a;
+  --color-popover: #18181b;
+  --color-popover-foreground: #e5e5e5;
 
   /* ── Status Colors ── */
   --color-success: #22c55e;
