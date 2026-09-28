@@ -21,6 +21,7 @@ const chatRoutes = require('./routes/chat.routes');
 const stylistRoutes = require('./routes/stylist.routes');
 const adminRoutes = require('./routes/admin.routes');
 const paymentRoutes = require('./routes/payment.routes');
+const membershipRoutes = require('./routes/membership.routes');
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use(`${API}/auth`, authRoutes);
 app.use(`${API}/users`, userRoutes);
 app.use(`${API}/admin`, adminRoutes);
 app.use(`${API}/payments`, paymentRoutes);
+app.use(`${API}/membership`, membershipRoutes);
 app.use(`${API}/products`, productRoutes);
 app.use(`${API}/designs`, designRoutes);
 app.use(`${API}/designers`, designerRoutes);

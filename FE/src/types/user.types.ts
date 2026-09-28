@@ -7,6 +7,11 @@ export interface User {
   id: string
   fullName: string
   email: string
+  phone?: string | null
+  membershipPlanId?: string | null
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'PENDING'
+  membershipStartDate?: string | null
+  membershipEndDate?: string | null
   avatar: string | null
   role: 'USER' | 'ADMIN'
   createdAt: string

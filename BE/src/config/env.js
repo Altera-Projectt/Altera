@@ -26,4 +26,9 @@ module.exports = {
   MOMO_SECRET_KEY: process.env.MOMO_SECRET_KEY,
   MOMO_ENDPOINT: process.env.MOMO_ENDPOINT || 'https://test-payment.momo.vn/v2/gateway/api/create',
   MOMO_IPN_URL: process.env.MOMO_IPN_URL,
+  VNPAY_TMN_CODE: process.env.VNPAY_TMN_CODE,
+  VNPAY_HASH_SECRET: process.env.VNPAY_HASH_SECRET,
+  VNPAY_URL: process.env.VNPAY_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+  VNPAY_RETURN_URL: process.env.VNPAY_RETURN_URL,
+  VNPAY_IPN_URL: process.env.VNPAY_IPN_URL,
 };

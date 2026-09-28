@@ -1,0 +1,11 @@
+const service = require('../services/membership.service');
+exports.plans = async (_req, res, next) => { try { res.json({ success: true, data: { plans: await service.listPlans() } }); } catch (e) { next(e); } };
+exports.current = async (req, res, next) => { try { res.json({ success: true, data: { membership: await service.current(req.user._id) } }); } catch (e) { next(e); } };
+exports.checkout = async (req, res, next) => { try { res.status(201).json({ success: true, data: await service.checkout(req.user._id, req.body, req.ip) }); } catch (e) { next(e); } };
+exports.history = async (req, res, next) => { try { res.json({ success: true, data: { payments: await service.history(req.user._id) } }); } catch (e) { next(e); } };
+exports.result = async (req, res, next) => { try { res.json({ success: true, data: await service.result(req.params.reference, req.user._id) }); } catch (e) { next(e); } };
+exports.vnpayReturn = async (req, res) => { try { const result = await service.vnpayReturn(req.query); res.redirect(`${require('../config/env').FRONTEND_URL}/payment/${result.failed || result.expired ? 'failed' : 'success'}?reference=${encodeURIComponent(req.query.vnp_TxnRef)}`); } catch (_) { res.redirect(`${require('../config/env').FRONTEND_URL}/payment/failed`); } };
+exports.vnpayIpn = async (req, res) => { try { res.json(await service.vnpayIpn(req.query)); } catch (e) { res.json({ RspCode: e.statusCode === 404 ? '01' : e.message.includes('amount') ? '04' : '97', Message: e.message }); } };
+exports.momoIpn = async (req, res) => { try { await service.momoIpn(req.body); res.status(204).end(); } catch (e) { res.status(e.statusCode || 400).json({ success: false, message: e.message }); } };
+exports.adminList = async (req, res, next) => { try { const MembershipOrder = require('../models/MembershipOrder'); const query = {}; if (req.query.status) query.status = req.query.status; const orders = await MembershipOrder.find(query).populate('userId','fullName email').populate('membershipPlanId','code name').sort({createdAt:-1}).limit(100).lean(); res.json({success:true,data:{payments:orders}}); } catch(e) { next(e); } };
+exports.adminVerify = async (req, res, next) => { try { const data = await service.verifyBank(req.params.id, req.user._id, req.body.action === 'verify', req.body.reason); res.json({success:true,data}); } catch(e) { next(e); } };
