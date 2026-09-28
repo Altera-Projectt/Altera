@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+﻿import { createBrowserRouter } from 'react-router-dom'
 
 // Layouts
 import { MainLayout, AdminLayout } from '@/layouts'
@@ -24,6 +24,9 @@ import { CartPage } from '@/pages/cart/CartPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import { CheckoutPage } from '@/pages/checkout/CheckoutPage'
 import { WishlistPage } from '@/pages/wishlist/WishlistPage'
+import { DesignerProfilePage } from '@/pages/designer/DesignerProfilePage'
+import { DesignDetailPage } from '@/pages/designer/DesignDetailPage'
+import { DesignerDashboardPage } from '@/pages/designer/DesignerDashboardPage'
 import { MyDesignsPage } from '@/pages/design/MyDesignsPage'
 
 // Admin Pages
@@ -33,6 +36,7 @@ import { AdminOrdersPage } from '@/pages/admin/AdminOrdersPage'
 import { AdminPaymentOrdersPage } from '@/pages/admin/AdminPaymentOrdersPage'
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
 import { AdminCustomersPage } from '@/pages/admin/AdminCustomersPage'
+import { AdminDesignsPage } from '@/pages/admin/AdminDesignsPage'
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +47,8 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'products/:id', element: <ProductDetailPage /> },
+      { path: 'designer/:username', element: <DesignerProfilePage /> },
+      { path: 'design/:slug', element: <DesignDetailPage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'membership', element: <MembershipPage /> },
       {
@@ -66,6 +72,7 @@ export const router = createBrowserRouter([
           { path: 'checkout', element: <CheckoutPage /> },
           { path: 'wishlist', element: <WishlistPage /> },
           { path: 'designs', element: <MyDesignsPage /> },
+          { path: 'designer/dashboard', element: <DesignerDashboardPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },
@@ -87,6 +94,7 @@ export const router = createBrowserRouter([
           { path: 'payments', element: <AdminPaymentOrdersPage /> },
           { path: 'customers', element: <AdminCustomersPage /> },
           { path: 'users', element: <AdminUsersPage /> },
+          { path: 'designs', element: <AdminDesignsPage /> },
         ],
       },
     ],

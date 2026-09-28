@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Copy, Eye, EyeOff, Italic, Lock, Plus, RotateCw, Trash2, Underline, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
@@ -107,6 +107,15 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
   const [templateDetail, setTemplateDetail] = useState<DesignTemplate | null>(null)
   const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [draftError, setDraftError] = useState('')
+  const [showPublish, setShowPublish] = useState(false)
+  const [publishName, setPublishName] = useState('')
+  const [publishPrice, setPublishPrice] = useState('')
+  const [publishDescription, setPublishDescription] = useState('')
+  const [publishCategory, setPublishCategory] = useState('')
+  const [publishTags, setPublishTags] = useState('')
+  const [publishCollectionId, setPublishCollectionId] = useState('')
+  const [publishCollections, setPublishCollections] = useState<{ _id: string; name: string }[]>([])
+  const [publishing, setPublishing] = useState(false)
   const [savedSelection] = useState(readSelection)
   const [side, setSide] = useState<'frontDesign' | 'backDesign'>('frontDesign')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -266,6 +275,35 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
       await refreshDrafts()
     } catch (saveError: unknown) { setDraftError(errorMessage(saveError, 'Could not save this draft.')); setDraftStatus('failed') }
   }
+  const publishDesign = async () => {
+    if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return }
+    const hasFront = design.frontDesign.layers.some((layer) => layer.visible)
+    const hasBack = design.backDesign.layers.some((layer) => layer.visible)
+    const hasValidLayers = printSide === 'FRONT' ? hasFront : printSide === 'BACK' ? hasBack : hasFront && hasBack
+    if (!publishName.trim()) { setDraftError('Enter a design name before publishing.'); return }
+    if (!Number.isFinite(Number(publishPrice)) || Number(publishPrice) <= 0) { setDraftError('Enter a price greater than zero.'); return }
+    if (!product || !colorName || !size || !hasValidLayers) { setDraftError('Select a product, color, size, and add a visible design layer to each printed side before publishing.'); return }
+    setPublishing(true); setDraftError('')
+    try {
+      let id = draftId
+      const payload = draftPayload(draftName || publishName)
+      const saved = id ? await DesignService.updateCustomDraft(id, payload) : await DesignService.createCustomDraft(payload)
+      id = saved.data.data.draft._id; setDraftId(id)
+      await DesignService.publishCustomDraft({ draftId: id, name: publishName.trim(), description: publishDescription, price: Number(publishPrice), category: publishCategory.trim(), tags: publishTags.split(',').map((tag) => tag.trim()).filter(Boolean), collectionId: publishCollectionId || undefined })
+      setShowPublish(false); setDraftError('Design submitted for review.'); await refreshDrafts()
+    } catch (err) { setDraftError(errorMessage(err, 'Could not submit this design.')) } finally { setPublishing(false) }
+  }
+  const openPublish = async () => {
+    setPublishName(draftName || draftNameInput || '')
+    setDraftError('')
+    setShowPublish(true)
+    if (!isAuthenticated) return
+    try {
+      const { data: profileResponse } = await DesignService.getMyDesignerProfile()
+      const { data: designerResponse } = await DesignService.getDesignerCollections(profileResponse.data.profile.username)
+      setPublishCollections(designerResponse.data.collections || [])
+    } catch { setPublishCollections([]) }
+  }
   const openDraft = async (draft: CustomDesignDraft) => {
     try {
       const response = await DesignService.getCustomDraft(draft._id)
@@ -381,10 +419,10 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
   </section> : <div className="grid gap-6 lg:grid-cols-[290px_minmax(300px,1fr)_300px]">
     <aside className="space-y-4 rounded-xl border border-[var(--color-border)] bg-white p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide">Product</h2>
-      <div className="grid grid-cols-2 gap-2"><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'My T-Shirt Design'); setDraftError(''); setShowDraftName(true) }} className="flex items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Save Draft</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Drafts</button></div>
+      <div className="grid grid-cols-2 gap-2"><button onClick={() => void openPublish()} className="flex items-center justify-center gap-1 rounded border border-black px-2 py-2 text-xs font-semibold">Publish</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'My T-Shirt Design'); setDraftError(''); setShowDraftName(true) }} className="flex items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Save Draft</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Drafts</button></div>
       <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded border px-3 py-2 text-sm font-medium">Template Gallery</button>
       {draftId && <p role="status" className="text-xs text-gray-500">{draftStatus === 'saving' ? 'Saving…' : draftStatus === 'saved' ? `Saved · ${draftName}` : draftStatus === 'failed' ? 'Save failed' : ''}</p>}
-      {showDraftName && <div role="dialog" aria-modal="true" aria-labelledby="draft-name-title" className="space-y-2 rounded-lg border bg-gray-50 p-3"><h3 id="draft-name-title" className="text-sm font-semibold">Design name</h3><input autoFocus maxLength={100} value={draftNameInput} onChange={(event) => setDraftNameInput(event.target.value)} className="w-full rounded border bg-white px-3 py-2 text-sm" placeholder="My T-Shirt Design"/>{draftError && <p className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowDraftName(false)} className="rounded border px-3 py-1.5 text-xs">Cancel</button><button onClick={() => void saveDraft()} className="rounded bg-black px-3 py-1.5 text-xs text-white">Save</button></div></div>}
+      {showPublish && <div role="dialog" aria-modal="true" className="space-y-2 rounded-lg border bg-white p-3"><h3 className="text-sm font-semibold">Publish your design</h3><input value={publishName} onChange={(e) => setPublishName(e.target.value)} maxLength={120} className="w-full rounded border px-3 py-2 text-sm" placeholder="Design name"/><textarea value={publishDescription} onChange={(e) => setPublishDescription(e.target.value)} maxLength={3000} className="w-full rounded border px-3 py-2 text-sm" placeholder="Description"/><select value={publishCollectionId} onChange={(e) => setPublishCollectionId(e.target.value)} className="w-full rounded border px-3 py-2 text-sm"><option value="">No collection</option>{publishCollections.map((collection) => <option key={collection._id} value={collection._id}>{collection.name}</option>)}</select><input value={publishCategory} onChange={(e) => setPublishCategory(e.target.value)} maxLength={80} className="w-full rounded border px-3 py-2 text-sm" placeholder="Category"/><input value={publishTags} onChange={(e) => setPublishTags(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Tags, comma separated"/><input type="number" min="1" value={publishPrice} onChange={(e) => setPublishPrice(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Price (VND)"/>{draftError && <p role="status" className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowPublish(false)} className="rounded border px-3 py-1.5 text-xs">Cancel</button><button disabled={publishing} onClick={() => void publishDesign()} className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50">{publishing ? 'Submitting…' : 'Submit for review'}</button></div></div>}      {showDraftName && <div role="dialog" aria-modal="true" aria-labelledby="draft-name-title" className="space-y-2 rounded-lg border bg-gray-50 p-3"><h3 id="draft-name-title" className="text-sm font-semibold">Design name</h3><input autoFocus maxLength={100} value={draftNameInput} onChange={(event) => setDraftNameInput(event.target.value)} className="w-full rounded border bg-white px-3 py-2 text-sm" placeholder="My T-Shirt Design"/>{draftError && <p className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowDraftName(false)} className="rounded border px-3 py-1.5 text-xs">Cancel</button><button onClick={() => void saveDraft()} className="rounded bg-black px-3 py-1.5 text-xs text-white">Save</button></div></div>}
       {loadingProducts ? <p className="text-sm text-gray-500">Loading products…</p> : products.length === 0 ? <p className="text-sm text-gray-500">No active T-shirt products are available.</p> : <select aria-label="Product" value={product?._id ?? ''} onChange={(e) => selectProduct(products.find((item) => item._id === e.target.value) ?? null)} className="w-full rounded border p-2 text-sm">{products.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>}
       {product && <>
         <p className="text-sm font-semibold">{formatVND(product.discountPrice ?? product.price)} <span className="font-normal text-gray-500">· Stock {stock}</span></p>

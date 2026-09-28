@@ -1,0 +1,25 @@
+﻿const express = require('express');
+const router = express.Router();
+const { protect, optionalProtect } = require('../middlewares/auth.middleware');
+const designer = require('../controllers/designer.controller');
+const extras = require('../controllers/designer-extras.controller');
+router.get('/me/profile', protect, designer.getMyProfile);
+router.get('/me/summary', protect, designer.getSummary);
+router.get('/design/:slug', optionalProtect, designer.getDesign);
+router.get('/:username', optionalProtect, designer.getProfile);
+router.patch('/me/profile', protect, designer.updateProfile);
+router.post('/me/collections', protect, designer.createCollection);
+router.patch('/me/collections/:id', protect, extras.renameCollection);
+router.delete('/me/collections/:id', protect, designer.deleteCollection);
+router.post('/me/designs', protect, designer.createDesign);
+router.patch('/me/designs/:id', protect, extras.updateDesign);
+router.post('/me/designs/:id/publish', protect, extras.submitDesign);
+router.post('/me/designs/:id/unpublish', protect, extras.unpublishDesign);
+router.post('/me/designs/:id/duplicate', protect, extras.duplicateDesign);
+router.delete('/me/designs/:id', protect, extras.deleteDesign);
+router.post('/:id/like', protect, extras.like);
+router.delete('/:id/like', protect, extras.unlike);
+router.post('/:id/follow', protect, designer.follow);
+router.delete('/:id/follow', protect, designer.unfollow);
+module.exports = router;
+

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -118,10 +118,10 @@ export function CartPage() {
 
                   {/* Product Image */}
                   <div className="h-24 w-24 shrink-0 bg-[var(--color-muted)] rounded-[var(--radius-md)] flex items-center justify-center border border-[var(--color-border)] text-xs text-[var(--color-muted-foreground)] p-2 text-center overflow-hidden">
-                    {item.productId?.imageUrl ? (
+                    {(typeof item.marketplaceDesignId === 'object' ? item.marketplaceDesignId?.thumbnail : null) || item.productId?.imageUrl ? (
                       <img
-                        src={item.productId.imageUrl}
-                        alt={item.productId.name}
+                        src={(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.thumbnail) || item.productId.imageUrl}
+                        alt={(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.name) || item.productId.name}
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -132,7 +132,7 @@ export function CartPage() {
                   {/* Product Info */}
                   <div className="flex-1 w-full text-center sm:text-left flex flex-col justify-center">
                     <h3 className="font-semibold text-base line-clamp-2">
-                      {item.productId?.name || 'Unknown Product'}
+                      {(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.name) || item.productId?.name || 'Unknown Product'}
                     </h3>
                     <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
                       Unit Price: {formatVND(item.price ?? item.productId?.price ?? 0)}

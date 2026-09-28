@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
 const PAYMENT_METHODS = ['COD', 'BANK_TRANSFER', 'MOMO'];
@@ -29,6 +29,9 @@ const OrderItemSchema = new mongoose.Schema(
       ref: 'Design',
       default: null,
     },
+    marketplaceDesignId: { type: mongoose.Schema.Types.ObjectId, ref: 'MarketplaceDesign', default: null },
+    designerId: { type: mongoose.Schema.Types.ObjectId, ref: 'DesignerProfile', default: null },
+    designSnapshot: { type: mongoose.Schema.Types.Mixed, default: null },
     quantity: {
       type: Number,
       required: true,
@@ -47,7 +50,7 @@ const OrderItemSchema = new mongoose.Schema(
 );
 
 OrderItemSchema.path('productId').validate(function validateOrderItemSource() {
-  return Boolean(this.productId || this.designId);
+  return Boolean(this.productId || this.designId || this.marketplaceDesignId);
 }, 'Order item must reference a product or design');
 
 const ShippingAddressSchema = new mongoose.Schema(

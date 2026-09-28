@@ -164,7 +164,7 @@ export function OrderSuccessPage() {
             <div className="space-y-3">
               {items.map((item: any, idx: number) => {
                 const product = item.product ?? item.productId ?? {}
-                const name = product.name ?? item.name ?? `Sản phẩm ${idx + 1}`
+                const name = item.designSnapshot?.name ?? item.name ?? product.name ?? `Sản phẩm ${idx + 1}`
                 const qty = item.quantity ?? 1
                 const price = item.price ?? product.price ?? 0
                 return (
