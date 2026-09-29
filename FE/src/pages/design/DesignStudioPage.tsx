@@ -35,7 +35,7 @@ import { CustomDesignTab } from '@/components/studio/CustomDesignTab'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const STYLE_OPTIONS = [
+const LEGACY_STYLE_OPTIONS = [
   { value: 'Graphic Art',         label: 'Graphic Art',         hint: 'Vector rõ nét, phù hợp in sắc sảo' },
   { value: 'Vintage Illustration', label: 'Vintage Illustration', hint: 'Nét khắc cổ điển, tone sepia/nâu' },
   { value: 'Streetwear Bold',     label: 'Streetwear Bold',     hint: 'Mảng màu lớn, contrast cao, dễ in' },
@@ -44,6 +44,8 @@ const STYLE_OPTIONS = [
   { value: 'Watercolor',          label: 'Watercolor',          hint: 'Màu nước, mềm mại' },
   { value: 'Abstract',            label: 'Abstract',            hint: 'Trừa tượng, hình học' },
 ]
+const STYLE_OPTIONS = ['3D', 'Vintage', 'Anime', 'Tattoo', 'Y2K', 'Typography', 'Mascot', 'Minimal', 'Chibi', 'Sport', 'Gothic', 'Punk'].map((value) => ({ value, label: value, hint: '' }))
+void LEGACY_STYLE_OPTIONS
 const SHIRT_COLOR_OPTIONS = [
   { label: 'White',  value: 'white',  hex: '#ffffff' },
   { label: 'Black',  value: 'black',  hex: '#111111' },
@@ -70,6 +72,7 @@ function formatDate(iso: string) {
 }
 
 function getShirtHex(color: string): string {
+  if (/^#[0-9a-f]{6}$/i.test(color)) return color
   return SHIRT_COLOR_OPTIONS.find((c) => c.value.toLowerCase() === color.toLowerCase())?.hex ?? '#ffffff'
 }
 
@@ -295,6 +298,7 @@ interface FormValues {
   style: string
   colorPalette: string
   shirtColor: string
+  printSide: 'Front' | 'Back' | 'Both Sides'
 }
 
 function GenerateForm({
@@ -303,18 +307,23 @@ function GenerateForm({
   cooldown,
   initialValues,
   error,
+  history,
+  onSelectHistory,
 }: {
   onGenerate: (vals: FormValues) => Promise<void>
   generating: boolean
   cooldown: number
   initialValues?: Partial<FormValues>
   error: string | null
+  history: GenerateDesignResponse[]
+  onSelectHistory: (item: GenerateDesignResponse) => void
 }) {
   const [form, setForm] = useState<FormValues>({
     prompt: initialValues?.prompt ?? '',
-    style: initialValues?.style ?? 'Graphic Art',       // default — phù hợp nhất cho print design
+    style: initialValues?.style ?? 'Vintage',
     colorPalette: initialValues?.colorPalette ?? 'Black and white, high contrast', // default — luôn ra đẹp
     shirtColor: initialValues?.shirtColor ?? 'white',
+    printSide: 'Front',
   })
   const [promptError, setPromptError] = useState('')
   const setField =
@@ -372,7 +381,7 @@ function GenerateForm({
       {/* Prompt — full width */}
       <div className="w-full">
         <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-          Mô tả hình muốn in lên áo <span className="text-[var(--color-accent)]">*</span>
+          What's on your mind? Describe the design you want to create. <span className="text-[var(--color-accent)]">*</span>
         </label>
         <textarea
           className={cn(
@@ -401,16 +410,14 @@ function GenerateForm({
       </div>
 
       {/* Phong cách nghệ thuật */}
-      <SelectField
-        label="Phong cách nghệ thuật"
-        value={form.style}
-        onChange={setField('style')}
-        disabled={generating}
-      >
-        {STYLE_OPTIONS.map((s) => (
-          <option key={s.value} value={s.value}>{s.label}</option>
-        ))}
-      </SelectField>
+      <div>
+        <p className="mb-2 text-sm font-medium">Style</p>
+        <div className="flex flex-wrap gap-2">
+          {['3D', 'Vintage', 'Anime', 'Tattoo', 'Y2K', 'Typography', 'Mascot', 'Minimal', 'Chibi', 'Sport', 'Gothic', 'Punk'].map((style) => (
+            <button key={style} type="button" disabled={generating} onClick={() => setForm((prev) => ({ ...prev, style }))} className={cn('rounded-full border px-3 py-1.5 text-sm disabled:opacity-50', form.style === style ? 'border-black bg-black text-white' : 'border-[var(--color-border)]')}>{style}</button>
+          ))}
+        </div>
+      </div>
       {currentStyleHint && (
         <p className="-mt-4 text-xs text-[var(--color-muted-foreground)] pl-0.5">{currentStyleHint}</p>
       )}
@@ -449,8 +456,9 @@ function GenerateForm({
           ? 'Đang phác thảo...'
           : cooldown > 0
           ? `Chờ ${cooldown}s để tạo tiếp`
-          : 'Tạo thiết kế với AI'}
+          : 'Generate Design'}
       </Button>
+      {history.length > 0 && <div className="space-y-2"><p className="text-sm font-medium">Generated History</p><div className="grid grid-cols-4 gap-2">{history.map((item) => <button key={item.designId} type="button" onClick={() => onSelectHistory(item)} className="overflow-hidden rounded border"><img src={item.imageUrl || item.preview} alt="Generated print artwork" className="aspect-square w-full object-contain" /></button>)}</div></div>}
       {cooldown > 0 && !generating && (
         <div className="mt-2">
           <div className="h-1 w-full rounded-full bg-[var(--color-muted)] overflow-hidden">
@@ -464,6 +472,14 @@ function GenerateForm({
           </p>
         </div>
       )}
+      <div>
+        <p className="mb-2 text-sm font-medium">Print side</p>
+        <div className="grid grid-cols-3 gap-2">
+          {(['Front', 'Back', 'Both Sides'] as const).map((side) => (
+            <button key={side} type="button" disabled={generating} onClick={() => setForm((prev) => ({ ...prev, printSide: side }))} className={cn('rounded border px-2 py-2 text-sm disabled:opacity-50', form.printSide === side ? 'border-black bg-black text-white' : 'border-[var(--color-border)]')}>{side}</button>
+          ))}
+        </div>
+      </div>
     </form>
   )
 }
@@ -684,6 +700,8 @@ function CreateTab({
   onReset,
   initialValues,
   cooldown,
+  history,
+  onSelectHistory,
 }: {
   viewState: 'form' | 'result'
   generating: boolean
@@ -699,6 +717,8 @@ function CreateTab({
   onReset: () => void
   initialValues?: Partial<FormValues>
   cooldown: number
+  history: GenerateDesignResponse[]
+  onSelectHistory: (item: GenerateDesignResponse) => void
 }) {
   return (
     <div className="flex flex-col lg:flex-row gap-8 h-full min-h-[650px]">
@@ -718,6 +738,8 @@ function CreateTab({
                       cooldown={cooldown}
                       initialValues={initialValues}
                       error={generateError}
+                      history={history}
+                      onSelectHistory={onSelectHistory}
                     />     </div>
 
           {viewState === 'result' && currentDesign && (
@@ -858,11 +880,13 @@ export function DesignStudioPage() {
   const [activeTab, setActiveTab] = useState<'create' | 'custom' | 'library'>('create')
   const [viewState, setViewState] = useState<'form' | 'result'>('form')
   const [generating, setGenerating] = useState(false)
+  const generationLock = useRef(false)
   const [refining, setRefining] = useState(false)
   const [saving, setSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [generateError, setGenerateError] = useState<string | null>(null)
   const [currentDesign, setCurrentDesign] = useState<GenerateDesignResponse | null>(null)
+  const [generationHistory, setGenerationHistory] = useState<GenerateDesignResponse[]>([])
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [orderDesignId, setOrderDesignId] = useState<string | null>(null)
   const [orderThumbnail, setOrderThumbnail] = useState<string | undefined>(undefined)
@@ -898,18 +922,20 @@ export function DesignStudioPage() {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleGenerate = async (vals: FormValues) => {
-    if (cooldown > 0) return
+    if (cooldown > 0 || generationLock.current) return
+    generationLock.current = true
     try {
       setGenerating(true)
       setGenerateError(null)
       const payload = {
-        prompt: vals.prompt.trim(),
-        style: vals.style || 'Graphic Art',
-        colorPalette: vals.colorPalette || 'Black and white, high contrast',
-        shirtColor: vals.shirtColor || 'white',
+        idea: vals.prompt.trim(),
+        style: vals.style || 'Vintage',
+        printSide: vals.printSide || 'Front',
+        globalShirtColor: SHIRT_COLOR_OPTIONS.find((color) => color.value === vals.shirtColor)?.hex || '#ffffff',
       }
       const res = await DesignService.generateDesign(payload)
       setCurrentDesign(res.data.data)
+      setGenerationHistory((items) => [res.data.data, ...items.filter((item) => item.designId !== res.data.data.designId)].slice(0, 5))
       setViewState('result')
       setIsSaved(false)
       startCooldown()
@@ -926,6 +952,7 @@ export function DesignStudioPage() {
         setGenerateError('Đã có lỗi xảy ra, vui lòng thử lại.')
       }
     } finally {
+      generationLock.current = false
       setGenerating(false)
     }
   }
@@ -1114,6 +1141,8 @@ export function DesignStudioPage() {
           }}
           initialValues={reuseInitial}
           cooldown={cooldown}
+          history={generationHistory}
+          onSelectHistory={(item) => { setCurrentDesign(item); setViewState('result'); setIsSaved(item.design.status === 'SAVED') }}
         />
       )}
 

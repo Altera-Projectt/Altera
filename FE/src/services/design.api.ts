@@ -19,11 +19,10 @@ export interface Design {
 }
 
 export interface GenerateDesignPayload {
-  prompt: string
-  style?: string
-  shirtType?: string
-  colorPalette?: string
-  shirtColor?: string
+  idea: string
+  style: string
+  printSide: 'Front' | 'Back' | 'Both Sides'
+  globalShirtColor: string
 }
 
 export interface GenerateDesignResponse {
