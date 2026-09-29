@@ -79,16 +79,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-invalid={!!error}
             aria-describedby={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
             className={cn(
-              'w-full h-10 px-3 text-sm',
-              'bg-[var(--color-background)] text-[var(--color-foreground)]',
+              'w-full h-11 px-3 text-sm',
+              'bg-[var(--color-card)] text-[var(--color-foreground)]',
               'border border-[var(--color-border)] rounded-[var(--radius-md)]',
-              'placeholder:text-[var(--color-muted-foreground)]',
-              'transition-colors duration-150',
-              'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
-              'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-[var(--color-muted)]',
+              'placeholder:text-[var(--color-muted-foreground)]/50',
+              'transition-all duration-200',
+              'focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/[0.08] focus:bg-[var(--color-card)]',
+              'disabled:cursor-not-allowed disabled:opacity-40 disabled:bg-[var(--color-muted)]',
               leftIcon && 'pl-9',
-              rightIcon && 'pr-9',
-              error && 'border-[var(--color-error)] focus:ring-[var(--color-error)]',
+              rightIcon && 'pr-10',
+              error && 'border-[var(--color-error)]/70 focus:border-[var(--color-error)] focus:ring-[var(--color-error)]/20',
               className,
             )}
             {...props}

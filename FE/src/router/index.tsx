@@ -8,6 +8,7 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { HomePage } from '@/pages/home/HomePage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { ProductsPage } from '@/pages/products/ProductsPage'
 import { ProductDetailPage } from '@/pages/products/ProductDetailPage'
 import { OutfitPage } from '@/pages/outfit/OutfitPage'
@@ -15,6 +16,7 @@ import { DesignStudioPage } from '@/pages/design/DesignStudioPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { AboutPage } from '@/pages/about/AboutPage'
 import { MembershipPage } from '@/pages/membership/MembershipPage'
+import { MembershipCheckoutPage } from '@/pages/membership/MembershipCheckoutPage'
 
 // Protected Pages
 import { OrdersPage } from '@/pages/orders/OrdersPage'
@@ -45,11 +47,13 @@ export const router = createBrowserRouter([
       { path: 'products/:id', element: <ProductDetailPage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'membership', element: <MembershipPage /> },
+      { path: 'membership/checkout', element: <MembershipCheckoutPage /> },
       {
         path: 'auth',
         children: [
           { path: 'login', element: <LoginPage /> },
           { path: 'register', element: <RegisterPage /> },
+          { path: 'forgot-password', element: <ForgotPasswordPage /> },
         ],
       },
       // Protected User Routes

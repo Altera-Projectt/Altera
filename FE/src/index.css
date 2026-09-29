@@ -8,66 +8,72 @@
   --font-heading: "Neue Power", "Montserrat", "Archivo", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Neue Power", "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  /* ── Brand Colors ── */
-  --color-primary: #ffffff;
-  --color-primary-foreground: #111111;
+  /* ── Brand Colors (Tech-Fashion Brutalist) ── */
+  --color-electric-blue: #002bff; /* Electric Blue for primary blocks */
+  --color-cyan: #00e5ff; /* Cyan for gradients/accents */
+  --color-neon-lime: #d4ff00; /* Secondary accent from motion frames */
 
-  --color-secondary: #27272a;
-  --color-secondary-foreground: #e5e5e5;
+  --color-primary: var(--color-electric-blue);
+  --color-primary-foreground: #ffffff;
 
-  --color-accent: #e11d48;
-  --color-accent-foreground: #ffffff;
+  --color-secondary: var(--color-cyan);
+  --color-secondary-foreground: #000000;
 
-  --color-neutral: #27272a;
-  --color-neutral-foreground: #e5e5e5;
+  --color-accent: var(--color-neon-lime);
+  --color-accent-foreground: #000000;
+
+  --color-neutral: #f4f4f5;
+  --color-neutral-foreground: #000000;
 
   /* ── Semantic Colors ── */
-  --color-background: #111111;
-  --color-foreground: #e5e5e5;
+  --color-background: #ffffff; /* Pure white base */
+  --color-background-muted: #f4f4f5; /* Light gray base layouts */
+  --color-foreground: #000000; /* Brutalist strong text contrast */
+  
+  --color-card: #ffffff;
+  --color-card-foreground: #000000;
 
-  --color-muted: #1a1a1a;
-  --color-muted-foreground: #a1a1aa;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
 
-  --color-border: #27272a;
-  --color-input: #27272a;
-  --color-ring: #52525b;
+  --color-border: #000000; /* Brutalist strong borders */
+  --color-input: #e4e4e7;
+  --color-ring: var(--color-electric-blue);
 
-  --color-card: #18181b;
-  --color-card-foreground: #e5e5e5;
-
-  --color-popover: #18181b;
-  --color-popover-foreground: #e5e5e5;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #000000;
 
   /* ── Status Colors ── */
-  --color-success: #22c55e;
-  --color-success-foreground: #ffffff;
+  --color-success: #00ff66;
+  --color-success-foreground: #000000;
 
-  --color-warning: #f59e0b;
-  --color-warning-foreground: #ffffff;
+  --color-warning: #ffd500;
+  --color-warning-foreground: #000000;
 
-  --color-error: #ef4444;
+  --color-error: #ff0033;
   --color-error-foreground: #ffffff;
 
-  --color-destructive: #ef4444;
+  --color-destructive: #ff0033;
   --color-destructive-foreground: #ffffff;
 
-  /* ── Border Radius ── */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 24px;
+  /* ── Border Radius (Tech-Fashion Brutalist = Sharper) ── */
+  --radius-sm: 0px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 8px;
+  --radius-2xl: 12px;
   --radius-full: 9999px;
 
-  /* ── Shadows (light, fashion-grade) ── */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  /* ── Shadows (Hard, distinct shadows) ── */
+  --shadow-sm: 2px 2px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-md: 4px 4px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-lg: 8px 8px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-xl: 12px 12px 0px 0px rgba(0, 0, 0, 1);
+  --shadow-none: 0 0 #0000;
 
   /* ── Spacing ── */
-  --spacing-navbar: 72px;
-  --spacing-sidebar: 260px;
+  --spacing-navbar: 80px;
+  --spacing-sidebar: 280px;
 
   /* ── Transitions ── */
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
@@ -76,6 +82,10 @@
   --duration-base: 200ms;
   --duration-slow: 300ms;
 
+  /* ── Background Images (Electric Blue to Cyan Gradients) ── */
+  --background-image-gradient-brand: linear-gradient(135deg, var(--color-electric-blue) 0%, var(--color-cyan) 100%);
+  --background-image-gradient-brand-hover: linear-gradient(135deg, #001fcc 0%, #00b3cc 100%);
+  
   /* ── Animations ── */
   --animate-shimmer: shimmer 1.5s infinite;
   @keyframes shimmer {
@@ -105,7 +115,7 @@
 
   body {
     font-family: var(--font-body);
-    background-color: var(--color-background);
+    background-color: var(--color-background-muted); /* Light gray base layouts */
     color: var(--color-foreground);
     font-size: 16px;
     line-height: 1.6;
@@ -115,9 +125,10 @@
 
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
-    font-weight: 700;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    text-transform: uppercase;
   }
 
   img,
@@ -142,15 +153,15 @@
     font-family: var(--font-body);
   }
 
-  /* Focus ring — accessible but minimal */
+  /* Focus ring — Bold brutalist contrast */
   :focus-visible {
-    outline: 2px solid var(--color-ring);
+    outline: 2px solid var(--color-foreground);
     outline-offset: 2px;
   }
 
   ::selection {
-    background-color: var(--color-primary);
-    color: var(--color-primary-foreground);
+    background-color: var(--color-cyan);
+    color: var(--color-foreground);
   }
 }
 
@@ -196,13 +207,13 @@
 /* ── Scrollbar ── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border) transparent;
+  scrollbar-color: var(--color-electric-blue) transparent;
 }
-::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 2px;
+  background: var(--color-electric-blue);
+  border-radius: 0px; /* Blocky brutalist scrollbar */
 }
 
 /* ── Marquee animation ── */
@@ -234,6 +245,6 @@
   font-family: var(--font-heading);
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.04em;
   line-height: 1;
 }

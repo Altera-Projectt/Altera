@@ -116,11 +116,20 @@ export function CheckoutPage() {
   if (cartItems.length === 0 && !cart) {
     return (
       <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh] flex flex-col items-center justify-center">
-        <div className="text-center space-y-4">
-          <ShoppingBag className="h-16 w-16 mx-auto text-[var(--color-muted-foreground)] opacity-40" />
-          <h1 className="font-heading text-2xl font-bold">Giỏ hàng trống</h1>
-          <p className="text-[var(--color-muted-foreground)]">Bạn chưa có sản phẩm nào trong giỏ hàng.</p>
-          <Button asChild variant="primary">
+        <div className="flex flex-col items-center gap-5 text-center">
+          <div className="h-20 w-20 rounded-full border border-[var(--color-border)] flex items-center justify-center">
+            <ShoppingBag className="h-8 w-8 text-[var(--color-border)]" />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+              ALTERA — Cart
+            </p>
+            <h1 className="heading-brand text-3xl mb-2">Giỏ hàng trống</h1>
+            <p className="text-sm text-[var(--color-muted-foreground)]">
+              Bạn chưa có sản phẩm nào trong giỏ hàng.
+            </p>
+          </div>
+          <Button asChild variant="primary" size="lg">
             <Link to="/products">Khám phá sản phẩm</Link>
           </Button>
         </div>
@@ -128,40 +137,70 @@ export function CheckoutPage() {
     )
   }
 
+  // ── Payment method options ─────────────────────────────────────────────
+
+  const PAYMENT_OPTIONS: {
+    value: PaymentMethod
+    label: string
+    sub: string
+    icon: React.ReactNode
+  }[] = [
+    {
+      value: 'COD',
+      label: 'Thanh toán khi nhận hàng',
+      sub: 'Trả tiền mặt trực tiếp khi giao hàng — không cần thẻ.',
+      icon: <Truck className="h-6 w-6" />,
+    },
+    {
+      value: 'BANK_TRANSFER',
+      label: 'Chuyển khoản ngân hàng',
+      sub: 'Chuyển khoản trước — nhận thông tin tài khoản sau khi đặt.',
+      icon: <CreditCard className="h-6 w-6" />,
+    },
+  ]
+
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-10">
+
+      {/* ── Page header ── */}
+      <div className="mb-10">
         <button
+          type="button"
           onClick={() => navigate('/cart')}
-          className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
+          className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors mb-6"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           Quay lại giỏ hàng
         </button>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+          ALTERA — Checkout
+        </p>
+        <h1 className="heading-brand text-4xl md:text-5xl">Thanh Toán</h1>
       </div>
 
-      <h1 className="font-heading text-3xl font-bold uppercase tracking-wide mb-10">Thanh Toán</h1>
-
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12 items-start">
 
-          {/* Left — Form */}
-          <div className="lg:col-span-2 space-y-10">
+          {/* ── Left — Steps ── */}
+          <div className="space-y-4">
 
-            {/* Shipping Info */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)] text-sm font-bold">
+            {/* ── Step 1: Address ── */}
+            <div className="rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              {/* Step header */}
+              <div className="flex items-center gap-4 px-6 py-5 border-b border-[var(--color-border)]">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-black text-xs font-black">
                   1
                 </div>
-                <h2 className="font-heading text-xl font-bold flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Thông tin giao hàng
-                </h2>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                    Thông tin giao hàng
+                  </p>
+                </div>
               </div>
 
-              <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 space-y-5 bg-[var(--color-background)]">
+              {/* Step body */}
+              <div className="px-6 py-6 space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                   <Input
                     label="Họ và tên"
@@ -187,112 +226,95 @@ export function CheckoutPage() {
                   {...register('address')}
                 />
               </div>
-            </section>
+            </div>
 
-            {/* Payment Method */}
-            <section>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)] text-sm font-bold">
+            {/* ── Step 2: Payment Method ── */}
+            <div className="rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              {/* Step header */}
+              <div className="flex items-center gap-4 px-6 py-5 border-b border-[var(--color-border)]">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-black text-xs font-black">
                   2
                 </div>
-                <h2 className="font-heading text-xl font-bold flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Phương thức thanh toán
-                </h2>
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                    Phương thức thanh toán
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-3">
-                {/* COD Option */}
-                <label
-                  htmlFor="payment-cod"
-                  className={`flex items-center gap-4 p-5 rounded-[var(--radius-lg)] border-2 cursor-pointer transition-all ${
-                    paymentMethod === 'COD'
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                      : 'border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-muted-foreground)]'
-                  }`}
-                >
-                  <input
-                    id="payment-cod"
-                    type="radio"
-                    name="paymentMethod"
-                    value="COD"
-                    checked={paymentMethod === 'COD'}
-                    onChange={() => setPaymentMethod('COD')}
-                    className="sr-only"
-                  />
-                  <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    paymentMethod === 'COD' ? 'border-[var(--color-primary)]' : 'border-[var(--color-border)]'
-                  }`}>
-                    {paymentMethod === 'COD' && (
-                      <div className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 flex-1">
-                    <Truck className="h-5 w-5 text-[var(--color-muted-foreground)]" />
-                    <div>
-                      <div className="font-semibold text-sm">Thanh toán khi nhận hàng (COD)</div>
-                      <div className="text-xs text-[var(--color-muted-foreground)] mt-0.5">Thanh toán bằng tiền mặt khi giao hàng</div>
-                    </div>
-                  </div>
-                  {paymentMethod === 'COD' && (
-                    <CheckCircle className="h-5 w-5 text-[var(--color-primary)] flex-shrink-0" />
-                  )}
-                </label>
+              {/* Payment cards grid */}
+              <div className="px-6 py-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {PAYMENT_OPTIONS.map((opt) => {
+                  const isSelected = paymentMethod === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPaymentMethod(opt.value)}
+                      className={[
+                        'relative flex flex-col items-start gap-4 p-5 rounded-[var(--radius-lg)] border-2 text-left',
+                        'transition-all duration-200 cursor-pointer',
+                        isSelected
+                          ? 'border-white bg-white/[0.05] shadow-[0_0_20px_rgba(255,255,255,0.04)]'
+                          : 'border-[var(--color-border)] bg-transparent hover:border-white/30 hover:bg-white/[0.03]',
+                      ].join(' ')}
+                      aria-pressed={isSelected}
+                    >
+                      {/* Check badge */}
+                      {isSelected && (
+                        <CheckCircle className="absolute top-4 right-4 h-4 w-4 text-[var(--color-foreground)]" />
+                      )}
 
-                {/* Bank Transfer Option */}
-                <label
-                  htmlFor="payment-bank"
-                  className={`flex items-center gap-4 p-5 rounded-[var(--radius-lg)] border-2 cursor-pointer transition-all ${
-                    paymentMethod === 'BANK_TRANSFER'
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                      : 'border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-muted-foreground)]'
-                  }`}
-                >
-                  <input
-                    id="payment-bank"
-                    type="radio"
-                    name="paymentMethod"
-                    value="BANK_TRANSFER"
-                    checked={paymentMethod === 'BANK_TRANSFER'}
-                    onChange={() => setPaymentMethod('BANK_TRANSFER')}
-                    className="sr-only"
-                  />
-                  <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    paymentMethod === 'BANK_TRANSFER' ? 'border-[var(--color-primary)]' : 'border-[var(--color-border)]'
-                  }`}>
-                    {paymentMethod === 'BANK_TRANSFER' && (
-                      <div className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 flex-1">
-                    <CreditCard className="h-5 w-5 text-[var(--color-muted-foreground)]" />
-                    <div>
-                      <div className="font-semibold text-sm">Chuyển khoản ngân hàng</div>
-                      <div className="text-xs text-[var(--color-muted-foreground)] mt-0.5">Chuyển khoản trước khi giao hàng</div>
-                    </div>
-                  </div>
-                  {paymentMethod === 'BANK_TRANSFER' && (
-                    <CheckCircle className="h-5 w-5 text-[var(--color-primary)] flex-shrink-0" />
-                  )}
-                </label>
-                {/* MoMo option removed — not configured on server */}
+                      {/* Icon block */}
+                      <div className={[
+                        'flex h-12 w-12 items-center justify-center rounded-[var(--radius-md)]',
+                        'transition-colors duration-200 shrink-0',
+                        isSelected
+                          ? 'bg-white text-black'
+                          : 'bg-[var(--color-muted)] text-[var(--color-muted-foreground)]',
+                      ].join(' ')}>
+                        {opt.icon}
+                      </div>
+
+                      {/* Text */}
+                      <div>
+                        <p className={[
+                          'text-sm font-bold leading-tight',
+                          isSelected ? 'text-[var(--color-foreground)]' : 'text-[var(--color-foreground)]',
+                        ].join(' ')}>
+                          {opt.label}
+                        </p>
+                        <p className="text-xs text-[var(--color-muted-foreground)] mt-1 leading-relaxed">
+                          {opt.sub}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
-            </section>
+            </div>
 
           </div>
 
-          {/* Right — Order Summary */}
-          <div className="lg:col-span-1">
-            <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 bg-[var(--color-background)] sticky top-24 shadow-sm">
-              <h2 className="font-heading text-xl font-bold mb-6">Tóm tắt đơn hàng</h2>
+          {/* ── Right — Order Summary (sticky) ── */}
+          <div className="sticky top-[calc(var(--spacing-navbar)+2rem)]">
+            <div className="rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
 
-              {/* Cart Items */}
-              <div className="space-y-4 mb-6 max-h-64 overflow-y-auto pr-1">
+              {/* Summary header */}
+              <div className="px-6 py-5 border-b border-[var(--color-border)]">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                  Tóm tắt đơn hàng
+                </p>
+              </div>
+
+              {/* Cart items */}
+              <div className="px-6 py-5 space-y-4 max-h-64 overflow-y-auto scrollbar-none">
                 {cartItems.map((item) => {
                   const productId = item.productId?._id
                   return (
                     <div key={productId} className="flex items-center gap-3">
-                      <div className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-md)] bg-[var(--color-muted)] border border-[var(--color-border)] overflow-hidden">
+                      <div className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-muted)] overflow-hidden border border-[var(--color-border)]">
                         {item.productId?.imageUrl ? (
                           <img
                             src={item.productId.imageUrl}
@@ -300,8 +322,8 @@ export function CheckoutPage() {
                             className="h-full w-full object-cover"
                           />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center text-xs text-[var(--color-muted-foreground)]">
-                            No img
+                          <div className="h-full w-full flex items-center justify-center">
+                            <ShoppingBag className="h-4 w-4 text-[var(--color-border)]" />
                           </div>
                         )}
                       </div>
@@ -317,8 +339,8 @@ export function CheckoutPage() {
                 })}
               </div>
 
-              {/* Pricing */}
-              <div className="border-t border-[var(--color-border)] pt-4 space-y-3 text-sm mb-6">
+              {/* Pricing breakdown */}
+              <div className="px-6 py-5 border-t border-[var(--color-border)] space-y-3 text-sm">
                 <div className="flex justify-between text-[var(--color-muted-foreground)]">
                   <span>Tạm tính</span>
                   <span className="font-medium text-[var(--color-foreground)]">{formatVND(totalPrice)}</span>
@@ -329,27 +351,37 @@ export function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="border-t border-[var(--color-border)] pt-4 mb-8">
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Tổng cộng</span>
-                  <span className="text-[var(--color-primary)]">{formatVND(totalPrice)}</span>
+              {/* Total */}
+              <div className="px-6 py-5 border-t border-[var(--color-border)]">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                    Tổng cộng
+                  </span>
+                  <span className="text-xl font-black text-[var(--color-foreground)]">{formatVND(totalPrice)}</span>
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                size="lg"
-                className="w-full uppercase font-semibold tracking-wider h-14"
-                loading={submitting}
-                disabled={submitting || cartItems.length === 0}
-              >
-                {submitting ? 'Đang đặt hàng...' : 'Đặt hàng'}
-              </Button>
+              {/* CTA */}
+              <div className="px-6 pb-6">
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full uppercase font-bold tracking-widest gap-2"
+                  loading={submitting}
+                  disabled={submitting || cartItems.length === 0}
+                >
+                  {!submitting && <ShoppingBag className="h-4 w-4" />}
+                  {submitting ? 'Đang đặt hàng...' : 'Đặt hàng ngay'}
+                </Button>
 
-              <p className="text-xs text-center text-[var(--color-muted-foreground)] mt-4">
-                Bằng cách đặt hàng, bạn đồng ý với{' '}
-                <span className="underline cursor-pointer">Điều khoản sử dụng</span> của ALTERA
-              </p>
+                <p className="text-[10px] text-center text-[var(--color-muted-foreground)] mt-4 leading-relaxed">
+                  Bằng cách đặt hàng, bạn đồng ý với{' '}
+                  <span className="underline underline-offset-2 cursor-pointer hover:text-[var(--color-foreground)] transition-colors">
+                    Điều khoản sử dụng
+                  </span>{' '}
+                  của ALTERA
+                </p>
+              </div>
             </div>
           </div>
 

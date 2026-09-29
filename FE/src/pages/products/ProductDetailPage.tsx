@@ -102,19 +102,38 @@ export function ProductDetailPage() {
   }
 
   if (!id) {
-    return <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 text-center text-[var(--color-error)]">Invalid Product ID</div>
+    return (
+      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 text-center text-[var(--color-error)]">
+        Invalid Product ID
+      </div>
+    )
   }
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="aspect-[3/4] w-full animate-pulse bg-[var(--color-muted)] rounded-none" />
-          <div className="space-y-6 pt-8">
-            <div className="h-4 w-1/4 animate-pulse bg-[var(--color-muted)]" />
-            <div className="h-8 w-3/4 animate-pulse bg-[var(--color-muted)]" />
+      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 pt-[var(--spacing-navbar)] pb-16">
+        <div className="lg:grid lg:grid-cols-[60fr_40fr] lg:gap-16">
+          {/* Image col skeleton */}
+          <div className="flex gap-3">
+            <div className="hidden md:flex flex-col gap-2 w-16 shrink-0">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="aspect-[3/4] w-full animate-pulse bg-[var(--color-muted)] rounded-[var(--radius-sm)]" />
+              ))}
+            </div>
+            <div className="aspect-[3/4] flex-1 animate-pulse bg-[var(--color-muted)]" />
+          </div>
+          {/* Detail col skeleton */}
+          <div className="mt-8 lg:mt-0 space-y-5 pt-4">
+            <div className="h-3 w-1/4 animate-pulse bg-[var(--color-muted)]" />
+            <div className="h-10 w-3/4 animate-pulse bg-[var(--color-muted)]" />
             <div className="h-6 w-1/4 animate-pulse bg-[var(--color-muted)]" />
-            <div className="h-24 w-full animate-pulse bg-[var(--color-muted)] mt-8" />
+            <div className="h-px w-full bg-[var(--color-border)] mt-6" />
+            <div className="grid grid-cols-6 gap-2 mt-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-10 animate-pulse bg-[var(--color-muted)]" />
+              ))}
+            </div>
+            <div className="h-12 w-full animate-pulse bg-[var(--color-muted)] mt-4" />
           </div>
         </div>
       </div>
@@ -123,59 +142,81 @@ export function ProductDetailPage() {
 
   if (error || !product) {
     return (
-      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 text-center flex flex-col items-center justify-center min-h-[50vh]">
-        <p className="text-[var(--color-error)] mb-6 font-medium">{error || 'Product not found'}</p>
+      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 text-center flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <p className="text-[var(--color-error)] font-medium">{error || 'Product not found'}</p>
         <Button variant="outline" onClick={() => navigate('/products')}>
-          Back to Products
+          ← Back to Products
         </Button>
       </div>
     )
   }
 
-  return (
-    <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 pt-[var(--spacing-navbar)] pb-16">
-      <div className="lg:grid lg:grid-cols-[60fr_40fr] lg:gap-16 lg:items-start">
+  // Derive images once
+  const allImages = product.images?.length
+    ? product.images
+    : [product.imageUrl].filter(Boolean) as string[]
 
-        {/* ── CỘT TRÁI: Image Gallery ── */}
-        <div className="flex flex-col gap-3">
-          {/* Ảnh chính lớn */}
-          {product.images && product.images.length > 0 ? (
-            product.images.map((img, i) => (
-              <div key={i} className="aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)]">
-                <img
-                  src={img}
-                  alt={`${product.name} - ${i + 1}`}
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            ))
-          ) : (
-            <div className="aspect-[3/4] w-full bg-[var(--color-muted)] flex items-center justify-center">
-              {product.imageUrl ? (
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <span className="text-sm text-[var(--color-muted-foreground)]">No image</span>
-              )}
+  return (
+    <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 pt-[var(--spacing-navbar)] pb-20">
+      <div className="lg:grid lg:grid-cols-[60fr_40fr] lg:gap-20 lg:items-start">
+
+        {/* ── LEFT: Image Gallery ───────────────────────────────── */}
+        <div className="flex gap-3">
+          {/* Thumbnail rail (desktop only) */}
+          {allImages.length > 1 && (
+            <div className="hidden md:flex flex-col gap-2 w-[68px] shrink-0">
+              {allImages.map((img, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {}}
+                  className={cn(
+                    'aspect-[3/4] w-full overflow-hidden transition-all duration-200',
+                    'ring-1',
+                    i === 0
+                      ? 'ring-white/60'
+                      : 'ring-[var(--color-border)] opacity-60 hover:opacity-100 hover:ring-white/30',
+                  )}
+                  aria-label={`View image ${i + 1}`}
+                >
+                  <img src={img} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />
+                </button>
+              ))}
             </div>
           )}
+
+          {/* Main image stack — all images stacked vertically (full editorial view) */}
+          <div className="flex flex-col gap-2 flex-1">
+            {allImages.length > 0 ? (
+              allImages.map((img, i) => (
+                <div key={i} className="aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)]">
+                  <img
+                    src={img}
+                    alt={`${product.name} — ${i + 1}`}
+                    className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="aspect-[3/4] w-full bg-[var(--color-muted)] flex items-center justify-center">
+                <span className="text-sm text-[var(--color-muted-foreground)]">No image</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* ── CỘT PHẢI: Product Info (STICKY) ── */}
-        <div className="sticky top-24 h-fit mt-6 lg:mt-0">
+        {/* ── RIGHT: Product Details (STICKY) ──────────────────── */}
+        <div className="sticky top-[calc(var(--spacing-navbar)+2rem)] h-fit mt-10 lg:mt-0">
 
-          {/* Category + Style */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+          {/* Breadcrumb meta */}
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
               {product.category}
             </span>
             {product.style && (
               <>
                 <span className="text-[var(--color-border)]">·</span>
-                <span className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
                   {product.style}
                 </span>
               </>
@@ -183,13 +224,13 @@ export function ProductDetailPage() {
           </div>
 
           {/* Name */}
-          <h1 className="heading-brand text-2xl md:text-4xl mb-4">
+          <h1 className="heading-brand text-3xl md:text-4xl mb-5 leading-tight">
             {product.name}
           </h1>
 
-          {/* Price */}
-          <div className="flex items-baseline gap-3 mb-6">
-            <span className="text-2xl font-black">
+          {/* Price block */}
+          <div className="flex items-baseline gap-3 mb-7">
+            <span className="text-2xl font-black text-[var(--color-foreground)]">
               {formatPrice(product.discountPrice ?? product.price)}
             </span>
             {product.discountPrice && product.price > product.discountPrice && (
@@ -197,31 +238,33 @@ export function ProductDetailPage() {
                 <span className="text-base text-[var(--color-muted-foreground)] line-through">
                   {formatPrice(product.price)}
                 </span>
-                <span className="text-xs font-bold text-[var(--color-accent)] uppercase">
-                  -{Math.round((1 - product.discountPrice / product.price) * 100)}%
+                <span className="text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-widest px-1.5 py-0.5 border border-[var(--color-accent)]/30 rounded-sm">
+                  −{Math.round((1 - product.discountPrice / product.price) * 100)}% OFF
                 </span>
               </>
             )}
           </div>
 
+          <div className="h-px w-full bg-[var(--color-border)] mb-7" />
+
           {/* Color Selector */}
           {product.colors && product.colors.length > 0 && (
-            <div className="mb-6">
-              <p className="text-xs font-bold uppercase tracking-widest mb-3">
+            <div className="mb-7">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-3 text-[var(--color-muted-foreground)]">
                 Màu sắc
                 {selectedColor && (
-                  <span className="ml-2 font-normal normal-case tracking-normal text-[var(--color-muted-foreground)]">
+                  <span className="ml-2 font-normal normal-case tracking-normal text-[var(--color-foreground)]">
                     — {selectedColor.name}
                   </span>
                 )}
               </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-2.5">
                 {product.colors.map((color) => {
                   let c = color;
                   if (typeof c === 'string') {
                     try { c = JSON.parse(c) } catch (e) { c = { name: c, hex: c, stock: 10 } as unknown as ProductColor }
                   }
-                  
+
                   return (
                     <button
                       key={c.name}
@@ -229,13 +272,12 @@ export function ProductDetailPage() {
                       title={c.name}
                       onClick={() => setSelectedColor(c)}
                       className={cn(
-                        'h-8 w-8 rounded-full transition-all duration-200 hover:scale-110',
-                        selectedColor?.name === c.name ? 'ring-2 ring-offset-2 ring-[var(--color-primary)] scale-110' : ''
+                        'h-10 w-10 rounded-full transition-all duration-200',
+                        selectedColor?.name === c.name
+                          ? 'ring-2 ring-white ring-offset-2 ring-offset-[var(--color-background)] scale-110'
+                          : 'ring-1 ring-black/10 hover:scale-105 hover:ring-white/40',
                       )}
-                      style={{
-                        backgroundColor: c.hex,
-                        boxShadow: '0 0 0 1px rgba(0,0,0,0.15)',
-                      }}
+                      style={{ backgroundColor: c.hex }}
                     />
                   )
                 })}
@@ -245,10 +287,12 @@ export function ProductDetailPage() {
 
           {/* Size Selector */}
           {product.sizes && product.sizes.length > 0 && (
-            <div className="mb-6">
+            <div className="mb-7">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold uppercase tracking-widest">Size</p>
-                <button className="text-xs underline underline-offset-2 text-[var(--color-muted-foreground)] hover:opacity-70">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                  Size
+                </p>
+                <button className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] underline underline-offset-2 transition-colors">
                   Hướng dẫn chọn size
                 </button>
               </div>
@@ -258,7 +302,7 @@ export function ProductDetailPage() {
                   if (typeof s === 'string') {
                     try { s = JSON.parse(s) } catch (e) { s = { label: s, stock: 10 } as unknown as ProductSize }
                   }
-                  
+
                   return (
                     <button
                       key={s.label}
@@ -266,16 +310,18 @@ export function ProductDetailPage() {
                       disabled={s.stock === 0}
                       onClick={() => setSelectedSize(s)}
                       className={cn(
-                        'min-w-[48px] h-10 px-3 text-xs font-bold uppercase border transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed',
+                        'min-w-[48px] h-11 px-3 text-[10px] font-bold uppercase tracking-widest',
+                        'border transition-all duration-150',
+                        'disabled:opacity-25 disabled:cursor-not-allowed',
                         selectedSize?.label === s.label
-                          ? 'bg-[var(--color-primary)] text-[var(--color-primary-foreground)] border-[var(--color-primary)]'
-                          : 'bg-transparent border-[var(--color-border)] hover:border-[var(--color-foreground)]'
+                          ? 'bg-white text-black border-white'
+                          : 'bg-transparent border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:border-white/60 hover:text-[var(--color-foreground)]',
                       )}
                     >
                       {s.label}
                       {s.stock < 5 && s.stock > 0 && (
                         <span className="block text-[8px] font-normal text-[var(--color-accent)]">
-                          Còn {s.stock}
+                          {s.stock} left
                         </span>
                       )}
                     </button>
@@ -283,25 +329,25 @@ export function ProductDetailPage() {
                 })}
               </div>
 
-              {/* Size measurements tooltip */}
+              {/* Size measurements */}
               {selectedSize?.measurements && (
-                <div className="mt-3 p-3 bg-[var(--color-muted)] text-xs text-[var(--color-muted-foreground)] grid grid-cols-3 gap-2">
+                <div className="mt-3 p-3 bg-[var(--color-muted)] rounded-[var(--radius-md)] grid grid-cols-3 gap-3">
                   {selectedSize.measurements.chest && (
                     <div className="text-center">
-                      <p className="font-bold text-[var(--color-foreground)]">{selectedSize.measurements.chest}</p>
-                      <p>Ngực (cm)</p>
+                      <p className="text-xs font-bold text-[var(--color-foreground)]">{selectedSize.measurements.chest}</p>
+                      <p className="text-[10px] text-[var(--color-muted-foreground)]">Ngực (cm)</p>
                     </div>
                   )}
                   {selectedSize.measurements.length && (
                     <div className="text-center">
-                      <p className="font-bold text-[var(--color-foreground)]">{selectedSize.measurements.length}</p>
-                      <p>Dài (cm)</p>
+                      <p className="text-xs font-bold text-[var(--color-foreground)]">{selectedSize.measurements.length}</p>
+                      <p className="text-[10px] text-[var(--color-muted-foreground)]">Dài (cm)</p>
                     </div>
                   )}
                   {selectedSize.measurements.shoulder && (
                     <div className="text-center">
-                      <p className="font-bold text-[var(--color-foreground)]">{selectedSize.measurements.shoulder}</p>
-                      <p>Vai (cm)</p>
+                      <p className="text-xs font-bold text-[var(--color-foreground)]">{selectedSize.measurements.shoulder}</p>
+                      <p className="text-[10px] text-[var(--color-muted-foreground)]">Vai (cm)</p>
                     </div>
                   )}
                 </div>
@@ -309,21 +355,26 @@ export function ProductDetailPage() {
             </div>
           )}
 
-          {/* Material + Gender */}
+          {/* Material + Gender meta */}
           {(product.material || product.gender) && (
-            <div className="mb-6 flex gap-4 text-xs text-[var(--color-muted-foreground)]">
-              {product.material && <span>Chất liệu: <strong className="text-[var(--color-foreground)]">{product.material}</strong></span>}
-              {product.gender && <span>Giới tính: <strong className="text-[var(--color-foreground)]">{product.gender}</strong></span>}
+            <div className="mb-7 flex gap-5 text-xs text-[var(--color-muted-foreground)]">
+              {product.material && (
+                <span>Chất liệu: <strong className="text-[var(--color-foreground)] font-medium">{product.material}</strong></span>
+              )}
+              {product.gender && (
+                <span>Giới tính: <strong className="text-[var(--color-foreground)] font-medium">{product.gender}</strong></span>
+              )}
             </div>
           )}
 
-          {/* Add to Cart */}
+          {/* ── Add to Cart CTA ────────────────────────────────── */}
           <div className="flex gap-3">
             <Button
               variant="primary"
               size="lg"
-              className="flex-1 rounded-none uppercase tracking-widest font-bold"
+              className="flex-1 tracking-widest font-bold"
               onClick={handleAddToCart}
+              loading={adding}
               disabled={adding || product.stock === 0}
             >
               {product.stock === 0 ? 'HẾT HÀNG' : 'THÊM VÀO GIỎ'}
@@ -331,10 +382,12 @@ export function ProductDetailPage() {
             <Button
               variant="outline"
               size="lg"
-              className="rounded-none border-[var(--color-border)]"
+              className="border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
               onClick={handleWishlist}
+              disabled={wishlisting}
+              aria-label={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
             >
-              <Heart className={cn('h-5 w-5', isWishlisted ? 'fill-current text-[var(--color-accent)]' : '')} />
+              <Heart className={cn('h-5 w-5 transition-all', isWishlisted ? 'fill-current text-[var(--color-accent)]' : '')} />
             </Button>
           </div>
 
@@ -347,9 +400,12 @@ export function ProductDetailPage() {
 
           {/* Tags */}
           {product.tags && product.tags.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-5 flex flex-wrap gap-2">
               {product.tags.map((tag) => (
-                <span key={tag} className="text-[10px] uppercase tracking-wider text-[var(--color-muted-foreground)] border border-[var(--color-border)] px-2 py-0.5">
+                <span
+                  key={tag}
+                  className="text-[9px] uppercase tracking-widest text-[var(--color-muted-foreground)] border border-[var(--color-border)] px-2 py-1 rounded-sm"
+                >
                   {tag}
                 </span>
               ))}

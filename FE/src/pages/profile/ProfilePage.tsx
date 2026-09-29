@@ -3,32 +3,31 @@ import { AuthService } from '@/services/auth.api'
 import { useAuthStore } from '@/store/authStore'
 import type { User, UpdateMeasurementsPayload, UpdatePreferencesPayload } from '@/types/user.types'
 import { Button } from '@/components/ui/Button'
-import { Card } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Input'
-import { User as UserIcon, Camera, Calendar, ShieldCheck, Ruler, Scale, Shirt, Footprints, MapPin, Mail, Settings, Edit2, LogOut } from 'lucide-react'
+import { User as UserIcon, Camera, Ruler, Scale, Shirt, Footprints, Edit2 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 
-type TabType = 'overview' | 'measurements' | 'preferences'
+type TabType = 'store' | 'overview' | 'measurements' | 'preferences'
 
 export function ProfilePage() {
   const navigate = useNavigate()
   const storeUser = useAuthStore((state) => state.user)
   const updateUser = useAuthStore((state) => state.updateUser)
   const logout = useAuthStore((state) => state.logout)
-  
+
   const [user, setUser] = useState<User | null>(storeUser)
   const [loading, setLoading] = useState(!storeUser)
   const [error, setError] = useState<string | null>(null)
-  
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
-  
+
+  const [activeTab, setActiveTab] = useState<TabType>('store')
+
   // Edit states
   const [isEditingBio, setIsEditingBio] = useState(false)
   const [bioForm, setBioForm] = useState({ bio: '', location: '' })
-  
+
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false)
   const [measurementsForm, setMeasurementsForm] = useState<UpdateMeasurementsPayload>({ height: 0, weight: 0, shirtSize: '', shoeSize: '' })
 
@@ -44,7 +43,7 @@ export function ProfilePage() {
         if (!storeUser) setLoading(true)
         const response = await AuthService.getMe()
         const fetchedUser = response.data.data as any
-        
+
         const actualUser = fetchedUser.user || fetchedUser
         setUser(actualUser)
         updateUser(actualUser)
@@ -91,10 +90,10 @@ export function ProfilePage() {
   const handleImageUpload = async (file: File, type: 'avatar' | 'coverImage') => {
     try {
       setLoading(true)
-      const res = type === 'avatar' 
+      const res = type === 'avatar'
         ? await AuthService.updateAvatar(file)
         : await AuthService.updateCoverImage(file)
-        
+
       const updatedUser = (res.data.data as any).user || res.data.data
       setUser(updatedUser)
       updateUser(updatedUser)
@@ -142,9 +141,9 @@ export function ProfilePage() {
     return (
       <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
         <div className="animate-pulse space-y-8">
-          <div className="h-40 bg-[var(--color-muted)] rounded-[var(--radius-lg)]" />
-          <div className="flex gap-8">
-            <div className="w-64 space-y-4">
+          <div className="h-64 bg-[var(--color-muted)] rounded-[var(--radius-lg)]" />
+          <div className="flex flex-col md:flex-row gap-8">
+            <div className="w-full md:w-64 space-y-4">
               <div className="h-64 bg-[var(--color-muted)] rounded-[var(--radius-lg)]" />
             </div>
             <div className="flex-1 h-96 bg-[var(--color-muted)] rounded-[var(--radius-lg)]" />
@@ -165,356 +164,410 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-      <input 
-        type="file" 
-        accept="image/*" 
-        className="hidden" 
-        ref={avatarInputRef} 
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={avatarInputRef}
         onChange={(e) => {
           if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'avatar')
-        }} 
+        }}
       />
-      <input 
-        type="file" 
-        accept="image/*" 
-        className="hidden" 
-        ref={coverInputRef} 
+      <input
+        type="file"
+        accept="image/*"
+        className="hidden"
+        ref={coverInputRef}
         onChange={(e) => {
           if (e.target.files?.[0]) handleImageUpload(e.target.files[0], 'coverImage')
-        }} 
+        }}
       />
 
-      {/* ── Cover & Header ────────────────────────────────────────── */}
-      <div className="relative mb-24 md:mb-32">
-        <div className="h-48 md:h-64 w-full bg-[var(--color-muted)] rounded-[var(--radius-lg)] border border-[var(--color-border)] overflow-hidden">
+      {/* ── Cinematic Cover & Header ────────────────────────────────── */}
+      <div className="flex flex-col items-center mb-56 md:mb-64 relative">
+        <div className="h-48 md:h-80 w-full bg-[var(--color-muted)] overflow-hidden relative group rounded-xl">
           {user.coverImage ? (
-             <img src={user.coverImage} alt="Cover" className="h-full w-full object-cover mix-blend-overlay opacity-50" />
+            <img src={user.coverImage} alt="Cover" className="h-full w-full object-cover mix-blend-luminosity opacity-40 transition-transform duration-700 group-hover:scale-105" />
           ) : (
-            <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center mix-blend-overlay" />
+            <div className="absolute inset-0 bg-[#E5E7EB]" />
           )}
-          
-          {/* Cover upload button overlay */}
-          <div 
+
+          <div
             onClick={() => coverInputRef.current?.click()}
-            className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs font-semibold cursor-pointer flex items-center gap-2 transition-colors border border-white/10"
+            className="absolute top-4 right-4 bg-black/60 hover:bg-black/90 backdrop-blur-md text-white px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest cursor-pointer flex items-center gap-2 transition-all opacity-0 group-hover:opacity-100"
           >
             <Camera className="w-3.5 h-3.5" />
             Thay đổi ảnh bìa
           </div>
         </div>
-        
-        {/* Avatar */}
-        <div className="absolute -bottom-16 md:-bottom-20 left-8 flex items-end gap-6">
-          <div className="group relative h-32 w-32 md:h-40 md:w-40 rounded-full overflow-hidden bg-[var(--color-background)] shrink-0 border-4 border-[var(--color-background)] shadow-md">
+
+        {/* Avatar & Info */}
+        <div className="absolute top-[120px] md:top-[220px] flex flex-col items-center w-full z-10 px-4">
+          <div className="group relative h-32 w-32 md:h-48 md:w-48 rounded-full overflow-hidden bg-white shrink-0 border-[6px] border-[var(--color-background)] shadow-lg">
             {user.avatar ? (
-              <img src={user.avatar} alt={user.fullName} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <img src={user.avatar} alt={user.fullName} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
             ) : (
-              <div className="flex items-center justify-center h-full w-full bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
-                <UserIcon className="h-12 w-12 opacity-50" />
+              <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
+                <UserIcon className="h-16 w-16 opacity-50" />
               </div>
             )}
-            
-            <div 
+
+            <div
               onClick={() => avatarInputRef.current?.click()}
-              className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
             >
               <Camera className="w-8 h-8 text-white" />
             </div>
           </div>
-          
-          <div className="pb-2 hidden sm:block">
-            <h1 className="text-3xl md:text-4xl font-bold font-heading uppercase tracking-wide">{user.fullName}</h1>
-            <p className="text-[var(--color-muted-foreground)] flex items-center gap-2 mt-2 font-medium">
-              <Mail className="w-4 h-4" /> {user.email}
-            </p>
+
+          <div className="mt-6 text-center">
+            <h1 className="text-3xl md:text-5xl font-black font-heading uppercase tracking-widest text-[var(--color-foreground)]">{user.fullName}</h1>
+            <div className="text-[var(--color-muted-foreground)] text-[10px] font-bold mt-3 flex items-center justify-center gap-3 flex-wrap uppercase tracking-widest">
+              <span>{user.email}</span>
+              <span>•</span>
+              <span>Quyền: {user.role}</span>
+              <span>•</span>
+              <span>{user.location || 'Chưa cập nhật vị trí'}</span>
+            </div>
           </div>
-        </div>
-        
-        {/* Mobile Title (under avatar) */}
-        <div className="mt-20 px-2 sm:hidden text-center">
-          <h1 className="text-2xl font-bold font-heading uppercase tracking-wide">{user.fullName}</h1>
-          <p className="text-[var(--color-muted-foreground)] flex items-center justify-center gap-2 mt-2 text-sm font-medium">
-            <Mail className="w-4 h-4" /> {user.email}
-          </p>
+
+          <div className="mt-6 flex gap-3">
+            <Button variant="primary" className="bg-[#0011FF] hover:bg-[#0011FF]/90 text-white uppercase tracking-widest text-xs font-bold px-8 rounded-full h-10" onClick={() => setActiveTab('overview')}>
+              Thiết lập
+            </Button>
+            <Button variant="primary" className="bg-[#0011FF] hover:bg-[#0011FF]/90 text-white uppercase tracking-widest text-xs font-bold px-8 rounded-full h-10" onClick={() => { logout(); navigate('/') }}>
+              Đăng xuất
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-8 lg:gap-12">
-        {/* ── Left Sidebar (Info & Navigation) ────────────────────────── */}
-        <div className="w-full md:w-64 shrink-0 space-y-6">
-          <Card className="p-6 bg-transparent border-[var(--color-border)]">
-            <div className="space-y-4 text-sm">
-              <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
-                <span className="text-[var(--color-muted-foreground)] flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4" /> Quyền hạn
-                </span>
-                <Badge variant={user.role === 'ADMIN' ? 'default' : 'secondary'} className="uppercase tracking-widest text-[10px]">
-                  {user.role}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
-                <span className="text-[var(--color-muted-foreground)] flex items-center gap-2">
-                  <Calendar className="w-4 h-4" /> Đăng ký bằng
-                </span>
-                <span className="font-medium text-xs tracking-wider">{user.authProvider || 'LOCAL'}</span>
-              </div>
-              <div className="flex items-center justify-between pb-4 border-b border-[var(--color-border)]">
-                <span className="text-[var(--color-muted-foreground)] flex items-center gap-2">
-                  <MapPin className="w-4 h-4" /> Vị trí
-                </span>
-                <span className="font-medium text-right">{user.location || 'Chưa cập nhật'}</span>
-              </div>
-            </div>
-            
-            <div className="mt-6 flex flex-col gap-3">
-              <Button variant="outline" className="w-full uppercase tracking-widest text-xs font-semibold">
-                <Settings className="w-4 h-4 mr-2" />
-                Thiết lập
-              </Button>
-              <Button variant="ghost" onClick={() => { logout(); navigate('/') }} className="w-full uppercase tracking-widest text-xs font-semibold text-[var(--color-error)] hover:text-[var(--color-error)] hover:bg-[var(--color-error)]/10">
-                <LogOut className="w-4 h-4 mr-2" />
-                Đăng xuất
-              </Button>
-            </div>
-          </Card>
-        </div>
-
-        {/* ── Right Content Area ──────────────────────────────────────── */}
-        <div className="flex-1 space-y-8">
-          
-          {/* Tab Navigation */}
-          <div className="flex items-center gap-6 border-b border-[var(--color-border)] overflow-x-auto no-scrollbar">
+      <div className="w-full space-y-8">
+        {/* Minimalist Tabs */}
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-8">
             {[
+              { id: 'store', label: 'Collection' },
               { id: 'overview', label: 'Tổng quan' },
               { id: 'measurements', label: 'Chỉ số cơ thể' },
-              { id: 'preferences', label: 'Sở thích thời trang' },
+              { id: 'preferences', label: 'Sở thích' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as TabType)}
                 className={cn(
-                  "pb-4 text-xs font-semibold uppercase tracking-widest whitespace-nowrap transition-colors relative",
-                  activeTab === tab.id 
-                    ? "text-[var(--color-foreground)]" 
+                  "pb-4 text-[11px] md:text-xs font-bold uppercase tracking-widest whitespace-nowrap transition-colors relative",
+                  activeTab === tab.id
+                    ? "text-[var(--color-foreground)]"
                     : "text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
                 )}
               >
                 {tab.label}
                 {activeTab === tab.id && (
-                  <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[var(--color-primary)]" />
+                  <motion.div
+                    layoutId="activeTabProfile"
+                    className="absolute bottom-0 left-0 w-full h-[2px] bg-[var(--color-foreground)]"
+                  />
                 )}
               </button>
             ))}
           </div>
 
-          {/* Tab Content */}
-          <div className="min-h-[400px]">
+          {activeTab === 'store' && (
+            <div className="hidden sm:flex text-xs font-bold uppercase tracking-widest text-[var(--color-foreground)] items-center gap-2 pb-4 cursor-pointer">
+              FILTER ▾
+            </div>
+          )}
+        </div>
+
+        {/* Tab Content */}
+        <div className="min-h-[400px]">
+          <AnimatePresence mode="wait">
+            {/* CỬA HÀNG (BLANK) */}
+            {activeTab === 'store' && (
+              <motion.div
+                key="store"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                  {/* Fake blank items like wireframe */}
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex flex-col gap-3 group cursor-pointer">
+                      <div className="aspect-[3/4] bg-[#E5E7EB] rounded-lg w-full group-hover:opacity-80 transition-opacity"></div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-heading text-sm font-black uppercase tracking-tight text-[var(--color-foreground)]">ÁO THUN MẪU {i}</p>
+                          <p className="text-[8px] uppercase tracking-widest text-[var(--color-muted-foreground)] mt-1">TÁC GIẢ: <span className="underline">{user.fullName}</span></p>
+                        </div>
+                        <p className="text-xs font-bold text-[var(--color-muted-foreground)]">100.000 VNĐ</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {/* OVERVIEW */}
             {activeTab === 'overview' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <section>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-heading text-xl uppercase tracking-wide">Bio & Giới thiệu</h3>
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-8"
+              >
+                <section className="bg-[var(--color-card)] p-8 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-lg">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1">
+                        Personal Info
+                      </p>
+                      <h3 className="font-heading text-2xl uppercase tracking-widest text-[var(--color-foreground)]">Bio & Giới thiệu</h3>
+                    </div>
                     {!isEditingBio ? (
-                      <Button variant="ghost" size="sm" onClick={() => setIsEditingBio(true)} className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
-                        <Edit2 className="w-4 h-4 mr-2" /> Cập nhật
+                      <Button variant="outline" size="sm" onClick={() => setIsEditingBio(true)} className="text-[10px] uppercase font-bold tracking-widest">
+                        <Edit2 className="w-3.5 h-3.5 mr-2" /> Cập nhật
                       </Button>
                     ) : (
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => setIsEditingBio(false)}>Hủy</Button>
-                        <Button size="sm" onClick={handleSaveBio} className="bg-[var(--color-primary)] text-[var(--color-primary-foreground)]">Lưu</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setIsEditingBio(false)} className="text-[10px] uppercase font-bold tracking-widest">Hủy</Button>
+                        <Button size="sm" onClick={handleSaveBio} className="text-[10px] uppercase font-bold tracking-widest bg-white text-black hover:bg-zinc-200">Lưu</Button>
                       </div>
                     )}
                   </div>
-                  
+
                   {!isEditingBio ? (
-                    <div className="space-y-4 text-[var(--color-muted-foreground)] leading-relaxed text-sm border-l-2 border-[var(--color-border)] pl-4">
+                    <div className="space-y-4 text-[var(--color-muted-foreground)] leading-relaxed text-sm border-l-2 border-[var(--color-primary)] pl-6 py-2">
                       {user.bio ? (
-                        <p className="italic">"{user.bio}"</p>
+                        <p className="italic text-base text-[var(--color-muted-foreground)]">"{user.bio}"</p>
                       ) : (
                         <p className="text-[var(--color-muted-foreground)]/60">Chưa có giới thiệu.</p>
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <textarea 
-                        className="w-full bg-transparent border border-[var(--color-border)] rounded-[var(--radius-md)] p-3 text-sm focus:outline-none focus:border-[var(--color-ring)]"
-                        rows={4}
-                        placeholder="Viết một vài dòng về phong cách của bạn..."
-                        value={bioForm.bio}
-                        onChange={(e) => setBioForm(prev => ({ ...prev, bio: e.target.value }))}
-                      />
-                      <Input 
-                        label="Thành phố / Vị trí" 
-                        value={bioForm.location}
-                        onChange={(e) => setBioForm(prev => ({ ...prev, location: e.target.value }))}
-                        placeholder="VD: Hồ Chí Minh, VN"
-                      />
+                    <div className="space-y-6">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Tiểu sử</label>
+                        <textarea
+                          className="w-full bg-[var(--color-background)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-4 text-sm text-[var(--color-foreground)] focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all resize-none"
+                          rows={4}
+                          placeholder="Viết một vài dòng về phong cách của bạn..."
+                          value={bioForm.bio}
+                          onChange={(e) => setBioForm(prev => ({ ...prev, bio: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Thành phố / Vị trí</label>
+                        <Input
+                          value={bioForm.location}
+                          onChange={(e) => setBioForm(prev => ({ ...prev, location: e.target.value }))}
+                          placeholder="VD: Hồ Chí Minh, VN"
+                        />
+                      </div>
                     </div>
                   )}
                 </section>
-                
-                <section className="pt-8 border-t border-[var(--color-border)]">
-                  <h3 className="font-heading text-xl uppercase tracking-wide mb-4">Hoạt động gần đây</h3>
-                  <div className="border border-dashed border-[var(--color-border)] rounded-[var(--radius-lg)] p-12 text-center">
+
+                <section className="pt-8">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1">
+                    Timeline
+                  </p>
+                  <h3 className="font-heading text-2xl uppercase tracking-widest text-[var(--color-foreground)] mb-6">Hoạt động gần đây</h3>
+                  <div className="border border-dashed border-[var(--color-border)] rounded-[var(--radius-xl)] p-12 text-center bg-[var(--color-card)]/50">
                     <p className="text-[var(--color-muted-foreground)] text-sm font-medium">Chưa có hoạt động nào nổi bật.</p>
                   </div>
                 </section>
-              </div>
+              </motion.div>
             )}
 
             {/* MEASUREMENTS */}
             {activeTab === 'measurements' && (
-              <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed">
-                    Hồ sơ kích cỡ giúp hệ thống gợi ý size chính xác nhất khi bạn mua sắm.
-                  </p>
+              <motion.div
+                key="measurements"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-6 bg-[var(--color-card)] p-8 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-8 border-b border-[var(--color-border)]/50 pb-6">
+                  <div>
+                    <h3 className="font-heading text-2xl uppercase tracking-widest text-[var(--color-foreground)] mb-2">Chỉ số cơ thể</h3>
+                    <p className="text-xs text-[var(--color-muted-foreground)] leading-relaxed max-w-md">
+                      Hồ sơ kích cỡ giúp AI Stylist đưa ra gợi ý size chính xác nhất khi bạn mua sắm.
+                    </p>
+                  </div>
                   {!isEditingMeasurements ? (
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditingMeasurements(true)} className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
-                      <Edit2 className="w-4 h-4 mr-2" /> Cập nhật
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingMeasurements(true)} className="text-[10px] uppercase font-bold tracking-widest shrink-0">
+                      <Edit2 className="w-3.5 h-3.5 mr-2" /> Cập nhật
                     </Button>
                   ) : (
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setIsEditingMeasurements(false)}>Hủy</Button>
-                      <Button size="sm" onClick={handleSaveMeasurements} className="bg-[var(--color-primary)] text-[var(--color-primary-foreground)]">Lưu</Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => setIsEditingMeasurements(false)} className="text-[10px] uppercase font-bold tracking-widest">Hủy</Button>
+                      <Button size="sm" onClick={handleSaveMeasurements} className="text-[10px] uppercase font-bold tracking-widest bg-white text-black hover:bg-zinc-200">Lưu</Button>
                     </div>
                   )}
                 </div>
-                
+
                 {!isEditingMeasurements ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {[
                       { icon: Ruler, label: 'Chiều cao', value: user.measurements?.height ? `${user.measurements.height} cm` : '--' },
                       { icon: Scale, label: 'Cân nặng', value: user.measurements?.weight ? `${user.measurements.weight} kg` : '--' },
                       { icon: Shirt, label: 'Size Áo', value: user.measurements?.shirtSize || '--' },
                       { icon: Footprints, label: 'Size Giày', value: user.measurements?.shoeSize || '--' },
-                    ].map((item) => (
-                      <Card key={item.label} className="p-4 flex flex-col items-center justify-center text-center bg-transparent border border-[var(--color-border)]">
-                        <div className="w-10 h-10 rounded-full bg-[var(--color-muted)] flex items-center justify-center mb-3">
+                    ].map((item, i) => (
+                      <div key={i} className="p-6 flex flex-col items-center justify-center text-center bg-[var(--color-background)] border border-[var(--color-border)] rounded-[var(--radius-lg)] hover:border-zinc-700 transition-colors">
+                        <div className="w-12 h-12 rounded-full bg-[var(--color-muted)] flex items-center justify-center mb-4 border border-[var(--color-border)]">
                           <item.icon className="w-5 h-5 text-[var(--color-foreground)]" />
                         </div>
-                        <span className="text-xs uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1">{item.label}</span>
-                        <span className="font-heading text-lg font-bold">{item.value}</span>
-                      </Card>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">{item.label}</span>
+                        <span className="font-heading text-xl font-bold text-[var(--color-foreground)]">{item.value}</span>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 border border-[var(--color-border)] rounded-[var(--radius-lg)]">
-                    <Input 
-                      label="Chiều cao (cm)" 
-                      type="number"
-                      value={measurementsForm.height || ''}
-                      onChange={(e) => setMeasurementsForm(prev => ({ ...prev, height: Number(e.target.value) }))}
-                    />
-                    <Input 
-                      label="Cân nặng (kg)" 
-                      type="number"
-                      value={measurementsForm.weight || ''}
-                      onChange={(e) => setMeasurementsForm(prev => ({ ...prev, weight: Number(e.target.value) }))}
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 bg-[var(--color-background)] border border-[var(--color-border)] rounded-[var(--radius-lg)]">
                     <div>
-                      <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">Size Áo</label>
-                      <select 
-                        className="w-full h-10 px-3 text-sm bg-transparent border border-[var(--color-border)] rounded-[var(--radius-md)] focus:outline-none focus:border-[var(--color-ring)]"
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Chiều cao (cm)</label>
+                      <Input
+                        type="number"
+                        value={measurementsForm.height || ''}
+                        onChange={(e) => setMeasurementsForm(prev => ({ ...prev, height: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Cân nặng (kg)</label>
+                      <Input
+                        type="number"
+                        value={measurementsForm.weight || ''}
+                        onChange={(e) => setMeasurementsForm(prev => ({ ...prev, weight: Number(e.target.value) }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Size Áo</label>
+                      <select
+                        className="w-full h-10 px-3 text-sm bg-transparent border border-[var(--color-border)] rounded-[var(--radius-md)] text-[var(--color-foreground)] focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all appearance-none"
                         value={measurementsForm.shirtSize || ''}
                         onChange={(e) => setMeasurementsForm(prev => ({ ...prev, shirtSize: e.target.value }))}
                       >
-                        <option value="">Chọn size</option>
-                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(s => <option key={s} value={s}>{s}</option>)}
+                        <option value="" className="bg-[var(--color-card)]">Chọn size</option>
+                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(s => <option key={s} value={s} className="bg-[var(--color-card)]">{s}</option>)}
                       </select>
                     </div>
-                    <Input 
-                      label="Size Giày (VD: 42 EU)" 
-                      value={measurementsForm.shoeSize || ''}
-                      onChange={(e) => setMeasurementsForm(prev => ({ ...prev, shoeSize: e.target.value }))}
-                    />
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Size Giày (VD: 42 EU)</label>
+                      <Input
+                        value={measurementsForm.shoeSize || ''}
+                        onChange={(e) => setMeasurementsForm(prev => ({ ...prev, shoeSize: e.target.value }))}
+                      />
+                    </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
 
             {/* PREFERENCES */}
             {activeTab === 'preferences' && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex items-center justify-between mb-4">
-                  <p className="text-sm text-[var(--color-muted-foreground)] leading-relaxed">
-                    Được dùng bởi AI Stylist để đưa ra các gợi ý trang phục hoàn hảo cho riêng bạn.
-                  </p>
+              <motion.div
+                key="preferences"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-8 bg-[var(--color-card)] p-8 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-8 border-b border-[var(--color-border)]/50 pb-6">
+                  <div>
+                    <h3 className="font-heading text-2xl uppercase tracking-widest text-[var(--color-foreground)] mb-2">Sở thích thời trang</h3>
+                    <p className="text-xs text-[var(--color-muted-foreground)] leading-relaxed max-w-md">
+                      Được dùng bởi AI Stylist để đưa ra các gợi ý trang phục hoàn hảo cho riêng bạn.
+                    </p>
+                  </div>
                   {!isEditingPreferences ? (
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditingPreferences(true)} className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
-                      <Edit2 className="w-4 h-4 mr-2" /> Cập nhật
+                    <Button variant="outline" size="sm" onClick={() => setIsEditingPreferences(true)} className="text-[10px] uppercase font-bold tracking-widest shrink-0">
+                      <Edit2 className="w-3.5 h-3.5 mr-2" /> Cập nhật
                     </Button>
                   ) : (
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => setIsEditingPreferences(false)}>Hủy</Button>
-                      <Button size="sm" onClick={handleSavePreferences} className="bg-[var(--color-primary)] text-[var(--color-primary-foreground)]">Lưu</Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="ghost" size="sm" onClick={() => setIsEditingPreferences(false)} className="text-[10px] uppercase font-bold tracking-widest">Hủy</Button>
+                      <Button size="sm" onClick={handleSavePreferences} className="text-[10px] uppercase font-bold tracking-widest bg-white text-black hover:bg-zinc-200">Lưu</Button>
                     </div>
                   )}
                 </div>
 
                 {!isEditingPreferences ? (
-                  <>
+                  <div className="space-y-10">
                     <section>
-                      <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">Phong cách yêu thích</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-white" /> Phong cách yêu thích
+                      </h3>
+                      <div className="flex flex-wrap gap-3">
                         {user.preferences?.styles?.length ? user.preferences.styles.map((style) => (
-                          <Badge key={style} variant="secondary" className="px-3 py-1.5 text-xs font-medium rounded-sm border border-[var(--color-border)] bg-transparent">
+                          <div key={style} className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--color-foreground)] border border-zinc-700 rounded-full bg-[var(--color-background)]">
                             {style}
-                          </Badge>
+                          </div>
                         )) : (
-                          <span className="text-sm text-[var(--color-muted-foreground)]">Chưa cập nhật</span>
+                          <span className="text-sm text-[var(--color-muted-foreground)] italic">Chưa cập nhật</span>
                         )}
                       </div>
                     </section>
 
                     <section>
-                      <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">Màu sắc thường mặc</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-zinc-500" /> Màu sắc thường mặc
+                      </h3>
+                      <div className="flex flex-wrap gap-3">
                         {user.preferences?.favoriteColors?.length ? user.preferences.favoriteColors.map((color) => (
-                          <Badge key={color} variant="secondary" className="px-3 py-1.5 text-xs font-medium rounded-sm bg-[var(--color-muted)] text-[var(--color-foreground)] border border-transparent">
+                          <div key={color} className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--color-foreground)] bg-zinc-800 rounded-full">
                             {color}
-                          </Badge>
+                          </div>
                         )) : (
-                          <span className="text-sm text-[var(--color-muted-foreground)]">Chưa cập nhật</span>
+                          <span className="text-sm text-[var(--color-muted-foreground)] italic">Chưa cập nhật</span>
                         )}
                       </div>
                     </section>
-                    
+
                     <section>
-                      <h3 className="text-xs font-semibold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4">Màu sắc nên tránh</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <h3 className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-4 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-900/50" /> Màu sắc nên tránh
+                      </h3>
+                      <div className="flex flex-wrap gap-3">
                         {user.preferences?.avoidColors?.length ? user.preferences.avoidColors.map((color) => (
-                          <Badge key={color} variant="outline" className="px-3 py-1.5 text-xs font-medium rounded-sm border-[var(--color-border)] opacity-60">
+                          <div key={color} className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] border border-[var(--color-border)] border-dashed rounded-full bg-[var(--color-background)]/50">
                             {color}
-                          </Badge>
+                          </div>
                         )) : (
-                          <span className="text-sm text-[var(--color-muted-foreground)]">Chưa cập nhật</span>
+                          <span className="text-sm text-[var(--color-muted-foreground)] italic">Chưa cập nhật</span>
                         )}
                       </div>
                     </section>
-                  </>
+                  </div>
                 ) : (
-                  <div className="space-y-6 p-6 border border-[var(--color-border)] rounded-[var(--radius-lg)]">
+                  <div className="space-y-8 p-6 bg-[var(--color-background)] border border-[var(--color-border)] rounded-[var(--radius-lg)]">
                     <div>
-                      <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">Phong cách yêu thích (cách nhau bằng dấu phẩy)</label>
-                      <Input 
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Phong cách yêu thích (cách nhau bằng dấu phẩy)</label>
+                      <Input
                         value={preferencesForm.styles?.join(', ') || ''}
                         onChange={(e) => setPreferencesForm(prev => ({ ...prev, styles: e.target.value.split(',').map(s => s.trim()) }))}
                         placeholder="VD: Minimalist, Streetwear"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">Màu sắc thường mặc (cách nhau bằng dấu phẩy)</label>
-                      <Input 
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Màu sắc thường mặc (cách nhau bằng dấu phẩy)</label>
+                      <Input
                         value={preferencesForm.favoriteColors?.join(', ') || ''}
                         onChange={(e) => setPreferencesForm(prev => ({ ...prev, favoriteColors: e.target.value.split(',').map(s => s.trim()) }))}
                         placeholder="VD: Đen, Trắng, Xanh Navy"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">Màu sắc nên tránh (cách nhau bằng dấu phẩy)</label>
-                      <Input 
+                      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Màu sắc nên tránh (cách nhau bằng dấu phẩy)</label>
+                      <Input
                         value={preferencesForm.avoidColors?.join(', ') || ''}
                         onChange={(e) => setPreferencesForm(prev => ({ ...prev, avoidColors: e.target.value.split(',').map(s => s.trim()) }))}
                         placeholder="VD: Vàng neon, Hồng cánh sen"
@@ -522,9 +575,9 @@ export function ProfilePage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

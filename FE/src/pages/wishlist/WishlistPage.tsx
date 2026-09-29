@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Heart, Trash2, ShoppingBag } from 'lucide-react'
+import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { WishlistService, type WishlistProduct } from '@/services/wishlist.api'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
 import { formatVND } from '@/utils/format'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -66,15 +67,27 @@ export function WishlistPage() {
   if (loading) {
     return (
       <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide mb-8">
-          Sản phẩm yêu thích
-        </h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="mb-12">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+            ALTERA
+          </p>
+          <h1 className="heading-brand text-4xl md:text-5xl">My Wishlist</h1>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="animate-pulse">
-              <div className="aspect-[3/4] w-full bg-zinc-300 dark:bg-zinc-800 rounded-[var(--radius-md)] mb-3" />
-              <div className="h-4 w-3/4 bg-zinc-300 dark:bg-zinc-800 rounded mb-2" />
-              <div className="h-4 w-1/2 bg-zinc-300 dark:bg-zinc-800 rounded" />
+              <div className="aspect-[3/4] w-full bg-[var(--color-muted)] relative overflow-hidden mb-4">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.04) 50%, transparent 80%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 1.8s ease-in-out infinite',
+                  }}
+                />
+              </div>
+              <div className="h-4 w-3/4 bg-[var(--color-muted)] rounded-sm mb-2" />
+              <div className="h-4 w-1/2 bg-[var(--color-muted)] rounded-sm" />
             </div>
           ))}
         </div>
@@ -86,9 +99,14 @@ export function WishlistPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh] flex flex-col items-center justify-center text-center">
-        <Heart className="h-12 w-12 text-[var(--color-muted-foreground)] mb-4 opacity-40" />
-        <p className="text-rose-500 font-medium mb-6">{error}</p>
+      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh] flex flex-col items-center justify-center text-center gap-6">
+        <div className="h-20 w-20 rounded-full border border-[var(--color-error)]/30 flex items-center justify-center">
+          <Heart className="h-9 w-9 text-[var(--color-error)]/50" strokeWidth={1} />
+        </div>
+        <div>
+          <h1 className="heading-brand text-3xl mb-2">Đã xảy ra lỗi</h1>
+          <p className="text-sm text-[var(--color-error)]">{error}</p>
+        </div>
         <Button onClick={() => fetchWishlist()} variant="outline">
           Thử lại
         </Button>
@@ -100,20 +118,32 @@ export function WishlistPage() {
 
   if (products.length === 0) {
     return (
-      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide mb-8">
-          Sản phẩm yêu thích
-        </h1>
-        <div className="flex flex-col items-center justify-center py-20 border-2 border-dashed border-[var(--color-border)] rounded-[var(--radius-lg)] bg-[var(--color-muted)]/30">
-          <Heart className="h-16 w-16 text-[var(--color-muted-foreground)] mb-6 opacity-40" />
-          <h2 className="text-2xl font-bold font-heading mb-2">Chưa có sản phẩm yêu thích</h2>
-          <p className="text-[var(--color-muted-foreground)] mb-8 text-center max-w-xs">
-            Bạn chưa thêm sản phẩm nào vào danh sách yêu thích. Hãy khám phá và lưu những sản phẩm bạn thích!
-          </p>
-          <Button asChild variant="primary" size="lg" className="uppercase font-semibold tracking-wider">
-            <Link to="/products">Khám phá sản phẩm</Link>
+      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh] flex flex-col items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex flex-col items-center gap-6 text-center"
+        >
+          <div className="h-24 w-24 rounded-full border border-[var(--color-border)] flex items-center justify-center">
+            <Heart className="h-10 w-10 text-[var(--color-border)]" strokeWidth={1} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
+              ALTERA — Wishlist
+            </p>
+            <h1 className="heading-brand text-4xl mb-3">Your Collection is Empty</h1>
+            <p className="text-sm text-[var(--color-muted-foreground)] max-w-sm mx-auto">
+              You haven't saved any items yet. Discover our latest collections and curate your perfect wardrobe.
+            </p>
+          </div>
+          <Button asChild variant="primary" size="lg" className="gap-2 uppercase font-bold tracking-widest mt-4">
+            <Link to="/products" className="flex items-center gap-2">
+              Discover New Styles
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </Button>
-        </div>
+        </motion.div>
       </div>
     )
   }
@@ -122,109 +152,118 @@ export function WishlistPage() {
 
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide">
-          Sản phẩm yêu thích
-        </h1>
-        <div className="text-sm text-[var(--color-muted-foreground)] font-medium bg-[var(--color-muted)] px-3 py-1 rounded-full">
-          {products.length} sản phẩm
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
+        className="mb-12 flex items-end justify-between"
+      >
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+            ALTERA
+          </p>
+          <h1 className="heading-brand text-4xl md:text-5xl">My Wishlist</h1>
         </div>
-      </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+          {products.length} {products.length === 1 ? 'item' : 'items'}
+        </span>
+      </motion.div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => {
-          const isRemoving = removing === product._id
-          const isAdding = adding === product._id
+      <motion.div layout className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
+        <AnimatePresence>
+          {products.map((product) => {
+            const isRemoving = removing === product._id
+            const isAdding = adding === product._id
 
-          return (
-            <div
-              key={product._id}
-              className="group relative flex flex-col overflow-hidden bg-[var(--color-background)] transition-all duration-300"
-            >
-              {/* Image */}
-              <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)] rounded-[var(--radius-md)]">
-                <Link to={`/products/${product._id}`}>
-                  {product.imageUrl ? (
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm text-[var(--color-muted-foreground)]">
-                      No Image
-                    </div>
-                  )}
-                </Link>
-
-                {/* Overlay Actions */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300" />
-                <div className="absolute bottom-3 right-3 flex flex-col gap-2 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                  {/* Remove from wishlist */}
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(product._id)}
-                    disabled={isRemoving}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-rose-500 border border-rose-200 shadow-sm hover:bg-rose-500 hover:text-white hover:border-transparent transition-colors disabled:opacity-50"
-                    title="Xóa khỏi yêu thích"
-                  >
-                    {isRemoving ? (
-                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            return (
+              <motion.div
+                key={product._id}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="group relative flex flex-col"
+              >
+                {/* Image */}
+                <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)] mb-4">
+                  <Link to={`/products/${product._id}`}>
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
                     ) : (
-                      <Trash2 className="h-4 w-4" />
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ShoppingBag className="h-5 w-5 text-[var(--color-border)]" strokeWidth={1} />
+                      </div>
                     )}
-                  </button>
-                  {/* Add to cart */}
-                  <button
-                    type="button"
-                    onClick={() => handleAddToCart(product._id)}
-                    disabled={isAdding || product.stock === 0}
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-background)] text-[var(--color-foreground)] border border-[var(--color-border)] shadow-sm hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-foreground)] hover:border-transparent transition-colors disabled:opacity-50"
-                    title="Thêm vào giỏ hàng"
-                  >
-                    {isAdding ? (
-                      <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <ShoppingBag className="h-4 w-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Info */}
-              <div className="flex flex-col pt-3 pb-2">
-                <div className="flex items-start justify-between gap-2">
-                  <Link
-                    to={`/products/${product._id}`}
-                    className="text-sm font-medium text-[var(--color-foreground)] hover:underline line-clamp-1"
-                  >
-                    {product.name}
                   </Link>
-                  <span className="text-sm font-semibold whitespace-nowrap">
-                    {formatVND(product.price)}
-                  </span>
+
+                  {/* Gradient Overlay for hover state */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
+
+                  {/* Absolute Actions */}
+                  <div className="absolute top-3 right-3 flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(product._id)}
+                      disabled={isRemoving}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-black/40 backdrop-blur-md text-[var(--color-foreground)] hover:bg-[var(--color-error)] hover:text-[var(--color-foreground)] transition-all disabled:opacity-50"
+                      title="Xóa khỏi yêu thích"
+                    >
+                      {isRemoving ? (
+                        <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Add to Cart Overlay Button */}
+                  <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                    <Button
+                      variant="primary"
+                      className="w-full text-[10px] uppercase font-bold tracking-widest bg-white text-black hover:bg-zinc-200"
+                      disabled={isAdding || product.stock === 0}
+                      onClick={() => handleAddToCart(product._id)}
+                    >
+                      {isAdding ? (
+                        <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                      ) : (
+                        <ShoppingBag className="h-3.5 w-3.5 mr-2" />
+                      )}
+                      {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                    </Button>
+                  </div>
                 </div>
-                <div className="mt-1 flex items-center justify-between text-xs text-[var(--color-muted-foreground)]">
-                  <span>{product.category}</span>
-                  {product.stock === 0 && (
-                    <span className="text-rose-500 font-medium">Hết hàng</span>
-                  )}
+
+                {/* Info */}
+                <div className="flex flex-col px-1">
+                  <div className="flex items-start justify-between gap-4 mb-1">
+                    <Link
+                      to={`/products/${product._id}`}
+                      className="text-xs font-bold text-[var(--color-foreground)] hover:underline line-clamp-1 uppercase tracking-wider"
+                    >
+                      {product.name}
+                    </Link>
+                    <span className="text-xs font-bold whitespace-nowrap text-[var(--color-muted-foreground)]">
+                      {formatVND(product.price)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)]">{product.category}</span>
+                    {product.stock === 0 && (
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-error)]">Sold Out</span>
+                    )}
+                  </div>
                 </div>
-                {/* Remove button (always visible) */}
-                <button
-                  type="button"
-                  onClick={() => handleRemove(product._id)}
-                  disabled={isRemoving}
-                  className="mt-2 text-xs text-[var(--color-muted-foreground)] hover:text-rose-500 transition-colors flex items-center gap-1 disabled:opacity-50"
-                >
-                  <Heart className="h-3 w-3 fill-rose-500 text-rose-500" />
-                  Xóa khỏi yêu thích
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+              </motion.div>
+            )
+          })}
+        </AnimatePresence>
+      </motion.div>
     </div>
   )
 }

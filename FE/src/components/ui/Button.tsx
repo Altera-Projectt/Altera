@@ -12,48 +12,66 @@ const buttonVariants = cva(
     'font-medium font-body text-sm leading-none',
     'select-none whitespace-nowrap',
     'rounded-[var(--radius-md)]',
-    'transition-all duration-300 ease-smooth',
-    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-1',
-    'disabled:pointer-events-none disabled:opacity-40',
-    'active:scale-[0.98]',
+    'transition-all duration-200 ease-out',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)]',
+    'disabled:pointer-events-none disabled:opacity-35',
+    'active:scale-[0.97]',
   ],
   {
     variants: {
       variant: {
+        // ── Primary — White bg, #111111 text. High contrast CTA.
         primary: [
           'bg-[var(--color-primary)] text-[var(--color-primary-foreground)]',
-          'hover:bg-zinc-800 hover:shadow-md hover:-translate-y-0.5',
+          'font-semibold tracking-wide',
+          'hover:bg-white/90 hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:-translate-y-px',
         ],
+
+        // ── Secondary — Zinc-800 bg, subtle surface action
         secondary: [
           'bg-[var(--color-neutral)] text-[var(--color-neutral-foreground)]',
-          'hover:bg-zinc-200 hover:-translate-y-0.5',
+          'border border-[var(--color-border)]',
+          'hover:bg-zinc-700 hover:border-zinc-600 hover:-translate-y-px',
         ],
+
+        // ── Outline — transparent, border-only. Inverts on hover.
         outline: [
           'border border-[var(--color-border)] bg-transparent text-[var(--color-foreground)]',
-          'hover:bg-[var(--color-foreground)] hover:text-[var(--color-background)]',
+          'hover:bg-[var(--color-foreground)] hover:text-[var(--color-background)] hover:border-transparent',
+          'hover:-translate-y-px',
         ],
+
+        // ── Ghost — no background, text-only. Ultra-subtle.
         ghost: [
-          'bg-transparent text-[var(--color-foreground)]',
-          'hover:bg-[var(--color-neutral)]',
+          'bg-transparent text-[var(--color-muted-foreground)]',
+          'hover:bg-white/[0.06] hover:text-[var(--color-foreground)]',
         ],
+
+        // ── Danger — red destructive action
         danger: [
           'bg-[var(--color-error)] text-[var(--color-error-foreground)]',
-          'hover:bg-red-600 hover:shadow-md hover:-translate-y-0.5',
+          'hover:bg-red-500 hover:shadow-[0_0_20px_rgba(239,68,68,0.25)] hover:-translate-y-px',
         ],
+
+        // ── Accent — Rose-red brand accent
         accent: [
           'bg-[var(--color-accent)] text-[var(--color-accent-foreground)]',
-          'hover:opacity-90 hover:shadow-md hover:-translate-y-0.5',
+          'font-semibold',
+          'hover:bg-rose-500 hover:shadow-[0_0_24px_rgba(225,29,72,0.4)] hover:-translate-y-px',
         ],
+
+        // ── Link — inline text link, no chrome
         link: [
           'bg-transparent text-[var(--color-foreground)] underline-offset-4',
-          'hover:underline p-0 h-auto hover:opacity-80',
+          'hover:underline hover:opacity-80',
+          'h-auto p-0',
         ],
       },
       size: {
         sm: 'h-8 px-3 text-xs',
-        md: 'h-10 px-5 text-sm uppercase tracking-wide font-semibold',
-        lg: 'h-12 px-8 text-sm uppercase tracking-wide font-bold',
-        xl: 'h-14 px-10 text-base uppercase tracking-wider font-bold',
+        md: 'h-10 px-5 text-xs uppercase tracking-widest font-semibold',
+        lg: 'h-12 px-8 text-xs uppercase tracking-widest font-bold',
+        xl: 'h-14 px-10 text-sm uppercase tracking-widest font-bold',
         icon: 'h-10 w-10 p-0',
         'icon-sm': 'h-8 w-8 p-0',
       },
@@ -69,7 +87,7 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   /** Render as child component (Radix Slot pattern) */
   asChild?: boolean
   /** Show loading spinner and disable interaction */

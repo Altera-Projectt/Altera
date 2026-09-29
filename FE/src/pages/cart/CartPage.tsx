@@ -1,16 +1,31 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react'
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, ArrowLeft } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
 import { formatVND } from '@/utils/format'
 
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+const itemExit = {
+  opacity: 0,
+  x: -24,
+  height: 0,
+  marginBottom: 0,
+  paddingTop: 0,
+  paddingBottom: 0,
+  transition: { duration: 0.3, ease: "easeOut" as any },
+}
+
+// ── Component ──────────────────────────────────────────────────────────────
+
 export function CartPage() {
   const { cart, fetchCart, loading } = useCartStore()
   const navigate = useNavigate()
   const [updating, setUpdating] = useState<string | null>(null)
-  
+
   // Refetch cart on mount
   useEffect(() => {
     fetchCart()
@@ -53,159 +68,331 @@ export function CartPage() {
     }
   }
 
+  // ── Loading skeleton ───────────────────────────────────────────────────
+
   if (loading && !cart) {
     return (
       <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide mb-8">Shopping Cart</h1>
-        <div className="animate-pulse space-y-4">
-          <div className="h-24 w-full bg-zinc-300 dark:bg-zinc-800 rounded-[var(--radius-md)]" />
-          <div className="h-24 w-full bg-zinc-300 dark:bg-zinc-800 rounded-[var(--radius-md)]" />
+        <div className="mb-8">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+            ALTERA
+          </p>
+          <h1 className="heading-brand text-4xl md:text-5xl">Shopping Cart</h1>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12">
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-6 py-6 border-b border-[var(--color-border)]">
+                <div className="h-24 w-24 shrink-0 bg-[var(--color-muted)] rounded-none relative overflow-hidden">
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.04) 50%, transparent 80%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 1.8s ease-in-out infinite',
+                    }}
+                  />
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-2/3 bg-[var(--color-muted)] rounded-sm" />
+                  <div className="h-3 w-1/3 bg-[var(--color-muted)] rounded-sm" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden lg:block h-64 bg-[var(--color-muted)] rounded-[var(--radius-xl)]" />
         </div>
       </div>
     )
   }
+
+  // ── Empty state ────────────────────────────────────────────────────────
 
   if (!cart || !cart.items || cart.items.length === 0) {
     return (
-      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh] flex flex-col items-center justify-center border-2 border-dashed border-[var(--color-border)] rounded-[var(--radius-lg)] bg-[var(--color-muted)]/30 mt-8">
-        <ShoppingCart className="h-16 w-16 text-[var(--color-muted-foreground)] mb-6 opacity-50" />
-        <h2 className="text-2xl font-bold font-heading mb-2">🛒 Your cart is empty</h2>
-        <p className="text-[var(--color-muted-foreground)] mb-8">Looks like you haven't added anything to your cart yet.</p>
-        <Button asChild variant="primary" size="lg" className="uppercase font-semibold tracking-wider">
-          <Link to="/products">Continue Shopping</Link>
-        </Button>
+      <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh] flex flex-col items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex flex-col items-center gap-6 text-center"
+        >
+          <div className="h-24 w-24 rounded-full border border-[var(--color-border)] flex items-center justify-center">
+            <ShoppingBag className="h-10 w-10 text-[var(--color-border)]" strokeWidth={1} />
+          </div>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
+              ALTERA — Cart
+            </p>
+            <h1 className="heading-brand text-4xl mb-3">Cart is Empty</h1>
+            <p className="text-sm text-[var(--color-muted-foreground)] max-w-xs">
+              You haven't added anything yet. Explore our collection and find something you love.
+            </p>
+          </div>
+          <Button asChild variant="primary" size="lg" className="gap-2 uppercase font-bold tracking-widest">
+            <Link to="/products" className="flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Return to Shop
+            </Link>
+          </Button>
+        </motion.div>
       </div>
     )
   }
 
+  // ── Main cart ─────────────────────────────────────────────────────────
+
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h1 className="font-heading text-3xl font-bold uppercase tracking-wide">Shopping Cart</h1>
-        <div className="text-sm text-[var(--color-muted-foreground)] font-medium bg-[var(--color-muted)] px-3 py-1 rounded-full">
-          {cart.totalItems} Items
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex justify-end">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleClearCart} 
-              disabled={!!updating}
-              className="text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
-            >
-              Clear Cart
-            </Button>
+      {/* ── Page header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: 'easeOut' }}
+        className="mb-10 flex items-end justify-between"
+      >
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+            ALTERA
+          </p>
+          <h1 className="heading-brand text-4xl md:text-5xl">Shopping Cart</h1>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+          {cart.totalItems} {cart.totalItems === 1 ? 'item' : 'items'}
+        </span>
+      </motion.div>
+
+      {/* ── Split-screen grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12 items-start">
+
+        {/* ── LEFT — Cart items ── */}
+        <div>
+          {/* Column headers */}
+          <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto] gap-4 pb-4 border-b border-[var(--color-border)]">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">Product</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] text-center w-28">Quantity</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] text-right w-24">Total</span>
           </div>
-          
-          <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] overflow-hidden">
+
+          {/* Items with AnimatePresence */}
+          <AnimatePresence initial={false}>
             {(cart.items || []).map((item) => {
               const productId = item.productId?._id
               const itemKey = item._id ?? productId
               const isUpdating = updating === itemKey
-              
+              const lineTotal = (item.price ?? item.productId?.price ?? 0) * item.quantity
+
               return (
-                <div key={itemKey} className="flex flex-col sm:flex-row items-center gap-6 p-6 bg-[var(--color-background)] border-b border-[var(--color-border)] last:border-0 relative transition-colors hover:bg-[var(--color-muted)]/10">
-                  
-                  {isUpdating && (
-                    <div className="absolute inset-0 bg-black/5 dark:bg-black/20 z-10 flex items-center justify-center backdrop-blur-[1px]">
-                      <div className="w-6 h-6 border-2 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
+                <motion.div
+                  key={itemKey}
+                  layout
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0, height: 'auto' }}
+                  exit={itemExit}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="overflow-hidden"
+                >
+                  <div className={[
+                    'relative grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-4 items-center',
+                    'py-6 border-b border-[var(--color-border)]',
+                    'transition-opacity duration-200',
+                    isUpdating ? 'opacity-40 pointer-events-none' : 'opacity-100',
+                  ].join(' ')}>
+
+                    {/* ── Product info ── */}
+                    <div className="flex items-center gap-5">
+                      {/* Thumbnail */}
+                      <div className="h-20 w-20 shrink-0 overflow-hidden bg-[var(--color-muted)] border border-[var(--color-border)]">
+                        {item.productId?.imageUrl ? (
+                          <img
+                            src={item.productId.imageUrl}
+                            alt={item.productId.name}
+                            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center">
+                            <ShoppingBag className="h-5 w-5 text-[var(--color-border)]" strokeWidth={1} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Meta */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-bold line-clamp-2 leading-snug mb-1">
+                          {item.productId?.name || 'Unknown Product'}
+                        </h3>
+
+                        {/* Customization pills */}
+                        {item.customization && (
+                          <div className="flex flex-wrap gap-2 mt-1.5 mb-1.5">
+                            {item.customization.color?.name && (
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] border border-[var(--color-border)] px-2 py-0.5">
+                                Color: {item.customization.color.name}
+                              </span>
+                            )}
+                            {item.customization.size && (
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] border border-[var(--color-border)] px-2 py-0.5">
+                                Size: {item.customization.size}
+                              </span>
+                            )}
+                            {item.customization.printSide && (
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] border border-[var(--color-border)] px-2 py-0.5">
+                                {item.customization.printSide}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        <p className="text-xs text-[var(--color-muted-foreground)]">
+                          {formatVND(item.price ?? item.productId?.price ?? 0)} / unit
+                        </p>
+
+                        {/* Remove — visible on mobile */}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(itemKey!)}
+                          disabled={isUpdating}
+                          className="mt-2 sm:hidden flex items-center gap-1 text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] transition-colors"
+                        >
+                          <Trash2 className="h-3 w-3" /> Remove
+                        </button>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Product Image */}
-                  <div className="h-24 w-24 shrink-0 bg-[var(--color-muted)] rounded-[var(--radius-md)] flex items-center justify-center border border-[var(--color-border)] text-xs text-[var(--color-muted-foreground)] p-2 text-center overflow-hidden">
-                    {item.productId?.imageUrl ? (
-                      <img
-                        src={item.productId.imageUrl}
-                        alt={item.productId.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span>No Image</span>
-                    )}
-                  </div>
+                    {/* ── Quantity stepper ── */}
+                    <div className="flex items-center gap-3 w-28 justify-center">
+                      {/* Minimalist stepper — thin border, no bg fill */}
+                      <div className="flex items-center border border-[var(--color-border)] h-9">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateQuantity(itemKey!, item.quantity - 1)}
+                          disabled={isUpdating || item.quantity <= 1}
+                          className="h-9 w-9 flex items-center justify-center text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-white/[0.06] disabled:opacity-30 transition-colors"
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-8 text-center text-sm font-bold select-none">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateQuantity(itemKey!, item.quantity + 1)}
+                          disabled={isUpdating}
+                          className="h-9 w-9 flex items-center justify-center text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-white/[0.06] disabled:opacity-30 transition-colors"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
 
-                  {/* Product Info */}
-                  <div className="flex-1 w-full text-center sm:text-left flex flex-col justify-center">
-                    <h3 className="font-semibold text-base line-clamp-2">
-                      {item.productId?.name || 'Unknown Product'}
-                    </h3>
-                    <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-                      Unit Price: {formatVND(item.price ?? item.productId?.price ?? 0)}
-                    </p>
-                    {item.customization && <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{item.customization.color.name} · {item.customization.size} · {item.customization.printSide} · {item.customization.printingTechnique}</p>}
-                  </div>
-
-                  {/* Quantity & Delete */}
-                  <div className="flex items-center gap-4 mt-4 sm:mt-0">
-                    <div className="flex items-center border border-[var(--color-border)] rounded-[var(--radius-sm)] overflow-hidden">
+                      {/* Remove — desktop only */}
                       <button
                         type="button"
-                        onClick={() => handleUpdateQuantity(itemKey!, item.quantity - 1)}
-                        disabled={isUpdating || item.quantity <= 1}
-                        className="h-8 w-8 flex items-center justify-center bg-[var(--color-neutral)] hover:bg-[var(--color-muted)] disabled:opacity-50 transition-colors"
-                      >
-                        <Minus className="h-3 w-3" />
-                      </button>
-                      <span className="w-10 text-center text-sm font-medium">
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleUpdateQuantity(itemKey!, item.quantity + 1)}
+                        onClick={() => handleRemoveItem(itemKey!)}
                         disabled={isUpdating}
-                        className="h-8 w-8 flex items-center justify-center bg-[var(--color-neutral)] hover:bg-[var(--color-muted)] disabled:opacity-50 transition-colors"
+                        className="hidden sm:flex h-9 w-9 items-center justify-center text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] transition-colors"
+                        aria-label="Remove item"
                       >
-                        <Plus className="h-3 w-3" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(itemKey!)}
-                      disabled={isUpdating}
-                      className="h-8 w-8 flex items-center justify-center text-[var(--color-muted-foreground)] hover:text-rose-500 hover:bg-rose-500/10 rounded-[var(--radius-sm)] transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {/* ── Line total ── */}
+                    <div className="w-24 text-right">
+                      <span className="text-sm font-bold whitespace-nowrap">
+                        {formatVND(lineTotal)}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                </motion.div>
               )
             })}
+          </AnimatePresence>
+
+          {/* Clear cart link */}
+          <div className="flex justify-between items-center pt-6">
+            <Link
+              to="/products"
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors group"
+            >
+              <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
+              Continue Shopping
+            </Link>
+            <button
+              type="button"
+              onClick={handleClearCart}
+              disabled={!!updating}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] transition-colors disabled:opacity-40"
+            >
+              <Trash2 className="h-3 w-3" />
+              Clear Cart
+            </button>
           </div>
         </div>
 
-        <div className="lg:col-span-1">
-          <div className="border border-[var(--color-border)] rounded-[var(--radius-lg)] p-6 bg-[var(--color-background)] sticky top-24 shadow-sm">
-            <h2 className="font-heading text-xl font-bold mb-6">Order Summary</h2>
-            
-            <div className="space-y-4 text-sm mb-6">
+        {/* ── RIGHT — Order summary (sticky) ── */}
+        <div className="sticky top-[calc(var(--spacing-navbar)+2rem)]">
+          <div className="rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+
+            {/* Summary header */}
+            <div className="px-6 py-5 border-b border-[var(--color-border)]">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                Order Summary
+              </p>
+            </div>
+
+            {/* Breakdown rows */}
+            <div className="px-6 py-5 space-y-4 text-sm">
               <div className="flex justify-between text-[var(--color-muted-foreground)]">
-                <span>Subtotal ({cart.totalItems} items)</span>
-                <span className="font-medium text-[var(--color-foreground)]">{formatVND(cart.totalPrice || 0)}</span>
+                <span>Subtotal</span>
+                <span className="font-medium text-[var(--color-foreground)]">
+                  {formatVND(cart.totalPrice || 0)}
+                </span>
               </div>
               <div className="flex justify-between text-[var(--color-muted-foreground)]">
                 <span>Shipping</span>
                 <span>Calculated at checkout</span>
               </div>
-            </div>
-
-            <div className="border-t border-[var(--color-border)] pt-4 mb-8">
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total</span>
-                <span className="text-[var(--color-primary)]">{formatVND(cart.totalPrice || 0)}</span>
+              <div className="flex justify-between text-[var(--color-muted-foreground)]">
+                <span>Discount</span>
+                <span>—</span>
               </div>
             </div>
 
-            <Button size="lg" className="w-full uppercase font-semibold tracking-wider h-14" onClick={() => navigate('/checkout')}>
-              Proceed to Checkout
-            </Button>
+            {/* Total */}
+            <div className="px-6 py-5 border-t border-[var(--color-border)]">
+              <div className="flex justify-between items-baseline">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                  Estimated Total
+                </span>
+                <span className="text-xl font-black text-[var(--color-foreground)]">
+                  {formatVND(cart.totalPrice || 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="px-6 pb-6">
+              <Button
+                size="lg"
+                className="w-full gap-2 uppercase font-bold tracking-widest"
+                onClick={() => navigate('/checkout')}
+                disabled={!!updating}
+              >
+                <ShoppingBag className="h-4 w-4" />
+                Proceed to Checkout
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+
+              <p className="text-[10px] text-center text-[var(--color-muted-foreground)] mt-4 leading-relaxed">
+                Taxes and shipping calculated at checkout
+              </p>
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   )

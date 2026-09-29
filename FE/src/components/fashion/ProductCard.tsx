@@ -69,72 +69,69 @@ export function ProductCard({
         onMouseEnter={() => hoverImage && setImgIndex(1)}
         onMouseLeave={() => setImgIndex(0)}
       >
-        {/* Main image */}
+        {/* Main image — scales subtly, crossfades to hover */}
         {mainImage ? (
           <img
             src={mainImage}
             alt={product.name}
             className={cn(
-              'absolute inset-0 h-full w-full object-cover transition-all duration-500',
-              hoverImage ? 'group-hover:opacity-0' : ''
+              'absolute inset-0 h-full w-full object-cover',
+              'transition-all duration-700 ease-out',
+              hoverImage
+                ? 'group-hover:opacity-0 group-hover:scale-[1.04]'
+                : 'group-hover:scale-[1.04]',
             )}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
+          <div className="flex h-full w-full items-center justify-center bg-[var(--color-muted)]">
             <span className="text-xs text-[var(--color-muted-foreground)]">No image</span>
           </div>
         )}
 
-        {/* Hover image (images[1]) */}
+        {/* Hover image (images[1]) — fades in */}
         {hoverImage && (
           <img
             src={hoverImage}
-            alt={`${product.name} - alternate view`}
-            className="absolute inset-0 h-full w-full object-cover opacity-0 transition-all duration-500 group-hover:opacity-100"
+            alt={`${product.name} — alternate view`}
+            className="absolute inset-0 h-full w-full object-cover opacity-0 scale-[1.04] transition-all duration-700 ease-out group-hover:opacity-100 group-hover:scale-100"
           />
         )}
 
-        {/* ── Badges góc trên trái ── */}
-        <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+        {/* ── Top-left badges ──────────────────────────────────── */}
+        <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
           {discountPercent && (
-            <span className="bg-[var(--color-accent)] text-white text-[10px] font-bold
-              px-2 py-0.5 uppercase tracking-wider">
-              -{discountPercent}%
+            <span className="bg-[var(--color-accent)] text-[var(--color-foreground)] text-[10px] font-bold px-2 py-0.5 uppercase tracking-widest">
+              −{discountPercent}%
             </span>
           )}
           {product.isFeatured && !discountPercent && (
-            <span className="bg-[var(--color-primary)] text-[var(--color-primary-foreground)]
-              text-[10px] font-bold px-2 py-0.5 uppercase tracking-wider">
-              HOT
+            <span className="bg-white text-black text-[10px] font-bold px-2 py-0.5 uppercase tracking-widest">
+              NEW
             </span>
           )}
           {product.stock === 0 && (
-            <span className="bg-[var(--color-muted-foreground)] text-white
-              text-[10px] font-bold px-2 py-0.5 uppercase tracking-wider">
-              HẾT HÀNG
+            <span className="bg-[var(--color-muted-foreground)]/80 backdrop-blur-sm text-[var(--color-foreground)] text-[10px] font-bold px-2 py-0.5 uppercase tracking-widest">
+              SOLD OUT
             </span>
           )}
         </div>
 
-        {/* ── Action buttons góc phải ── */}
-        <div className="absolute bottom-3 right-3 flex flex-col gap-2
-          translate-y-2 opacity-0 transition-all duration-300
-          group-hover:translate-y-0 group-hover:opacity-100">
-
+        {/* ── Bottom-right action buttons (slide up on hover) ── */}
+        <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-2 translate-y-3 opacity-0 transition-all duration-300 ease-out group-hover:translate-y-0 group-hover:opacity-100">
           {/* Wishlist */}
           <button
             type="button"
             onClick={handleWishlist}
             className={cn(
-              'flex h-9 w-9 items-center justify-center rounded-full shadow-md',
-              'border transition-colors duration-200',
+              'flex h-9 w-9 items-center justify-center rounded-full',
+              'shadow-lg backdrop-blur-sm transition-all duration-200',
               wishlisted
-                ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
-                : 'bg-white border-[var(--color-border)] text-[var(--color-foreground)] hover:bg-[var(--color-accent)] hover:border-[var(--color-accent)] hover:text-white'
+                ? 'bg-[var(--color-accent)] text-[var(--color-foreground)]'
+                : 'bg-black/60 text-white/80 hover:bg-[var(--color-accent)] hover:text-[var(--color-foreground)]',
             )}
             aria-label="Thêm vào yêu thích"
           >
-            <Heart className={cn('h-4 w-4', wishlisted ? 'fill-current' : '')} />
+            <Heart className={cn('h-[14px] w-[14px]', wishlisted ? 'fill-current' : '')} />
           </button>
 
           {/* Add to cart */}
@@ -142,87 +139,44 @@ export function ProductCard({
             type="button"
             onClick={handleAddToCart}
             disabled={adding || product.stock === 0}
-            className="flex h-9 w-9 items-center justify-center rounded-full shadow-md
-              bg-[var(--color-primary)] text-[var(--color-primary-foreground)]
-              hover:opacity-80 transition-opacity disabled:opacity-40"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shadow-lg backdrop-blur-sm transition-all duration-200 hover:bg-white/90 disabled:opacity-40"
             aria-label="Thêm vào giỏ hàng"
           >
             {adding ? (
-              <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="h-3.5 w-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
             ) : (
-              <ShoppingBag className="h-4 w-4" />
+              <ShoppingBag className="h-[14px] w-[14px]" />
             )}
           </button>
         </div>
       </Link>
 
-      {/* ── Product Info ── */}
-      <div className="pt-3 pb-2">
-
-        {/* Style badge + category */}
-        <div className="flex items-center gap-2 mb-1">
-          {product.style && (
-            <span className="text-[10px] font-semibold uppercase tracking-widest
-              text-[var(--color-muted-foreground)]">
-              {product.style}
-            </span>
-          )}
-          {product.style && product.category && (
-            <span className="text-[var(--color-border)]">·</span>
-          )}
-          <span className="text-[10px] font-medium uppercase tracking-widest
-            text-[var(--color-muted-foreground)]">
-            {product.category}
-          </span>
-        </div>
-
-        {/* Name */}
-        <Link
-          to={`/products/${product._id}`}
-          className="block text-sm font-semibold uppercase tracking-wide
-            text-[var(--color-foreground)] hover:opacity-70 transition-opacity
-            line-clamp-1"
-        >
-          {product.name}
-        </Link>
-
-        {/* Price */}
-        <div className="mt-1 flex items-center gap-2">
-          <span className="text-sm font-bold text-[var(--color-foreground)]">
-            {formatPrice(product.discountPrice ?? product.price)}
-          </span>
-          {product.discountPrice && product.price > product.discountPrice && (
-            <span className="text-xs text-[var(--color-muted-foreground)] line-through">
-              {formatPrice(product.price)}
-            </span>
-          )}
-        </div>
-
-        {/* ── Color Swatches ── */}
-        {product.colors && product.colors.length > 0 && (
-          <div className="mt-2 flex items-center gap-1.5">
-            {product.colors.slice(0, 5).map((color) => (
-              <div
-                key={color.name}
-                title={color.name}
-                className="h-3.5 w-3.5 rounded-full border border-[var(--color-border)]
-                  cursor-pointer hover:scale-125 transition-transform duration-150
-                  flex-shrink-0"
-                style={{
-                  backgroundColor: color.hex,
-                  borderColor: color.hex === '#F5F5F5' || color.hex === '#FFFFFF'
-                    ? '#D1D5DB' : 'transparent',
-                  boxShadow: '0 0 0 1px rgba(0,0,0,0.08)',
-                }}
-              />
-            ))}
-            {product.colors.length > 5 && (
-              <span className="text-[10px] text-[var(--color-muted-foreground)]">
-                +{product.colors.length - 5}
-              </span>
-            )}
+      {/* ── Product Info ────────────────────────────────────────── */}
+      <div className="pt-3 pb-1">
+        <div className="flex justify-between items-start gap-4">
+          <div className="flex-1">
+            {/* Name */}
+            <Link
+              to={`/products/${product._id}`}
+              className="block font-heading text-lg md:text-xl font-black text-black uppercase tracking-tight hover:text-[#0011FF] transition-colors line-clamp-2"
+            >
+              {product.name}
+            </Link>
+            
+            {/* Author (Placeholder for now as requested) */}
+            <p className="mt-1 text-[11px] font-medium text-black uppercase flex gap-1 items-baseline">
+              <span>TÁC GIẢ:</span>
+              <span className="font-light underline decoration-gray-400 underline-offset-4 text-gray-500">NGUYỄN VĂN B</span>
+            </p>
           </div>
-        )}
+
+          {/* Price row */}
+          <div className="text-right whitespace-nowrap mt-1">
+            <span className="text-sm font-medium text-black">
+              {formatPrice(product.discountPrice ?? product.price)}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   )

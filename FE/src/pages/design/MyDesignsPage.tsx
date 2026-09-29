@@ -187,7 +187,7 @@ export function MyDesignsPage() {
                     type="button"
                     onClick={() => handleDelete(design._id)}
                     disabled={isDeleting}
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-rose-500 border border-rose-200 shadow-md hover:bg-rose-500 hover:text-white hover:border-transparent transition-colors disabled:opacity-50"
+                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-rose-500 border border-rose-200 shadow-md hover:bg-rose-500 hover:text-[var(--color-foreground)] hover:border-transparent transition-colors disabled:opacity-50"
                     title="Xóa thiết kế"
                   >
                     {isDeleting ? (

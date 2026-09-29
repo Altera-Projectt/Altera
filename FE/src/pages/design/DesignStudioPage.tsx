@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Palette,
   Trash2,
@@ -101,7 +102,7 @@ function ToastContainer({ toasts }: { toasts: { id: number; msg: string; type: '
             'animate-in slide-in-from-bottom-4 duration-300',
             t.type === 'success'
               ? 'bg-[var(--color-foreground)] text-[var(--color-background)]'
-              : 'bg-[var(--color-error)] text-white',
+              : 'bg-[var(--color-error)] text-[var(--color-foreground)]',
           )}
         >
           {t.type === 'success' ? '✓' : '✕'} {t.msg}
@@ -128,16 +129,17 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
+      <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
         {label}
       </label>
       <select
         className={cn(
-          'w-full h-10 px-3 text-sm',
-          'bg-[var(--color-background)] text-[var(--color-foreground)]',
+          'w-full h-11 px-3 text-sm',
+          'bg-[var(--color-card)] text-[var(--color-foreground)]',
           'border border-[var(--color-border)] rounded-[var(--radius-md)]',
-          'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'transition-all duration-200',
+          'focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/[0.08]',
+          'disabled:opacity-40 disabled:cursor-not-allowed',
         )}
         value={value}
         onChange={onChange}
@@ -337,30 +339,55 @@ function GenerateForm({
   const currentStyleHint = STYLE_OPTIONS.find((s) => s.value === form.style)?.hint ?? ''
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {/* Error banner */}
       {error && (
-        <div className="border border-[var(--color-error)] bg-red-50 text-[var(--color-error)] rounded-[var(--radius-md)] p-3 text-sm">
-          {error}
+        <div className="flex items-center gap-2 border border-[var(--color-error)]/50 bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-[var(--radius-md)] px-3 py-2.5 text-xs">
+          <span className="font-semibold">!</span> {error}
         </div>
       )}
 
-      {/* Prompt Examples */}
-      <div className="rounded-[var(--radius-md)] bg-[var(--color-muted)] p-3">
-        <p className="text-xs font-medium text-[var(--color-muted-foreground)] mb-2">
-          Ví dụ prompt tốt:
-        </p>
-        <div className="flex flex-wrap gap-2">
+      {/* Prompt textarea */}
+      <div>
+        <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+          Ý tưởng <span className="text-[var(--color-accent)]">*</span>
+        </label>
+        <textarea
+          className={cn(
+            'w-full min-h-[120px] px-3 py-2.5 text-sm',
+            'bg-[var(--color-card)] text-[var(--color-foreground)]',
+            'border rounded-[var(--radius-md)]',
+            'placeholder:text-[var(--color-muted-foreground)]/50',
+            'transition-all duration-200 resize-none',
+            'focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/[0.08]',
+            promptError
+              ? 'border-[var(--color-error)]/70'
+              : 'border-[var(--color-border)]',
+          )}
+          placeholder="VD: Con đại bàng dang cánh, phong cách vintage..."
+          value={form.prompt}
+          onChange={setField('prompt')}
+          disabled={generating}
+        />
+        {promptError && (
+          <p className="mt-1.5 text-xs text-[var(--color-error)]">{promptError}</p>
+        )}
+      </div>
+
+      {/* Prompt examples */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Gợi ý</p>
+        <div className="flex flex-wrap gap-1.5">
           {PROMPT_EXAMPLES.map((example) => (
             <button
               key={example}
               type="button"
               onClick={() => setForm((prev) => ({ ...prev, prompt: example }))}
               className={cn(
-                'text-xs px-2 py-1 rounded-[var(--radius-sm)]',
-                'border border-[var(--color-border)] bg-[var(--color-background)]',
-                'hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-foreground)] hover:border-[var(--color-primary)]',
-                'transition-all duration-200 cursor-pointer',
+                'text-[10px] px-2.5 py-1 rounded-full',
+                'border border-[var(--color-border)] bg-white/[0.04] text-[var(--color-muted-foreground)]',
+                'hover:bg-white/[0.09] hover:text-[var(--color-foreground)] hover:border-white/20',
+                'transition-all duration-150 cursor-pointer',
               )}
             >
               {example}
@@ -369,40 +396,9 @@ function GenerateForm({
         </div>
       </div>
 
-      {/* Prompt — full width */}
-      <div className="w-full">
-        <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1.5">
-          Mô tả hình muốn in lên áo <span className="text-[var(--color-accent)]">*</span>
-        </label>
-        <textarea
-          className={cn(
-            'w-full min-h-[100px] px-3 py-2 text-sm',
-            'bg-[var(--color-background)] text-[var(--color-foreground)]',
-            'border rounded-[var(--radius-md)]',
-            'placeholder:text-[var(--color-muted-foreground)]',
-            'transition-colors duration-150 resize-y',
-            'focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] focus:border-transparent',
-            promptError
-              ? 'border-[var(--color-error)] focus:ring-[var(--color-error)]'
-              : 'border-[var(--color-border)]',
-          )}
-          placeholder="VD: Con đại bàng dang cánh, phong cách cổ điển..."
-          value={form.prompt}
-          onChange={setField('prompt')}
-          disabled={generating}
-        />
-        {promptError ? (
-          <p className="mt-1.5 text-xs text-[var(--color-error)]">{promptError}</p>
-        ) : (
-          <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)]">
-            Mô tả càng chi tiết càng tốt: con vật/vật thể, phong cách, màu sắc mong muốn
-          </p>
-        )}
-      </div>
-
-      {/* Phong cách nghệ thuật */}
+      {/* Art style */}
       <SelectField
-        label="Phong cách nghệ thuật"
+        label="Phong cách"
         value={form.style}
         onChange={setField('style')}
         disabled={generating}
@@ -412,55 +408,72 @@ function GenerateForm({
         ))}
       </SelectField>
       {currentStyleHint && (
-        <p className="-mt-4 text-xs text-[var(--color-muted-foreground)] pl-0.5">{currentStyleHint}</p>
+        <p className="-mt-3 text-[10px] text-[var(--color-muted-foreground)] italic">{currentStyleHint}</p>
       )}
 
-      {/* Màu sắc */}
+      {/* Color palette */}
       <Input
-        label="Màu sắc"
         placeholder="VD: Đỏ, vàng, đen — hoặc mô tả tông màu"
         value={form.colorPalette}
         onChange={setField('colorPalette')}
         disabled={generating}
-        hint="Màu đen trắng luôn cho kết quả in đẹp nhất"
+        hint="Màu đen trắng cho kết quả in đẹp nhất"
+        leftIcon={<span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">Màu</span>}
       />
 
-      {/* Màu áo */}
-      <SelectField
-        label="Màu áo"
-        value={form.shirtColor}
-        onChange={setField('shirtColor')}
-        disabled={generating}
-      >
-        {SHIRT_COLOR_OPTIONS.map((c) => (
-          <option key={c.value} value={c.value}>{c.label}</option>
-        ))}
-      </SelectField>
+      {/* Shirt color swatches */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Màu áo</p>
+        <div className="flex gap-2 flex-wrap">
+          {SHIRT_COLOR_OPTIONS.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              disabled={generating}
+              onClick={() => setForm((prev) => ({ ...prev, shirtColor: c.value }))}
+              title={c.label}
+              className={cn(
+                'h-8 w-8 rounded-full transition-all duration-200',
+                'ring-1 ring-black/10',
+                form.shirtColor === c.value
+                  ? 'ring-2 ring-white ring-offset-2 ring-offset-[var(--color-background)] scale-110'
+                  : 'hover:scale-105 hover:ring-white/40',
+                'disabled:opacity-40 disabled:cursor-not-allowed',
+              )}
+              style={{ backgroundColor: c.hex }}
+            />
+          ))}
+        </div>
+      </div>
 
+      {/* Generate CTA */}
       <Button
         type="submit"
         variant="primary"
         size="lg"
         loading={generating}
         disabled={generating || cooldown > 0}
-        className="w-full uppercase font-semibold tracking-widest h-14 mt-2"
+        className="w-full gap-2 uppercase tracking-widest font-bold mt-1"
       >
+        {!generating && <Wand2 className="h-4 w-4" />}
         {generating
-          ? 'Đang phác thảo...'
+          ? 'AI đang tạo...'
           : cooldown > 0
-          ? `Chờ ${cooldown}s để tạo tiếp`
-          : 'Tạo thiết kế với AI'}
+          ? `Chờ ${cooldown}s`
+          : 'Tạo với AI'}
       </Button>
+
+      {/* Cooldown bar */}
       {cooldown > 0 && !generating && (
-        <div className="mt-2">
-          <div className="h-1 w-full rounded-full bg-[var(--color-muted)] overflow-hidden">
+        <div>
+          <div className="h-0.5 w-full rounded-full bg-[var(--color-border)] overflow-hidden">
             <div
-              className="h-full bg-[var(--color-primary)] transition-all duration-1000"
+              className="h-full bg-white/60 transition-all duration-1000"
               style={{ width: `${(cooldown / 20) * 100}%` }}
             />
           </div>
-          <p className="text-[10px] uppercase tracking-widest text-center text-[var(--color-muted-foreground)] mt-2">
-            Có thể tạo ảnh mới sau {cooldown} giây
+          <p className="text-[10px] uppercase tracking-widest text-center text-[var(--color-muted-foreground)] mt-1.5">
+            Tạo lại sau {cooldown}s
           </p>
         </div>
       )}
@@ -498,74 +511,73 @@ function ResultControls({
   }
 
   return (
-    <div className="space-y-6 flex flex-col h-full">
+    <div className="flex flex-col gap-5">
+      {/* Design meta badges */}
       <div>
-        <h3 className="text-sm font-semibold text-[var(--color-foreground)] uppercase tracking-wider mb-3">
-          Thiết kế đã tạo
-        </h3>
-        
-        {/* Style + ShirtType badges */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Thiết kế</p>
+        <div className="flex flex-wrap gap-1.5">
           {design.style && <Badge variant="secondary">{design.style}</Badge>}
           {design.shirtType && <Badge variant="secondary">{design.shirtType}</Badge>}
           {design.shirtColor && <Badge variant="secondary" className="capitalize">{design.shirtColor}</Badge>}
         </div>
+      </div>
 
-        {/* Refine */}
+      {/* Refine */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Tinh chỉnh</p>
         <form onSubmit={handleRefineSubmit} className="flex gap-2">
           <input
             className={cn(
-              'flex-1 h-10 px-3 text-sm',
-              'bg-[var(--color-background)] text-[var(--color-foreground)]',
+              'flex-1 h-11 px-3 text-sm',
+              'bg-[var(--color-card)] text-[var(--color-foreground)]',
               'border border-[var(--color-border)] rounded-[var(--radius-md)]',
-              'placeholder:text-[var(--color-muted-foreground)]',
-              'focus:outline-none focus:ring-2 focus:ring-[var(--color-foreground)] focus:border-transparent',
-              'disabled:opacity-50 disabled:cursor-not-allowed transition-all'
+              'placeholder:text-[var(--color-muted-foreground)]/50',
+              'focus:outline-none focus:border-white/30 focus:ring-2 focus:ring-white/[0.08]',
+              'disabled:opacity-40 disabled:cursor-not-allowed transition-all',
             )}
-            placeholder="VD: Thêm chi tiết, đổi màu..."
+            placeholder="Thêm chi tiết, đổi màu..."
             value={refinePrompt}
             onChange={(e) => setRefinePrompt(e.target.value)}
             disabled={refining}
           />
-          <Button type="submit" variant="outline" loading={refining} disabled={refining || !refinePrompt.trim()}>
+          <Button type="submit" variant="secondary" size="icon" loading={refining} disabled={refining || !refinePrompt.trim()} aria-label="Tinh chỉnh">
             <RefreshCw className={cn('h-4 w-4', refining && 'animate-spin')} />
-            Tinh chỉnh
           </Button>
         </form>
       </div>
 
-      <div className="mt-auto pt-6 flex flex-col gap-3">
+      <div className="pt-4 border-t border-[var(--color-border)] flex flex-col gap-3">
         {/* Save */}
         <Button
           variant="outline"
           size="md"
-          className="w-full gap-2 transition-all hover:bg-[var(--color-foreground)] hover:text-[var(--color-background)]"
+          className="w-full gap-2"
           onClick={onSave}
           disabled={isSaved || saving}
           loading={saving}
         >
-          {isSaved ? 'Đã lưu vào bộ sưu tập' : 'Lưu bản thảo'}
+          {isSaved ? '✓ Đã lưu' : 'Lưu bản thảo'}
         </Button>
 
         {/* Order */}
         <Button
           variant="primary"
           size="lg"
-          className="w-full gap-2 uppercase font-semibold tracking-widest h-14 transition-transform active:scale-95"
+          className="w-full gap-2 uppercase font-bold tracking-widest"
           onClick={onOrder}
         >
-          <ShoppingBag className="h-5 w-5" />
+          <ShoppingBag className="h-4 w-4" />
           Đặt hàng ngay
         </Button>
-        
+
         {/* Reset */}
         <Button
           variant="ghost"
-          size="md"
-          className="w-full mt-2 text-[var(--color-muted-foreground)]"
+          size="sm"
+          className="w-full text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] gap-1.5"
           onClick={onReset}
         >
-          <RotateCcw className="h-4 w-4 mr-2" />
+          <RotateCcw className="h-3.5 w-3.5" />
           Tạo thiết kế khác
         </Button>
       </div>
@@ -701,59 +713,126 @@ function CreateTab({
   cooldown: number
 }) {
   return (
-    <div className="flex flex-col lg:flex-row gap-8 h-full min-h-[650px]">
-      {/* ── Left Sidebar (Controls) ── */}
-      <aside className="w-full lg:w-[420px] flex flex-col shrink-0">
-        <Card className="flex flex-col h-full p-6 border-[var(--color-border)] shadow-sm bg-[var(--color-background)] group hover:border-[var(--color-foreground)] transition-colors duration-500">
-          <div className="mb-6 border-b border-[var(--color-border)] pb-4">
-             <h2 className="font-heading text-lg uppercase tracking-widest font-semibold flex items-center gap-2">
-                <Wand2 className="w-5 h-5" /> Creator Tools
-             </h2>
-          </div>
-          
-          <div className={cn("transition-opacity duration-300", (viewState === 'result' && currentDesign) ? "hidden" : "block")}>
-                    <GenerateForm
-                      onGenerate={onGenerate}
-                      generating={generating}
-                      cooldown={cooldown}
-                      initialValues={initialValues}
-                      error={generateError}
-                    />     </div>
+    <div className="flex flex-col lg:flex-row gap-0 h-full min-h-[750px] rounded-[var(--radius-xl)] border border-[var(--color-border)] overflow-hidden">
 
+      {/* ── Fixed Sidebar (300px) ── */}
+      <aside className="w-full lg:w-[300px] shrink-0 flex flex-col border-r border-[var(--color-border)] bg-[var(--color-card)]">
+        {/* Sidebar header */}
+        <div className="px-6 py-5 border-b border-[var(--color-border)]">
+          <div className="flex items-center gap-2">
+            <Wand2 className="h-4 w-4 text-[var(--color-accent)]" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+              Creator Tools
+            </p>
+          </div>
           {viewState === 'result' && currentDesign && (
-            <div className="animate-in fade-in slide-in-from-left-4 duration-500 flex-1">
-              <ResultControls 
-                result={currentDesign}
-                isSaved={isSaved}
-                saving={saving}
-                refining={refining}
-                onSave={onSave}
-                onOrder={onOrder}
-                onRefine={onRefine}
-                onReset={onReset}
-              />
-            </div>
+            <button
+              type="button"
+              onClick={onReset}
+              className="mt-3 text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] flex items-center gap-1 transition-colors"
+            >
+              <RotateCcw className="h-3 w-3" /> Tạo lại
+            </button>
           )}
-        </Card>
+        </div>
+
+        {/* Sidebar body — scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 scrollbar-none">
+          <AnimatePresence mode="wait">
+            {viewState === 'result' && currentDesign ? (
+              <motion.div
+                key="result-controls"
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+              >
+                <ResultControls
+                  result={currentDesign}
+                  isSaved={isSaved}
+                  saving={saving}
+                  refining={refining}
+                  onSave={onSave}
+                  onOrder={onOrder}
+                  onRefine={onRefine}
+                  onReset={onReset}
+                />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="generate-form"
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -12 }}
+                transition={{ duration: 0.25, ease: 'easeOut' }}
+              >
+                <GenerateForm
+                  onGenerate={onGenerate}
+                  generating={generating}
+                  cooldown={cooldown}
+                  initialValues={initialValues}
+                  error={generateError}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </aside>
 
       {/* ── Central Canvas ── */}
-      <div className="flex-1 relative bg-[var(--color-neutral)] rounded-[var(--radius-xl)] border border-[var(--color-border)] overflow-hidden flex items-center justify-center p-8 min-h-[500px] shadow-inner">
-         {generating ? (
-            <div className="absolute inset-0 bg-[var(--color-background)]/60 backdrop-blur-md flex flex-col items-center justify-center z-10 animate-in fade-in duration-300">
-               <div className="h-16 w-16 animate-spin rounded-full border-4 border-[var(--color-border)] border-t-[var(--color-foreground)] mb-6 shadow-lg" />
-               <p className="font-heading uppercase tracking-widest text-[var(--color-foreground)] font-semibold animate-pulse">AI đang tạo thiết kế của bạn...</p>
-            </div>
-         ) : viewState === 'result' && currentDesign ? (
-            <div className="animate-in zoom-in-95 fade-in duration-700 w-full h-full flex items-center justify-center">
+      <div className="flex-1 relative bg-[#0d0d0d] flex items-center justify-center p-10 min-h-[550px]">
+
+        {/* ── Shimmer loading overlay ── */}
+        <AnimatePresence>
+          {generating && (
+            <motion.div
+              key="shimmer"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6"
+            >
+              {/* Shimmer card */}
+              <div className="relative w-full max-w-[340px] overflow-hidden rounded-[var(--radius-xl)] border border-white/[0.06]"
+                style={{ aspectRatio: '3/4' }}
+              >
+                <div className="absolute inset-0 bg-[var(--color-muted)]" />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.06) 50%, transparent 80%)',
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmer 1.8s ease-in-out infinite',
+                  }}
+                />
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--color-muted-foreground)] animate-pulse">
+                AI đang phác thảo
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Generated design ── */}
+        <AnimatePresence mode="wait">
+          {!generating && viewState === 'result' && currentDesign ? (
+            <motion.div
+              key={currentDesign.designId}
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -12, scale: 0.97 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="w-full flex items-center justify-center"
+            >
               <div
-                className="relative w-full max-w-[400px] mx-auto rounded-[var(--radius-xl)] shadow-2xl overflow-hidden transition-transform hover:scale-[1.02] duration-500"
+                className="relative w-full max-w-[360px] mx-auto rounded-[var(--radius-xl)] shadow-2xl overflow-hidden"
                 style={{ aspectRatio: '3/4', backgroundColor: getShirtHex(currentDesign.design.shirtColor ?? 'white') }}
               >
                 {/* Collar */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 rounded-b-[3rem] border-b-2 border-x-2 border-black/5" />
-                
-                {/* Image */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-12 rounded-b-[3rem] border-b-2 border-x-2 border-black/[0.06]" />
+
+                {/* Design image */}
                 {(currentDesign.imageUrl || currentDesign.preview || currentDesign.design.customImage || currentDesign.design.previewImage) && (
                   <img
                     src={currentDesign.imageUrl || currentDesign.preview || currentDesign.design.customImage || currentDesign.design.previewImage || ''}
@@ -762,7 +841,7 @@ function CreateTab({
                     style={{ width: '60%', position: 'absolute', top: '25%', left: '50%', transform: 'translateX(-50%)' }}
                   />
                 )}
-                
+
                 {/* Status badge */}
                 <div className="absolute top-4 right-4">
                   <Badge variant={currentDesign.design.status === 'SAVED' ? 'success' : 'secondary'} className="shadow-sm">
@@ -770,16 +849,27 @@ function CreateTab({
                   </Badge>
                 </div>
               </div>
-            </div>
-         ) : (
-            <div className="opacity-50 hover:opacity-80 transition-opacity duration-300">
-              <EmptyState
-                icon={Palette}
-                title="Canvas trống"
-                description="Mô tả ý tưởng trong phần bên trái và để AI phác thảo cho bạn."
-              />
-            </div>
-         )}
+            </motion.div>
+          ) : !generating ? (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center gap-4 text-center"
+            >
+              <div className="h-20 w-20 rounded-full border border-[var(--color-border)] flex items-center justify-center">
+                <Palette className="h-8 w-8 text-[var(--color-border)]" />
+              </div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                Canvas trống
+              </p>
+              <p className="text-xs text-[var(--color-muted-foreground)]/60 max-w-[200px]">
+                Mô tả ý tưởng và để AI phác thảo cho bạn
+              </p>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </div>
   )
@@ -1046,38 +1136,40 @@ export function DesignStudioPage() {
 
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
-      {/* Header */}
-      <div className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-4xl font-normal uppercase tracking-widest flex items-center gap-3">
-            Phòng Thiết kế
-          </h1>
-          <p className="mt-2 text-sm text-[var(--color-muted-foreground)] tracking-wide">
-            Phác thảo ý tưởng, để AI tạo nên một thiết kế thời trang độc đáo cho bạn.
-          </p>
-        </div>
+      {/* ── Header ── */}
+      <div className="mb-8">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+          ALTERA — Design Studio
+        </p>
+        <h1 className="heading-brand text-4xl md:text-5xl">
+          Phòng Thiết Kế
+        </h1>
+        <p className="mt-3 text-sm text-[var(--color-muted-foreground)] max-w-md">
+          Phác thảo ý tưởng, để AI tạo nên một thiết kế thời trang độc đáo cho bạn.
+        </p>
       </div>
 
-      {/* Tab buttons */}
-      <div className="mb-8 flex gap-2 border-b border-[var(--color-border)] pb-0">
+      {/* ── Tabs ── */}
+      <div className="mb-6 flex gap-0 border-b border-[var(--color-border)]">
         {(['create', 'custom', 'library'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
             className={cn(
-              'px-4 py-2 text-sm font-medium border-b-2 transition-all duration-200 inline-flex items-center gap-1.5',
+              'relative px-5 py-3 text-[10px] font-bold uppercase tracking-widest transition-all duration-200 inline-flex items-center gap-2',
+              'after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:transition-transform after:duration-200',
               activeTab === tab
-                ? 'border-[var(--color-primary)] text-[var(--color-foreground)]'
-                : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
+                ? 'text-[var(--color-foreground)] after:bg-white after:scale-x-100'
+                : 'text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] after:bg-white after:scale-x-0 hover:after:scale-x-100',
             )}
           >
             {tab === 'create' ? (
-              <><Wand2 className="h-4 w-4" /> Phác thảo mới</>
+              <><Wand2 className="h-3.5 w-3.5" /> Phác thảo mới</>
             ) : tab === 'custom' ? (
-              <>TYPO / CUSTOM DESIGN</>
+              <>Custom Design</>
             ) : (
-              <><BookOpen className="h-4 w-4" /> Thư viện của tôi</>
+              <><BookOpen className="h-3.5 w-3.5" /> Thư viện</>
             )}
           </button>
         ))}

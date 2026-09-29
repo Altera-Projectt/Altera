@@ -200,7 +200,14 @@ const recommend = async (userId, { style, gender, season, budget, occasion, quiz
     throw error;
   }
 
-  const products = await productService.getStylistProducts({ style: resolvedStyle, gender, season, budget, limit: 6 });
+  const products = await productService.getStylistProducts({ 
+    style: resolvedStyle, 
+    gender, 
+    season, 
+    budget, 
+    keyPieces: derivedQuizResult?.keyPieces,
+    limit: 6 
+  });
   const catalog = buildCatalogPromptSection(products);
   const user = await User.findById(userId).select('measurements preferences').lean();
 

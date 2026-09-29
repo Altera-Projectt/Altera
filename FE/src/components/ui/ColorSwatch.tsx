@@ -50,8 +50,8 @@ export function ColorSwatch({ colors, variant = 'default', size = 'md' }: ColorS
             <span
               className={`text-xs capitalize leading-none ${
                 variant === 'avoid'
-                  ? 'text-[var(--color-error)] line-through opacity-80'
-                  : 'text-[var(--color-foreground)]'
+                  ? 'text-red-400 line-through opacity-80'
+                  : 'text-gray-300'
               }`}
             >
               {colorName}

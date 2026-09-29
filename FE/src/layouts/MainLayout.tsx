@@ -1,4 +1,5 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
 import { Navbar, Footer } from '@/components/shared'
 import { FloatingAIChat } from '@/components/chat'
 
@@ -8,6 +9,12 @@ import { FloatingAIChat } from '@/components/chat'
  * Includes fixed Navbar and standard Footer.
  */
 export function MainLayout() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--color-background)]">
       <Navbar />
