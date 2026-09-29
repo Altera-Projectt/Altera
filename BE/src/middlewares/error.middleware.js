@@ -16,6 +16,13 @@ const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';
 
+  if (req.originalUrl.includes('/designs/generate') && statusCode >= 400) {
+    message = statusCode === 400 ? 'Invalid image generation input.'
+      : statusCode === 401 ? 'Image generation is not configured or the provider rejected credentials.'
+      : statusCode === 429 ? 'Image generation is temporarily rate limited or quota is unavailable.'
+      : 'Unable to generate image right now.';
+  }
+
   if (err.code === 'LIMIT_FILE_SIZE' && req.originalUrl.includes('/custom/uploads')) {
     statusCode = 400;
     message = 'Image size exceeds the 10MB limit.';
@@ -48,7 +55,7 @@ const errorHandler = (err, req, res, next) => {
     success: false,
     ...(err.code && { code: err.code }),
     message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    ...(process.env.NODE_ENV === 'development' && !req.originalUrl.includes('/designs/generate') && { stack: err.stack }),
   });
 };
 

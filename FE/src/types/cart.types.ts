@@ -1,4 +1,4 @@
-export interface CartItemProduct {
+﻿export interface CartItemProduct {
   _id: string
   id: string
   name: string
@@ -7,10 +7,20 @@ export interface CartItemProduct {
   stock: number
 }
 
+export interface MarketplaceCartDesign {
+  _id: string
+  name: string
+  slug: string
+  thumbnail: string
+  price: number
+  status: string
+}
+
 export interface CartItem {
   _id?: string
   id?: string
   productId: CartItemProduct
+  marketplaceDesignId?: MarketplaceCartDesign | string | null
   quantity: number
   price: number
   customization?: ProductCustomization
@@ -37,7 +47,8 @@ export interface CartResponse {
 }
 
 export interface AddCartPayload {
-  productId: string
+  productId?: string
+  marketplaceDesignId?: string
   quantity: number
   customization?: ProductCustomization
 }

@@ -28,6 +28,11 @@ const UserSchema = new mongoose.Schema(
       enum: ['USER', 'ADMIN'],
       default: 'USER',
     },
+    membershipPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'MembershipPlan', default: null },
+    membershipStatus: { type: String, enum: ['ACTIVE', 'EXPIRED', 'CANCELLED', 'PENDING'], default: 'ACTIVE' },
+    membershipStartDate: { type: Date, default: null },
+    membershipEndDate: { type: Date, default: null },
+    membershipAutoRenew: { type: Boolean, default: false },
     isActive: {
       type: Boolean,
       default: true,

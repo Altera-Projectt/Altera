@@ -6,6 +6,9 @@ const logger = require('./utils/logger');
 const startServer = async () => {
   await connectDB();
 
+  const membershipService = require('./services/membership.service');
+  const expiryJob = setInterval(() => membershipService.expireMemberships().catch((error) => logger.error(`Membership expiry job failed: ${error.message}`)), 60 * 60 * 1000);
+
   const server = app.listen(PORT, () => {
     logger.info(`🚀 Server running on http://localhost:${PORT}`);
     logger.info(`📋 API base: http://localhost:${PORT}/api/v1`);
@@ -15,6 +18,7 @@ const startServer = async () => {
   // Graceful shutdown
   const shutdown = (signal) => {
     logger.info(`${signal} received. Shutting down gracefully...`);
+    clearInterval(expiryJob);
     server.close(() => {
       logger.info('HTTP server closed');
       process.exit(0);

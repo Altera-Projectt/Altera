@@ -313,12 +313,12 @@ export function CheckoutPage() {
                 {cartItems.map((item) => {
                   const productId = item.productId?._id
                   return (
-                    <div key={productId} className="flex items-center gap-3">
-                      <div className="h-14 w-14 shrink-0 rounded-[var(--radius-md)] bg-[var(--color-muted)] overflow-hidden border border-[var(--color-border)]">
-                        {item.productId?.imageUrl ? (
+                    <div key={item._id ?? productId} className="flex items-center gap-3">
+                      <div className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-md)] bg-[var(--color-muted)] border border-[var(--color-border)] overflow-hidden">
+                        {(typeof item.marketplaceDesignId === 'object' ? item.marketplaceDesignId?.thumbnail : null) || item.productId?.imageUrl ? (
                           <img
-                            src={item.productId.imageUrl}
-                            alt={item.productId.name}
+                            src={(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.thumbnail) || item.productId.imageUrl}
+                            alt={(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.name) || item.productId.name}
                             className="h-full w-full object-cover"
                           />
                         ) : (
@@ -328,7 +328,7 @@ export function CheckoutPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium line-clamp-1">{item.productId?.name}</p>
+                        <p className="text-sm font-medium line-clamp-1">{(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.name) || item.productId?.name}</p>
                         <p className="text-xs text-[var(--color-muted-foreground)]">SL: {item.quantity}</p>
                       </div>
                       <span className="text-sm font-semibold whitespace-nowrap">

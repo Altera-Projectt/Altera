@@ -1,7 +1,8 @@
-const Order = require('../models/Order');
+﻿const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Payment = require('../models/Payment');
 const Cart = require('../models/Cart');
+const MarketplaceDesign = require('../models/MarketplaceDesign');
 const mongoose = require('mongoose');
 const paymentService = require('./payment.service');
 const { getCustomizationPrice } = require('./customization.service');
@@ -70,7 +71,12 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
     const productId = String(line.productId?._id || line.productId);
     const product = products.get(productId);
     const customization = line.customization?.toObject?.() || line.customization;
-    const price = getCustomizationPrice(product, customization);
+    let listing = null;
+    if (line.marketplaceDesignId) {
+      listing = await MarketplaceDesign.findOne({ _id: line.marketplaceDesignId, status: 'PUBLISHED' });
+      if (!listing || String(listing.productId) !== String(product._id)) { const error = new Error('A marketplace design in your cart is no longer available.'); error.statusCode = 400; throw error; }
+    }
+    const price = listing ? listing.price : getCustomizationPrice(product, customization);
     if (customization) {
       const color = product.colors.find((option) => option.name === customization.color.name);
       const size = product.sizes.find((option) => option.label === customization.size);
@@ -78,7 +84,8 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
         const error = new Error(`Insufficient stock for ${product.name} in the selected color and size.`); error.statusCode = 400; throw error;
       }
     }
-    orderItems.push({ productId: product._id, quantity: line.quantity, price, name: product.name, imageUrl: product.imageUrl, ...(customization && { customization }) });
+    const snapshot = listing ? { id: String(listing._id), slug: listing.slug, name: listing.name, description: listing.description, thumbnail: listing.thumbnail, price: listing.price, color: listing.color, size: listing.size, printSide: listing.printSide, printingTechnique: listing.printingTechnique, frontDesign: listing.frontDesign, backDesign: listing.backDesign, category: listing.category, tags: listing.tags, productId: String(listing.productId), capturedAt: new Date() } : null;
+    orderItems.push({ productId: product._id, quantity: line.quantity, price, name: listing ? listing.name : product.name, imageUrl: listing ? listing.thumbnail : product.imageUrl, ...(listing && { marketplaceDesignId: listing._id, designerId: listing.designerId, designSnapshot: snapshot }), ...(customization && { customization }) });
     totalPrice += price * line.quantity;
   }
 

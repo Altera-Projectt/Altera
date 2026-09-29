@@ -19,6 +19,7 @@ const ADMIN_LINKS = [
   { label: 'Products', href: '/admin/products', icon: Package },
   { label: 'Orders', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Payments', href: '/admin/payments', icon: CreditCard },
+  { label: 'Membership Payments', href: '/admin/membership-payments', icon: CreditCard },
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Users', href: '/admin/users', icon: Users },
 ]

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+﻿const mongoose = require('mongoose');
 
 const DesignSideSchema = new mongoose.Schema({
   layers: { type: [mongoose.Schema.Types.Mixed], default: [] },
@@ -20,6 +20,7 @@ const CartItemSchema = new mongoose.Schema(
       ref: 'Product',
       required: true,
     },
+    marketplaceDesignId: { type: mongoose.Schema.Types.ObjectId, ref: 'MarketplaceDesign', default: null },
     quantity: {
       type: Number,
       required: true,

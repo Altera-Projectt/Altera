@@ -1,4 +1,4 @@
-const { verifyToken } = require('../utils/jwt');
+﻿const { verifyToken } = require('../utils/jwt');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 
@@ -64,4 +64,14 @@ const restrictTo = (...roles) => {
   };
 };
 
-module.exports = { protect, restrictTo };
+const optionalProtect = async (req, res, next) => {
+  try {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith('Bearer ')) return next();
+    const decoded = verifyToken(header.split(' ')[1]);
+    const user = await User.findById(decoded.id).select('-password');
+    if (user && user.isActive !== false) req.user = user;
+    return next();
+  } catch (_) { return next(); }
+};
+module.exports = { protect, optionalProtect, restrictTo };

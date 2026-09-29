@@ -245,10 +245,12 @@ const bankNotification = async (req) => {
   if (!token || !equalSignature(Buffer.from(token).toString('hex'), Buffer.from(env.PAYMENT_WEBHOOK_TOKEN).toString('hex'))) throw paymentError('Invalid bank callback authorization', 401);
   const data = req.body || {};
   const content = String(data.content || '').toUpperCase();
-  const ref = String(data.orderId || content.match(/ALT[A-F0-9]{10}/)?.[0] || '').trim().toUpperCase();
+  const ref = String(data.orderId || content.match(/ALT-?[A-F0-9]{10,16}/)?.[0] || '').trim().toUpperCase();
   if (String(data.transType).toUpperCase() !== 'C' || String(data.bankaccount) !== String(env.BANK_ACCOUNT_NUMBER)) throw paymentError('Bank transaction does not match payment account or transaction type.');
   const transactionId = String(data.transactionid || data.referencenumber || '');
   if (!transactionId) throw paymentError('Transaction ID is required.');
+  const membershipPayment = await Payment.findOne({ provider: 'VIETQR', paymentReference: ref });
+  if (membershipPayment?.membershipOrderId) return require('./membership.service').bankWebhook(data, membershipPayment);
   const session = await mongoose.startSession();
   try {
     return await session.withTransaction(async () => {

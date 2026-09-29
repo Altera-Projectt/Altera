@@ -1,13 +1,14 @@
-const Cart = require('../models/Cart');
+﻿const Cart = require('../models/Cart');
 const Wishlist = require('../models/Wishlist');
 const Product = require('../models/Product');
+const MarketplaceDesign = require('../models/MarketplaceDesign');
 const { getCustomizationPrice } = require('../services/customization.service');
 
 // ─── CART ────────────────────────────────────────────────────────────────────
 
 const getCart = async (req, res, next) => {
   try {
-    const cart = await Cart.findOne({ userId: req.user._id }).populate('items.productId', 'name imageUrl price discountPrice stock colors sizes printingTechniques');
+    const cart = await Cart.findOne({ userId: req.user._id }).populate('items.productId', 'name imageUrl price discountPrice stock colors sizes printingTechniques').populate('items.marketplaceDesignId', 'name slug thumbnail price status');
     res.status(200).json({ success: true, data: { cart: cart || { items: [], totalPrice: 0, totalItems: 0 } } });
   } catch (error) {
     next(error);
@@ -16,37 +17,34 @@ const getCart = async (req, res, next) => {
 
 const addToCart = async (req, res, next) => {
   try {
-    const { productId, quantity = 1, customization } = req.body;
-
+    const { quantity = 1 } = req.body;
+    let { productId, customization } = req.body;
+    let marketplaceDesign = null;
+    if (req.body.marketplaceDesignId) {
+      marketplaceDesign = await MarketplaceDesign.findOne({ _id: req.body.marketplaceDesignId, status: 'PUBLISHED' });
+      if (!marketplaceDesign) return res.status(404).json({ success: false, message: 'Published design not found' });
+      productId = marketplaceDesign.productId;
+      customization = { color: marketplaceDesign.color, size: marketplaceDesign.size, printSide: marketplaceDesign.printSide, printingTechnique: marketplaceDesign.printingTechnique, frontDesign: marketplaceDesign.frontDesign, backDesign: marketplaceDesign.backDesign };
+    }
     const product = await Product.findById(productId);
     if (!product || !product.isActive) return res.status(404).json({ success: false, message: 'Product not found' });
     const selectedColor = customization && product.colors.find((item) => item.name === customization.color?.name);
     const selectedSize = customization && product.sizes.find((item) => item.label === customization.size);
     const availableStock = customization ? Math.min(product.stock, selectedColor?.stock ?? 0, selectedSize?.stock ?? 0) : product.stock;
     if (!Number.isInteger(quantity) || quantity < 1 || availableStock < quantity) return res.status(400).json({ success: false, message: `Insufficient stock. Available: ${availableStock}` });
-    const unitPrice = getCustomizationPrice(product, customization);
-
+    const unitPrice = marketplaceDesign ? marketplaceDesign.price : getCustomizationPrice(product, customization);
     let cart = await Cart.findOne({ userId: req.user._id });
     if (!cart) cart = new Cart({ userId: req.user._id, items: [] });
-
     const configKey = JSON.stringify(customization || null);
-    const existingIndex = cart.items.findIndex((i) => i.productId.toString() === productId && JSON.stringify(i.customization?.toObject?.() || i.customization || null) === configKey);
+    const existingIndex = cart.items.findIndex((i) => i.productId.toString() === String(productId) && String(i.marketplaceDesignId || '') === String(marketplaceDesign?._id || '') && JSON.stringify(i.customization?.toObject?.() || i.customization || null) === configKey);
     if (existingIndex >= 0) {
-      if (cart.items[existingIndex].quantity + quantity > availableStock) {
-        return res.status(400).json({ success: false, message: `Insufficient stock. Available: ${availableStock}` });
-      }
+      if (cart.items[existingIndex].quantity + quantity > availableStock) return res.status(400).json({ success: false, message: `Insufficient stock. Available: ${availableStock}` });
       cart.items[existingIndex].quantity += quantity;
-    } else {
-      cart.items.push({ productId, quantity, price: unitPrice, ...(customization && { customization }) });
-    }
-
+    } else cart.items.push({ productId, marketplaceDesignId: marketplaceDesign?._id || null, quantity, price: unitPrice, ...(customization && { customization }) });
     await cart.save();
     res.status(200).json({ success: true, message: 'Added to cart', data: { cart } });
-  } catch (error) {
-    next(error);
-  }
+  } catch (error) { next(error); }
 };
-
 const updateCartItem = async (req, res, next) => {
   try {
     const { productId } = req.params;
@@ -69,7 +67,7 @@ const updateCartItem = async (req, res, next) => {
       if (!Number.isInteger(quantity) || (line.customization ? Math.min(product?.stock ?? 0, color?.stock ?? 0, size?.stock ?? 0) : product?.stock ?? 0) < quantity) {
         return res.status(400).json({ success: false, message: 'Quantity exceeds available stock' });
       }
-      if (product) line.price = getCustomizationPrice(product, line.customization?.toObject?.() || line.customization);
+      if (line.marketplaceDesignId) { const listing = await MarketplaceDesign.findOne({ _id: line.marketplaceDesignId, status: 'PUBLISHED' }); if (!listing) return res.status(400).json({ success: false, message: 'A design in your cart is no longer available.' }); line.price = listing.price; } else if (product) line.price = getCustomizationPrice(product, line.customization?.toObject?.() || line.customization);
       cart.items[index].quantity = quantity;
     }
 

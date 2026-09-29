@@ -1,4 +1,4 @@
-import api from '@/utils/axios'
+﻿import api from '@/utils/axios'
 import type { ApiResponse } from '@/types/api.types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -19,11 +19,10 @@ export interface Design {
 }
 
 export interface GenerateDesignPayload {
-  prompt: string
-  style?: string
-  shirtType?: string
-  colorPalette?: string
-  shirtColor?: string
+  idea: string
+  style: string
+  printSide: 'Front' | 'Back' | 'Both Sides'
+  globalShirtColor: string
 }
 
 export interface GenerateDesignResponse {
@@ -107,6 +106,9 @@ export interface DesignTemplate {
 // ── Service ────────────────────────────────────────────────────────────────
 
 export const DesignService = {
+  publishCustomDraft: (payload: { draftId: string; name: string; description: string; price: number; category?: string; tags?: string[]; collectionId?: string }) => api.post<ApiResponse<{ design: any }>>('/designers/me/designs', payload),
+  getMyDesignerProfile: () => api.get<ApiResponse<{ profile: { username: string } }>>('/designers/me/profile'),
+  getDesignerCollections: (username: string) => api.get<ApiResponse<{ collections: { _id: string; name: string }[] }>>(`/designers/${username}`),
   uploadCustomImage: (file: File) => {
     const body = new FormData()
     body.append('image', file)

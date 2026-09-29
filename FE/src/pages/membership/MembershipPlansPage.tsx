@@ -1,0 +1,13 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Check } from 'lucide-react'
+import { MembershipService, type MembershipPlan } from '@/services/membership.api'
+import { formatVND } from '@/utils/format'
+import { Button } from '@/components/ui/Button'
+import { useAuthStore } from '@/store/authStore'
+export function MembershipPlansPage() {
+  const [plans, setPlans] = useState<MembershipPlan[]>([]); const [membership, setMembership] = useState<{ membershipPlanId: MembershipPlan | null; membershipStatus: string; membershipEndDate: string | null } | null>(null); const [error, setError] = useState('')
+  const authenticated = useAuthStore((s) => s.isAuthenticated)
+  useEffect(() => { MembershipService.plans().then((r) => setPlans(r.data.data.plans)).catch(() => setError('Không thể tải các gói thành viên.')); if (authenticated) MembershipService.current().then((r) => setMembership(r.data.data.membership)).catch(() => undefined) }, [authenticated])
+  return <section className="mx-auto max-w-6xl px-5 py-12 md:py-16"><header className="mb-10 text-center"><p className="mb-3 text-sm font-semibold uppercase tracking-[.2em] text-cyan-700">ALТERA Membership</p><h1 className="text-4xl font-bold md:text-5xl">Chọn gói thành viên</h1><p className="mx-auto mt-4 max-w-xl text-gray-600">Mở rộng trải nghiệm sáng tạo theo cách phù hợp với bạn.</p></header>{membership?.membershipPlanId && <div className="mb-8 rounded-xl border border-cyan-200 bg-cyan-50 p-4">Gói hiện tại: <b>{membership.membershipPlanId.name}</b> · {membership.membershipStatus}{membership.membershipEndDate && ` · Hết hạn ${new Date(membership.membershipEndDate).toLocaleDateString('vi-VN')}`}</div>}{error && <p role="alert" className="mb-4 text-red-700">{error}</p>}<div className="grid gap-5 md:grid-cols-3">{plans.map((plan) => <article key={plan._id} className={`flex flex-col rounded-2xl border bg-white p-7 ${plan.code === 'PREMIUM' ? 'border-cyan-500 shadow-lg' : 'border-gray-200'}`}><h2 className="text-xl font-bold">{plan.name}</h2><p className="mt-2 min-h-10 text-sm text-gray-600">{plan.description}</p><p className="my-6 text-3xl font-bold">{plan.price ? formatVND(plan.price) : 'Miễn phí'}<span className="ml-1 text-sm font-normal text-gray-500">{plan.billingCycle === 'MONTHLY' ? '/ tháng' : ''}</span></p><ul className="mb-7 flex-1 space-y-3">{plan.features.map((feature) => <li key={feature} className="flex gap-2 text-sm"><Check className="h-4 w-4 shrink-0 text-cyan-700"/>{feature}</li>)}</ul><Button asChild className="w-full"><Link to={`/membership/checkout?plan=${plan.code}`}>Chọn gói</Link></Button></article>)}</div></section>
+}

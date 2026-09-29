@@ -1,6 +1,8 @@
 const Design = require('../models/Design');
 const Order = require('../models/Order');
 const { uploadImage } = require('../utils/cloudinary');
+const OpenAI = require('openai');
+const logger = require('../utils/logger');
 
 const MAX_GENERATED_HISTORY = 5;
 const MIN_GENERATE_INTERVAL_MS = 15_000;
@@ -12,14 +14,6 @@ const normalizePrompt = (prompt) => {
     .trim()
     .replace(/\s+/g, ' ')
     .slice(0, 200);
-};
-
-const buildPollinationsPromptSegment = (prompt) => encodeURIComponent(normalizePrompt(prompt));
-
-const buildPollinationsCurlCommand = (prompt, filename = 'test.png') => {
-  const encodedPrompt = buildPollinationsPromptSegment(prompt);
-  const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=768&model=flux&nologo=true`;
-  return `curl -o ${filename} "${url}"`;
 };
 
 const getUserGenerationState = (userId) => {
@@ -49,7 +43,7 @@ const addGeneratedImageToHistory = (userId, item) => {
 
 const getUserGenerationHistory = (userId) => getUserGenerationState(userId).history;
 
-const buildDesignPrompt = ({ prompt, style, shirtType, colorPalette }) => {
+const legacyBuildDesignPrompt = ({ prompt, style, shirtType, colorPalette }) => {
   const pieces = [
     // Chỉ rõ là artwork/graphic 2D, không phải ảnh thật
     'Flat 2D graphic artwork, print-ready design for direct-to-garment shirt printing.',
@@ -74,17 +68,28 @@ const buildDesignPrompt = ({ prompt, style, shirtType, colorPalette }) => {
   return pieces.join(' ');
 };
 
-const fetchPollinationsImage = async (prompt) => {
-  const encodedPrompt = buildPollinationsPromptSegment(prompt);
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=768&height=768&model=flux&nologo=true`;
+const buildDesignPrompt = ({ idea, style, globalShirtColor }) => `Create a print-ready graphic design for a custom t-shirt.\nUSER IDEA: ${idea}\nART STYLE: ${style}\nT-SHIRT BASE COLOR: ${globalShirtColor}\n\nREQUIREMENTS:\n- Create ONLY the graphic artwork.\n- Do NOT generate a t-shirt or a person wearing it.\n- Do NOT include a background scene.\n- STRICT RULE: Use a transparent background or a solid background that can be easily keyed out.\n- The artwork colors must contrast well against the base shirt color (${globalShirtColor}).\n- Center the main artwork. Make it suitable for printing on fabric.\n- Use strong silhouettes, clean edges, and the exact requested art style.\n- Avoid unnecessary tiny details.\n- Avoid photorealistic product photography.\n- The artwork should look intentional and professionally designed.\n- Do not add random text, letters, logos, watermarks, or brand names unless explicitly requested by the user.\n\nIMPORTANT:\nThe final result is artwork intended to be placed ON a t-shirt.\nIt is NOT a picture of a t-shirt.`;
 
-  const response = await fetch(pollinationsUrl);
-  if (!response.ok) {
-    throw new Error('Pollinations image generation failed');
+const generateOpenAIImage = async (prompt) => {
+  if (!process.env.OPENAI_API_KEY) {
+    logger.error('OpenAI image generation unavailable: OPENAI_API_KEY is not configured.');
+    const error = new Error('OpenAI API key is not configured.');
+    error.statusCode = 401;
+    throw error;
   }
-
-  const buffer = Buffer.from(await response.arrayBuffer());
-  return buffer;
+  try {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 0 });
+    const result = await openai.images.generate({ model: process.env.IMAGE_MODEL || 'gpt-image-2', prompt, quality: process.env.IMAGE_QUALITY || 'low', size: process.env.IMAGE_SIZE || '1024x1024', background: 'transparent', output_format: 'png', n: 1 });
+    if (!result.data?.[0]?.b64_json) throw new Error('OpenAI returned no image data.');
+    logger.info(`OpenAI image generation succeeded: model=${process.env.IMAGE_MODEL || 'gpt-image-2'} quality=${process.env.IMAGE_QUALITY || 'low'} size=${process.env.IMAGE_SIZE || '1024x1024'} n=1`);
+    return Buffer.from(result.data[0].b64_json, 'base64');
+  } catch (cause) {
+    const status = cause.status || cause.statusCode;
+    logger.error(`OpenAI image generation failed: status=${status || 'unknown'} code=${cause.code || 'unknown'} type=${cause.type || 'unknown'} message=${cause.message}`);
+    const error = new Error('Unable to generate image right now.');
+    error.statusCode = status === 401 || status === 403 ? 401 : status === 429 ? 429 : 500;
+    throw error;
+  }
 };
 
 const uploadGeneratedImage = async (imageBuffer) => {
@@ -94,9 +99,12 @@ const uploadGeneratedImage = async (imageBuffer) => {
 };
 
 const generateDesign = async (userId, payload) => {
-  const prompt = normalizePrompt(payload.prompt);
-  if (!prompt) {
-    const error = new Error('Prompt is required to generate a design.');
+  const idea = normalizePrompt(payload.idea ?? payload.prompt);
+  const style = typeof payload.style === 'string' ? payload.style.trim().slice(0, 60) : '';
+  const globalShirtColor = payload.globalShirtColor || payload.shirtColor || '';
+  const printSide = payload.printSide || 'Front';
+  if (!idea || !style || !/^#[0-9a-f]{6}$/i.test(globalShirtColor) || !['Front', 'Back', 'Both Sides'].includes(printSide)) {
+    const error = new Error('Provide idea, style, print side, and a valid shirt color.');
     error.statusCode = 400;
     throw error;
   }
@@ -107,38 +115,32 @@ const generateDesign = async (userId, payload) => {
     throw error;
   }
 
-  const curlCommand = buildPollinationsCurlCommand(prompt, payload.filename || 'test.png');
-  const imageBuffer = await fetchPollinationsImage(buildDesignPrompt({
-    prompt,
-    style: payload.style,
-    shirtType: payload.shirtType,
-    colorPalette: payload.colorPalette,
-  }));
+  const prompt = buildDesignPrompt({ idea, style, globalShirtColor });
+  const imageBuffer = await generateOpenAIImage(prompt);
   const imageUrl = await uploadGeneratedImage(imageBuffer);
 
   const design = await Design.create({
     userId,
-    shirtColor: payload.shirtColor || payload.colorPalette || 'white',
-    prompt,
-    style: payload.style || null,
-    shirtType: payload.shirtType || null,
-    colorPalette: payload.colorPalette || null,
+    shirtColor: globalShirtColor,
+    prompt: idea,
+    style,
+    shirtType: null,
+    colorPalette: globalShirtColor,
     customImage: imageUrl,
     previewImage: imageUrl,
     status: 'DRAFT',
   });
 
   const history = addGeneratedImageToHistory(userId, {
-    prompt,
+    prompt: idea,
     imageUrl,
-    curlCommand,
     createdAt: new Date().toISOString(),
   });
 
   return {
     imageUrl,
     preview: imageUrl,
-    curlCommand,
+    printSide,
     prompt,
     designId: design._id,
     design,
@@ -154,14 +156,11 @@ const refineDesign = async (designId, userId, role, { prompt }) => {
   }
 
   const design = await getOwnedDesign(designId, userId, role);
-  const imageBuffer = await fetchPollinationsImage(
-    buildDesignPrompt({
-      prompt: `${design.prompt || 'Existing shirt design'}. Refine request: ${prompt.trim()}`,
-      style: design.style,
-      shirtType: design.shirtType,
-      colorPalette: design.colorPalette,
-    })
-  );
+  const imageBuffer = await generateOpenAIImage(buildDesignPrompt({
+    idea: `${design.prompt || 'Existing design'}. Refine request: ${prompt.trim()}`,
+    style: design.style || 'Graphic Art',
+    globalShirtColor: design.shirtColor || '#ffffff',
+  }));
   const imageUrl = await uploadGeneratedImage(imageBuffer);
 
   design.prompt = `${design.prompt || ''}\nRefine: ${prompt.trim()}`.trim();

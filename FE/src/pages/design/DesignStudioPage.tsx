@@ -998,7 +998,7 @@ export function DesignStudioPage() {
         colorPalette: vals.colorPalette || 'Black and white, high contrast',
         shirtColor: vals.shirtColor || 'white',
       }
-      const res = await DesignService.generateDesign(payload)
+      const res = await DesignService.generateDesign(payload as any)
       setCurrentDesign(res.data.data)
       setViewState('result')
       setIsSaved(false)

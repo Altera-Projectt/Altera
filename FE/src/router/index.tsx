@@ -16,7 +16,10 @@ import { DesignStudioPage } from '@/pages/design/DesignStudioPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { AboutPage } from '@/pages/about/AboutPage'
 import { MembershipPage } from '@/pages/membership/MembershipPage'
+import { MembershipPlansPage } from '@/pages/membership/MembershipPlansPage'
 import { MembershipCheckoutPage } from '@/pages/membership/MembershipCheckoutPage'
+import { PaymentStatusPage } from '@/pages/membership/PaymentStatusPage'
+import { MembershipPaymentHistoryPage } from '@/pages/membership/MembershipPaymentHistoryPage'
 
 // Protected Pages
 import { OrdersPage } from '@/pages/orders/OrdersPage'
@@ -26,6 +29,9 @@ import { CartPage } from '@/pages/cart/CartPage'
 import { ChatPage } from '@/pages/chat/ChatPage'
 import { CheckoutPage } from '@/pages/checkout/CheckoutPage'
 import { WishlistPage } from '@/pages/wishlist/WishlistPage'
+import { DesignerProfilePage } from '@/pages/designer/DesignerProfilePage'
+import { DesignDetailPage } from '@/pages/designer/DesignDetailPage'
+import { DesignerDashboardPage } from '@/pages/designer/DesignerDashboardPage'
 import { MyDesignsPage } from '@/pages/design/MyDesignsPage'
 
 // Admin Pages
@@ -35,6 +41,8 @@ import { AdminOrdersPage } from '@/pages/admin/AdminOrdersPage'
 import { AdminPaymentOrdersPage } from '@/pages/admin/AdminPaymentOrdersPage'
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
 import { AdminCustomersPage } from '@/pages/admin/AdminCustomersPage'
+import { AdminDesignsPage } from '@/pages/admin/AdminDesignsPage'
+import { AdminMembershipPaymentsPage } from '@/pages/admin/AdminMembershipPaymentsPage'
 
 export const router = createBrowserRouter([
   {
@@ -45,9 +53,15 @@ export const router = createBrowserRouter([
       { index: true, element: <HomePage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'products/:id', element: <ProductDetailPage /> },
+      { path: 'designer/:username', element: <DesignerProfilePage /> },
+      { path: 'design/:slug', element: <DesignDetailPage /> },
       { path: 'about', element: <AboutPage /> },
       { path: 'membership', element: <MembershipPage /> },
+      { path: 'membership/plans', element: <MembershipPlansPage /> },
       { path: 'membership/checkout', element: <MembershipCheckoutPage /> },
+      { path: 'payment/success', element: <PaymentStatusPage view="success" /> },
+      { path: 'payment/failed', element: <PaymentStatusPage view="failed" /> },
+      { path: 'payment/pending', element: <PaymentStatusPage view="pending" /> },
       {
         path: 'auth',
         children: [
@@ -61,6 +75,8 @@ export const router = createBrowserRouter([
         element: <ProtectedRoute />,
         children: [
           { path: 'orders', element: <OrdersPage /> },
+          { path: 'membership/checkout', element: <MembershipCheckoutPage /> },
+          { path: 'account/payment-history', element: <MembershipPaymentHistoryPage /> },
           { path: 'outfit', element: <OutfitPage /> },
           { path: 'design', element: <DesignStudioPage /> },
           { path: 'orders/success/:id', element: <OrderSuccessPage /> },
@@ -70,6 +86,7 @@ export const router = createBrowserRouter([
           { path: 'checkout', element: <CheckoutPage /> },
           { path: 'wishlist', element: <WishlistPage /> },
           { path: 'designs', element: <MyDesignsPage /> },
+          { path: 'designer/dashboard', element: <DesignerDashboardPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },
@@ -89,8 +106,10 @@ export const router = createBrowserRouter([
           { path: 'products', element: <AdminProductsPage /> },
           { path: 'orders', element: <AdminOrdersPage /> },
           { path: 'payments', element: <AdminPaymentOrdersPage /> },
+          { path: 'membership-payments', element: <AdminMembershipPaymentsPage /> },
           { path: 'customers', element: <AdminCustomersPage /> },
           { path: 'users', element: <AdminUsersPage /> },
+          { path: 'designs', element: <AdminDesignsPage /> },
         ],
       },
     ],

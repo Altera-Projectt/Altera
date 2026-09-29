@@ -8,6 +8,11 @@ export interface User {
   fullName: string
   email: string
   authProvider?: 'LOCAL' | 'GOOGLE'
+  phone?: string | null
+  membershipPlanId?: string | null
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'PENDING'
+  membershipStartDate?: string | null
+  membershipEndDate?: string | null
   avatar: string | null
   coverImage?: string | null
   bio?: string
