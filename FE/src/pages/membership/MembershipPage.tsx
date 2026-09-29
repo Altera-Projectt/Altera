@@ -97,19 +97,23 @@ export function MembershipPage() {
           </div>
 
           {/* Right Cards Slider - EXACTLY 1 CARD VISIBLE AT A TIME */}
-          <div className="w-full lg:w-[45%] flex relative justify-center group/slider">
-            <button onClick={handlePrev} className="absolute -left-6 md:-left-12 top-1/2 -translate-y-1/2 z-20 text-white/30 hover:text-white transition-colors hidden md:block">
-              <ChevronLeft size={48} strokeWidth={1.5} />
-            </button>
-            <button onClick={handleNext} className="absolute -right-6 md:-right-12 top-1/2 -translate-y-1/2 z-20 text-white/30 hover:text-white transition-colors hidden md:block">
-              <ChevronRight size={48} strokeWidth={1.5} />
-            </button>
-            {/* The single card container that acts as a window */}
+          <div className="w-full lg:w-[45%] flex justify-center">
+            {/* The wrapper that defines the bounds */}
             <div 
-              className="relative w-full max-w-[380px] h-[600px] rounded-[24px] overflow-hidden shadow-2xl bg-white"
+              className="relative w-full max-w-[380px] group/slider"
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
             >
+              {/* Navigation Arrows */}
+              <button onClick={handlePrev} className="absolute left-3 top-1/2 -translate-y-1/2 z-20 text-black/20 hover:text-[#0011FF] bg-black/5 hover:bg-[#0011FF]/10 rounded-full p-1.5 transition-all hidden md:block opacity-0 group-hover/slider:opacity-100">
+                <ChevronLeft size={28} strokeWidth={2.5} />
+              </button>
+              <button onClick={handleNext} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-black/20 hover:text-[#0011FF] bg-black/5 hover:bg-[#0011FF]/10 rounded-full p-1.5 transition-all hidden md:block opacity-0 group-hover/slider:opacity-100">
+                <ChevronRight size={28} strokeWidth={2.5} />
+              </button>
+
+              {/* The single card container that acts as a window */}
+              <div className="relative w-full h-[600px] rounded-[24px] overflow-hidden shadow-2xl bg-white">
               
               {/* Horizontal Scroll Container inside the card window */}
               <div 
@@ -203,6 +207,7 @@ export function MembershipPage() {
                 </div>
 
               </div>
+            </div>
             </div>
           </div>
         </div>
