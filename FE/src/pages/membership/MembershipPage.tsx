@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import homepage2 from '@/assets/homepage2.jpg'
 
@@ -8,6 +9,9 @@ export function MembershipPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const totalCards = 3;
 
   const faqs = [
     { q: "Làm thế nào để chuyển đổi từ bản thiết kế sang trang phục thực tế?", a: "Mỗi thiết kế tạo bởi ALTERA sẽ tự động xuất file kỹ thuật số chuẩn xác. Thành viên Premium và Pro có thể bấm 'May đo ngay' để gửi yêu cầu trực tiếp tới xưởng may đối tác của chúng mình và sẽ được hoàn thiện sớm." },
@@ -15,14 +19,41 @@ export function MembershipPage() {
     { q: "Tôi có thể hủy gói hoặc thay đổi chu kỳ thanh toán không?", a: "Có. Bạn có thể nâng cấp, hạ cấp hoặc hủy gói bất kỳ lúc nào ngay trong phần Cài đặt tài khoản mà không phát sinh thêm bất kỳ chi phí ẩn nào." }
   ];
 
-  const handleDotClick = (index: number) => {
+  const scrollToIndex = (index: number) => {
     if (scrollRef.current) {
       const cardWidth = scrollRef.current.clientWidth;
       scrollRef.current.scrollTo({
         left: index * cardWidth,
         behavior: 'smooth'
       });
+      setCurrentIndex(index);
     }
+  };
+
+  useEffect(() => {
+    if (isHovered) return;
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => {
+        const next = (prev + 1) % totalCards;
+        scrollToIndex(next);
+        return next;
+      });
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isHovered]);
+
+  const handleDotClick = (index: number) => {
+    scrollToIndex(index);
+  };
+  
+  const handlePrev = () => {
+    const prev = (currentIndex - 1 + totalCards) % totalCards;
+    scrollToIndex(prev);
+  };
+  
+  const handleNext = () => {
+    const next = (currentIndex + 1) % totalCards;
+    scrollToIndex(next);
   };
 
   return (
@@ -66,9 +97,19 @@ export function MembershipPage() {
           </div>
 
           {/* Right Cards Slider - EXACTLY 1 CARD VISIBLE AT A TIME */}
-          <div className="w-full lg:w-[45%] flex relative justify-center">
+          <div className="w-full lg:w-[45%] flex relative justify-center group/slider">
+            <button onClick={handlePrev} className="absolute -left-6 md:-left-12 top-1/2 -translate-y-1/2 z-20 text-white/30 hover:text-white transition-colors hidden md:block">
+              <ChevronLeft size={48} strokeWidth={1.5} />
+            </button>
+            <button onClick={handleNext} className="absolute -right-6 md:-right-12 top-1/2 -translate-y-1/2 z-20 text-white/30 hover:text-white transition-colors hidden md:block">
+              <ChevronRight size={48} strokeWidth={1.5} />
+            </button>
             {/* The single card container that acts as a window */}
-            <div className="relative w-full max-w-[380px] h-[600px] rounded-[24px] overflow-hidden shadow-2xl bg-white">
+            <div 
+              className="relative w-full max-w-[380px] h-[600px] rounded-[24px] overflow-hidden shadow-2xl bg-white"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
               
               {/* Horizontal Scroll Container inside the card window */}
               <div 
@@ -98,9 +139,9 @@ export function MembershipPage() {
                       GET STARTED
                     </button>
                     <div className="flex justify-center gap-1.5 mt-6 cursor-pointer pb-2">
-                      <div onClick={() => handleDotClick(0)} className="w-5 h-1.5 rounded-full bg-[#0011FF] transition-all"></div>
-                      <div onClick={() => handleDotClick(1)} className="w-1.5 h-1.5 rounded-full bg-[#0011FF]/30 transition-all hover:bg-[#0011FF]/50"></div>
-                      <div onClick={() => handleDotClick(2)} className="w-1.5 h-1.5 rounded-full bg-[#0011FF]/30 transition-all hover:bg-[#0011FF]/50"></div>
+                      <div onClick={() => handleDotClick(0)} className={`h-1.5 rounded-full transition-all ${currentIndex === 0 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
+                      <div onClick={() => handleDotClick(1)} className={`h-1.5 rounded-full transition-all ${currentIndex === 1 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
+                      <div onClick={() => handleDotClick(2)} className={`h-1.5 rounded-full transition-all ${currentIndex === 2 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
                     </div>
                   </div>
                 </div>
@@ -126,9 +167,9 @@ export function MembershipPage() {
                       UPGRADE NOW
                     </button>
                     <div className="flex justify-center gap-1.5 mt-6 cursor-pointer pb-2">
-                      <div onClick={() => handleDotClick(0)} className="w-1.5 h-1.5 rounded-full bg-[#0011FF]/30 transition-all hover:bg-[#0011FF]/50"></div>
-                      <div onClick={() => handleDotClick(1)} className="w-5 h-1.5 rounded-full bg-[#0011FF] transition-all"></div>
-                      <div onClick={() => handleDotClick(2)} className="w-1.5 h-1.5 rounded-full bg-[#0011FF]/30 transition-all hover:bg-[#0011FF]/50"></div>
+                      <div onClick={() => handleDotClick(0)} className={`h-1.5 rounded-full transition-all ${currentIndex === 0 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
+                      <div onClick={() => handleDotClick(1)} className={`h-1.5 rounded-full transition-all ${currentIndex === 1 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
+                      <div onClick={() => handleDotClick(2)} className={`h-1.5 rounded-full transition-all ${currentIndex === 2 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
                     </div>
                   </div>
                 </div>
@@ -154,9 +195,9 @@ export function MembershipPage() {
                       GO PRO
                     </button>
                     <div className="flex justify-center gap-1.5 mt-6 cursor-pointer pb-2">
-                      <div onClick={() => handleDotClick(0)} className="w-1.5 h-1.5 rounded-full bg-[#0011FF]/30 transition-all hover:bg-[#0011FF]/50"></div>
-                      <div onClick={() => handleDotClick(1)} className="w-1.5 h-1.5 rounded-full bg-[#0011FF]/30 transition-all hover:bg-[#0011FF]/50"></div>
-                      <div onClick={() => handleDotClick(2)} className="w-5 h-1.5 rounded-full bg-[#0011FF] transition-all"></div>
+                      <div onClick={() => handleDotClick(0)} className={`h-1.5 rounded-full transition-all ${currentIndex === 0 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
+                      <div onClick={() => handleDotClick(1)} className={`h-1.5 rounded-full transition-all ${currentIndex === 1 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
+                      <div onClick={() => handleDotClick(2)} className={`h-1.5 rounded-full transition-all ${currentIndex === 2 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
                     </div>
                   </div>
                 </div>
