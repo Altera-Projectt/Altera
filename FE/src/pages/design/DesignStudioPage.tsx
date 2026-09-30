@@ -10,6 +10,7 @@ import {
   RefreshCw,
   BookOpen,
   Plus,
+  Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -653,6 +654,33 @@ function DesignCard({
           >
             <RotateCcw className="h-3 w-3" />
             Dùng lại
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 gap-1 text-xs"
+            onClick={async () => {
+              const imgUrl = design.previewImage || design.customImage;
+              if (imgUrl) {
+                try {
+                  const response = await fetch(imgUrl);
+                  const blob = await response.blob();
+                  const url = window.URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = \`design-\${design._id}.png\`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  window.URL.revokeObjectURL(url);
+                } catch (e) {
+                  window.open(imgUrl, '_blank');
+                }
+              }
+            }}
+          >
+            <Download className="h-3 w-3" />
+            Tải về
           </Button>
           <Button
             variant="primary"
