@@ -1149,7 +1149,10 @@ export function DesignStudioPage() {
       const res = await DesignService.getMyDesigns()
       setMyDesigns(res.data.data.designs)
     } catch (err: any) {
-      setLibraryError(err?.response?.data?.message || 'Không thể tải thư viện')
+      console.error('fetchLibrary error:', err);
+      const serverMsg = err?.response?.data?.message;
+      const sysMsg = err?.message || String(err);
+      setLibraryError(serverMsg || \`Không thể tải thư viện: \${sysMsg}\`)
     } finally {
       setLoadingLibrary(false)
     }
