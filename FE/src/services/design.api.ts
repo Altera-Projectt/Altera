@@ -1,4 +1,4 @@
-﻿import api from '@/utils/axios'
+import api from '@/utils/axios'
 import type { ApiResponse } from '@/types/api.types'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -126,11 +126,11 @@ export const DesignService = {
   getDesignTemplate: (id: string) => api.get<ApiResponse<{ template: DesignTemplate }>>(`/templates/${id}`),
   /** AI generate a new design from prompt */
   generateDesign: (payload: GenerateDesignPayload) =>
-    api.post<ApiResponse<GenerateDesignResponse>>('/designs/generate', payload),
+    api.post<ApiResponse<GenerateDesignResponse>>('/designs/generate', payload, { timeout: 60_000 }),
 
   /** Refine an existing design with a new prompt */
   refineDesign: (id: string, prompt: string) =>
-    api.post<ApiResponse<GenerateDesignResponse>>(`/designs/${id}/refine`, { prompt }),
+    api.post<ApiResponse<GenerateDesignResponse>>(`/designs/${id}/refine`, { prompt }, { timeout: 60_000 }),
 
   /** Save a DRAFT design → SAVED */
   saveDesign: (id: string) =>
