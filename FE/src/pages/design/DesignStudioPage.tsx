@@ -74,7 +74,9 @@ function getShirtHex(color: string): string {
   return SHIRT_COLOR_OPTIONS.find((c) => c.value.toLowerCase() === color.toLowerCase())?.hex ?? '#ffffff'
 }
 
-
+function getShirtLabel(colorOrHex: string): string {
+  return SHIRT_COLOR_OPTIONS.find((c) => c.value.toLowerCase() === colorOrHex.toLowerCase() || c.hex.toLowerCase() === colorOrHex.toLowerCase())?.label ?? colorOrHex
+}
 
 // ── Toast (inline, no extra deps) ──────────────────────────────────────────
 
@@ -518,7 +520,7 @@ function ResultControls({
         <div className="flex flex-wrap gap-1.5">
           {design.style && <Badge variant="secondary">{design.style}</Badge>}
           {design.shirtType && <Badge variant="secondary">{design.shirtType}</Badge>}
-          {design.shirtColor && <Badge variant="secondary" className="capitalize">{design.shirtColor}</Badge>}
+          {design.shirtColor && <Badge variant="secondary" className="capitalize">{getShirtLabel(design.shirtColor)}</Badge>}
         </div>
       </div>
 
@@ -996,7 +998,7 @@ export function DesignStudioPage() {
         prompt: vals.prompt.trim(),
         style: vals.style || 'Graphic Art',
         colorPalette: vals.colorPalette || 'Black and white, high contrast',
-        shirtColor: vals.shirtColor || 'white',
+        shirtColor: getShirtHex(vals.shirtColor || 'white'),
       }
       const res = await DesignService.generateDesign(payload as any)
       setCurrentDesign(res.data.data)

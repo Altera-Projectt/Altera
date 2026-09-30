@@ -105,11 +105,11 @@ export function MembershipPage() {
               onMouseLeave={() => setIsHovered(false)}
             >
               {/* Navigation Arrows */}
-              <button onClick={handlePrev} className="absolute left-3 top-1/2 -translate-y-1/2 z-20 text-black/20 hover:text-[#0011FF] bg-black/5 hover:bg-[#0011FF]/10 rounded-full p-1.5 transition-all hidden md:block opacity-0 group-hover/slider:opacity-100">
-                <ChevronLeft size={28} strokeWidth={2.5} />
+              <button onClick={handlePrev} className="absolute left-2 top-[40%] -translate-y-1/2 z-20 text-black/10 hover:text-[#0011FF] bg-transparent hover:bg-[#0011FF]/5 rounded-full p-2 transition-all hidden md:block opacity-0 group-hover/slider:opacity-100">
+                <ChevronLeft size={32} strokeWidth={2} />
               </button>
-              <button onClick={handleNext} className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-black/20 hover:text-[#0011FF] bg-black/5 hover:bg-[#0011FF]/10 rounded-full p-1.5 transition-all hidden md:block opacity-0 group-hover/slider:opacity-100">
-                <ChevronRight size={28} strokeWidth={2.5} />
+              <button onClick={handleNext} className="absolute right-2 top-[40%] -translate-y-1/2 z-20 text-black/10 hover:text-[#0011FF] bg-transparent hover:bg-[#0011FF]/5 rounded-full p-2 transition-all hidden md:block opacity-0 group-hover/slider:opacity-100">
+                <ChevronRight size={32} strokeWidth={2} />
               </button>
 
               {/* The single card container that acts as a window */}
