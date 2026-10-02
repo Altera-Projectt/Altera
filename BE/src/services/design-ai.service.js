@@ -68,7 +68,50 @@ const legacyBuildDesignPrompt = ({ prompt, style, shirtType, colorPalette }) => 
   return pieces.join(' ');
 };
 
-const buildDesignPrompt = ({ idea, style, globalShirtColor }) => `Create a print-ready graphic design for a custom t-shirt.\nUSER IDEA: ${idea}\nART STYLE: ${style}\nT-SHIRT BASE COLOR: ${globalShirtColor}\n\nREQUIREMENTS:\n- Create ONLY the graphic artwork.\n- Do NOT generate a t-shirt or a person wearing it.\n- Do NOT include a background scene.\n- STRICT RULE: Use a transparent background or a solid background that can be easily keyed out.\n- The artwork colors must contrast well against the base shirt color (${globalShirtColor}).\n- Center the main artwork. Make it suitable for printing on fabric.\n- Use strong silhouettes, clean edges, and the exact requested art style.\n- Avoid unnecessary tiny details.\n- Avoid photorealistic product photography.\n- The artwork should look intentional and professionally designed.\n- Do not add random text, letters, logos, watermarks, or brand names unless explicitly requested by the user.\n\nIMPORTANT:\nThe final result is artwork intended to be placed ON a t-shirt.\nIt is NOT a picture of a t-shirt.`;
+const buildStyleModifier = (style = '') => {
+  switch (style.toLowerCase().trim()) {
+    case 'watercolor':
+      return 'Use expressive watercolor splashes, fluid brushstrokes, and soft color blending. Edges can be organic and naturally fading. Layered translucent washes of color, wet-on-wet bleeding effects, and delicate paper texture grain.';
+    case 'vintage illustration':
+      return 'Apply a retro aesthetic with distressed textures, faded and desaturated colors, cross-hatching, and classic 1970s–1980s graphic illustration techniques. Include halftone dot grain, ink-stamp imperfections, and a worn, timeworn quality.';
+    case 'streetwear bold':
+      return 'Use large bold graphic shapes, extreme high-contrast colors, heavy black outlines, and aggressive typography energy. Inspired by 90s streetwear and skate graphics — loud, dominant, and unapologetically impactful.';
+    case 'minimalist line art':
+      return 'Use extreme simplicity with elegant single-weight or variable-weight line work on ample negative space. Vector-clean precision, no fills, just flowing continuous contour lines. Refined, editorial, and architectural in feel.';
+    case 'anime / manga':
+      return 'Use vibrant cel-shaded colors, dynamic action poses, manga-style speed lines, bold ink outlines, and expressive Japanese anime / manga illustration conventions. Dramatic lighting, heroic energy, and iconic character composition.';
+    case 'abstract':
+      return 'Employ bold geometric abstraction: intersecting planes, kinetic motion trails, deconstructed organic forms, and a visually striking non-representational composition. Heavily influenced by Bauhaus, Swiss International Style, and contemporary digital art.';
+    case 'graphic art':
+    default:
+      return 'Produce a masterfully crafted vector-style graphic artwork. Strong silhouettes, deliberate color blocking, clear print-ready lines, high visual impact, and a professional illustration finish suitable for premium garment printing.';
+  }
+};
+
+const buildDesignPrompt = ({ idea, style, globalShirtColor }) => {
+  const styleModifier = buildStyleModifier(style);
+  return `Create a breathtaking, high-quality graphic design intended to be printed on a t-shirt.
+
+USER'S CORE CONCEPT: "${idea}"
+ART STYLE: "${style}"
+SHIRT BASE COLOR: "${globalShirtColor}"
+
+SPECIFIC STYLE INSTRUCTIONS:
+- ${styleModifier}
+
+TECHNICAL & PRINTING REQUIREMENTS:
+- Create ONLY the graphic artwork. DO NOT generate a picture of a t-shirt, a mockup, or a person wearing clothing.
+- The design must function as a standalone decal or print graphic.
+- Use a pure, solid background color that contrasts heavily with the main artwork to allow for easy background removal later.
+- Do not let the artwork bleed out to the absolute edges of the image; leave a small safe margin.
+- The artwork's color palette must be visible and contrast well against the base shirt color (${globalShirtColor}).
+- Do NOT add random text, letters, logos, or watermarks unless explicitly requested in the user's concept.
+- Center the main artwork. Use strong silhouettes, clean edges, and print-friendly forms.
+- The artwork should look intentional, artistically excellent, and professionally designed.
+
+IMPORTANT: The final result is artwork intended to be placed ON a t-shirt. It is NOT a picture of a t-shirt.
+Focus entirely on executing the user's concept with the highest artistic quality and creativity.`;
+};
 
 const generateOpenAIImage = async (prompt) => {
   if (!process.env.OPENAI_API_KEY) {

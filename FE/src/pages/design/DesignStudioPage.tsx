@@ -605,14 +605,14 @@ function DesignCard({
   return (
     <Card hoverable className="flex flex-col">
       <div
-        className="w-full bg-[var(--color-muted)] overflow-hidden"
-        style={{ height: 200, borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}
+        className="w-full bg-[var(--color-muted)] overflow-hidden flex items-center justify-center relative"
+        style={{ aspectRatio: '1/1', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}
       >
         {img ? (
           <img
             src={img}
             alt={design.prompt ?? 'Design'}
-            className="w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[var(--color-muted-foreground)]">
@@ -706,6 +706,100 @@ function DesignCard({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+// ── AI Progress Bar ────────────────────────────────────────────────────────
+
+const AI_STATUS_MESSAGES = [
+  'Phân tích ý tưởng của bạn…',
+  'Chọn bảng màu phù hợp…',
+  'Phác thảo bố cục…',
+  'Tô màu và thêm chi tiết…',
+  'Tinh chỉnh độ nét…',
+  'Hoàn thiện artwork…',
+  'Kiểm tra chất lượng in…',
+  'Sắp hoàn thành…',
+]
+
+function AIProgressBar() {
+  const [progress, setProgress] = useState(0)
+  const [msgIdx, setMsgIdx] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const msgIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    // Simulate realistic progress curve
+    let current = 0
+    intervalRef.current = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) {
+          // Stall near the end — wait for real response
+          clearInterval(intervalRef.current!)
+          return 90
+        }
+        // Ease-out: fast at start, slows toward 90%
+        const remaining = 90 - prev
+        const increment = Math.max(0.3, remaining * 0.025)
+        current = Math.min(90, prev + increment)
+        return current
+      })
+    }, 400)
+
+    // Rotate status messages
+    msgIntervalRef.current = setInterval(() => {
+      setMsgIdx((i) => (i + 1) % AI_STATUS_MESSAGES.length)
+    }, 3200)
+
+    return () => {
+      clearInterval(intervalRef.current!)
+      clearInterval(msgIntervalRef.current!)
+    }
+  }, [])
+
+  return (
+    <div className="flex flex-col items-center gap-3 w-full max-w-[260px]">
+      {/* Status message */}
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={msgIdx}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.4 }}
+          className="text-[10px] font-medium uppercase tracking-[0.2em] text-white/40 text-center h-4"
+        >
+          {AI_STATUS_MESSAGES[msgIdx]}
+        </motion.p>
+      </AnimatePresence>
+
+      {/* Progress track */}
+      <div className="relative w-full h-[3px] rounded-full overflow-hidden bg-white/[0.08]">
+        <motion.div
+          className="absolute left-0 top-0 h-full rounded-full"
+          style={{
+            background: 'linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.9) 100%)',
+            boxShadow: '0 0 8px rgba(255,255,255,0.4)',
+          }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        />
+        {/* Shimmer sweep */}
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
+            backgroundSize: '200% 100%',
+            animation: 'shimmer 2s ease-in-out infinite',
+          }}
+        />
+      </div>
+
+      {/* Percentage */}
+      <p className="text-[10px] font-mono text-white/25">
+        {Math.round(progress)}%
+      </p>
+    </div>
   )
 }
 
@@ -812,34 +906,79 @@ function CreateTab({
       {/* ── Central Canvas ── */}
       <div className="flex-1 relative bg-[#0d0d0d] flex items-center justify-center p-10 min-h-[550px]">
 
-        {/* ── Shimmer loading overlay ── */}
+        {/* ── AI Generation Loading Overlay ── */}
         <AnimatePresence>
           {generating && (
             <motion.div
-              key="shimmer"
+              key="ai-loading"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-6"
+              transition={{ duration: 0.35 }}
+              className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-8"
+              style={{ background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.03) 0%, #0d0d0d 70%)' }}
             >
-              {/* Shimmer card */}
-              <div className="relative w-full max-w-[340px] overflow-hidden rounded-[var(--radius-xl)] border border-white/[0.06]"
-                style={{ aspectRatio: '3/4' }}
-              >
-                <div className="absolute inset-0 bg-[var(--color-muted)]" />
+              {/* Spinner + Pulse rings */}
+              <div className="relative flex items-center justify-center">
+                {/* Outer pulse ring */}
                 <div
-                  className="absolute inset-0"
+                  className="absolute rounded-full border border-white/[0.06]"
+                  style={{ width: 160, height: 160, animation: 'ping 2.2s cubic-bezier(0,0,0.2,1) infinite' }}
+                />
+                {/* Middle ring */}
+                <div
+                  className="absolute rounded-full border border-white/[0.10]"
+                  style={{ width: 120, height: 120, animation: 'ping 2.2s cubic-bezier(0,0,0.2,1) infinite 0.4s' }}
+                />
+                {/* Spinner track */}
+                <div
+                  className="absolute rounded-full"
                   style={{
-                    background: 'linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.06) 50%, transparent 80%)',
-                    backgroundSize: '200% 100%',
-                    animation: 'shimmer 1.8s ease-in-out infinite',
+                    width: 88,
+                    height: 88,
+                    border: '2px solid rgba(255,255,255,0.07)',
                   }}
                 />
+                {/* Spinning arc */}
+                <svg
+                  className="absolute"
+                  width={88}
+                  height={88}
+                  viewBox="0 0 88 88"
+                  style={{ animation: 'spin 1.1s linear infinite' }}
+                >
+                  <circle
+                    cx={44} cy={44} r={42}
+                    fill="none"
+                    stroke="white"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeDasharray="60 205"
+                    strokeDashoffset={0}
+                    opacity={0.85}
+                  />
+                </svg>
+                {/* Center icon */}
+                <div
+                  className="relative z-10 flex items-center justify-center rounded-full bg-white/[0.06] backdrop-blur-sm"
+                  style={{ width: 56, height: 56 }}
+                >
+                  <Wand2 className="h-5 w-5 text-white/70" style={{ animation: 'pulse 2s ease-in-out infinite' }} />
+                </div>
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--color-muted-foreground)] animate-pulse">
-                AI đang phác thảo
-              </p>
+
+              {/* Text block */}
+              <div className="flex flex-col items-center gap-3 text-center">
+                <p className="text-sm font-semibold tracking-wide text-white/80">
+                  AI đang tạo thiết kế…
+                </p>
+                <p className="text-[11px] text-white/35 max-w-[200px] leading-relaxed">
+                  Quá trình này có thể mất 30–90 giây, vui lòng đợi
+                </p>
+              </div>
+
+              {/* Animated progress bar */}
+              <AIProgressBar />
             </motion.div>
           )}
         </AnimatePresence>
@@ -1035,6 +1174,8 @@ export function DesignStudioPage() {
       startCooldown()
     } catch (err: any) {
       const status = err.response?.status
+      const isTimeout = err.code === 'ECONNABORTED' || err.code === 'ERR_CANCELED' || err.message?.includes('timeout')
+
       if (status === 429) {
         setGenerateError('Vui lòng chờ trước khi tạo thiết kế mới.')
         startCooldown()
@@ -1042,6 +1183,43 @@ export function DesignStudioPage() {
         setGenerateError('Dịch vụ đang bận, vui lòng thử lại sau ít phút.')
       } else if (status === 400) {
         setGenerateError('Vui lòng mô tả hình muốn in.')
+      } else if (isTimeout || (!status && !err.response)) {
+        // ── Timeout recovery: The AI may have finished generating but the
+        //    HTTP request expired. Poll the library for the latest DRAFT
+        //    design created in the last 3 minutes and show it if found.
+        try {
+          const libRes = await DesignService.getMyDesigns(1, 5)
+          const designs = libRes.data.data.designs
+          const cutoff = Date.now() - 3 * 60 * 1000 // 3 minutes ago
+          const latestDraft = designs.find(
+            (d) =>
+              d.status === 'DRAFT' &&
+              d.prompt?.toLowerCase().includes(vals.prompt.trim().toLowerCase().slice(0, 20)) &&
+              new Date(d.createdAt).getTime() > cutoff
+          ) ?? designs.find(
+            (d) => d.status === 'DRAFT' && new Date(d.createdAt).getTime() > cutoff
+          )
+
+          if (latestDraft && (latestDraft.previewImage || latestDraft.customImage)) {
+            // Found! Show the newly generated design.
+            const syntheticResponse = {
+              imageUrl: latestDraft.previewImage || latestDraft.customImage || '',
+              preview: latestDraft.previewImage || latestDraft.customImage || '',
+              prompt: latestDraft.prompt || '',
+              designId: latestDraft._id,
+              design: latestDraft,
+            }
+            setCurrentDesign(syntheticResponse)
+            setViewState('result')
+            setIsSaved(false)
+            startCooldown()
+            showToast('Thiết kế đã được tạo!')
+          } else {
+            setGenerateError('Yêu cầu mất quá lâu. Ảnh có thể đã được tạo — hãy kiểm tra Thư viện.')
+          }
+        } catch {
+          setGenerateError('Yêu cầu mất quá lâu. Hãy kiểm tra Thư viện để xem ảnh đã được tạo chưa.')
+        }
       } else {
         setGenerateError('Đã có lỗi xảy ra, vui lòng thử lại.')
       }
