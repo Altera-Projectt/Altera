@@ -668,7 +668,7 @@ function DesignCard({
                   const url = window.URL.createObjectURL(blob);
                   const link = document.createElement('a');
                   link.href = url;
-                  link.download = \`design-\${design._id}.png\`;
+                  link.download = `design-${design._id}.png`;
                   document.body.appendChild(link);
                   link.click();
                   document.body.removeChild(link);
@@ -1114,7 +1114,7 @@ export function DesignStudioPage() {
   const { toasts, show: showToast } = useToast()
 
   // ── State ─────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'create' | 'custom' | 'library'>('create')
+  const [activeTab, setActiveTab] = useState<'create' | 'custom' | 'library'>(() => new URLSearchParams(window.location.search).has('draft') ? 'custom' : 'create')
   const [viewState, setViewState] = useState<'form' | 'result'>('form')
   const [generating, setGenerating] = useState(false)
   const [refining, setRefining] = useState(false)
@@ -1330,7 +1330,7 @@ export function DesignStudioPage() {
       console.error('fetchLibrary error:', err);
       const serverMsg = err?.response?.data?.message;
       const sysMsg = err?.message || String(err);
-      setLibraryError(serverMsg || \`Không thể tải thư viện: \${sysMsg}\`)
+      setLibraryError(serverMsg || `Không thể tải thư viện: ${sysMsg}`)
     } finally {
       setLoadingLibrary(false)
     }

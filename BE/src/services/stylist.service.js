@@ -1,5 +1,6 @@
 const OutfitRecommendation = require('../models/OutfitRecommendation');
 const User = require('../models/User');
+const mongoose = require('mongoose');
 const cerebrasService = require('./cerebras.service');
 const productService = require('./product.service');
 const logger = require('../utils/logger');
@@ -209,7 +210,9 @@ const recommend = async (userId, { style, gender, season, budget, occasion, quiz
     limit: 6 
   });
   const catalog = buildCatalogPromptSection(products);
-  const user = await User.findById(userId).select('measurements preferences').lean();
+  const user = mongoose.isValidObjectId(userId)
+    ? await User.findById(userId).select('measurements preferences').lean()
+    : null;
 
   const colorPaletteHint = derivedQuizResult?.colorPalette?.join(', ') || '';
   const keyPiecesHint = derivedQuizResult?.keyPieces?.join(', ') || '';

@@ -7,6 +7,7 @@ const DesignerLike = require('../models/DesignerLike');
 const CustomDesignDraft = require('../models/CustomDesignDraft');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Product = require('../models/Product');
 const slugify = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const fail = (status, message) => Object.assign(new Error(message), { statusCode: status });
 const profileForUser = async (userId) => {
@@ -18,6 +19,100 @@ const profileForUser = async (userId) => {
   return profile;
 };
 const ownedProfile = (userId) => DesignerProfile.findOne({ userId });
+const hasAvailableBaseVariant = async (design) => {
+  if (!mongoose.Types.ObjectId.isValid(design.productId)) return false;
+  const product = await Product.findOne({ _id: design.productId, isActive: true }).select('stock colors sizes printingTechniques');
+  if (!product || product.stock < 1) return false;
+  const color = product.colors.find((item) => item.name === design.color?.name);
+  const size = product.sizes.find((item) => item.label === design.size);
+  const technique = product.printingTechniques.find((item) => item.code === design.printingTechnique);
+  return Boolean(color && color.stock > 0 && size && size.stock > 0 && technique);
+};
+
+exports.getMarketplace = async (req, res, next) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(48, Math.max(1, Number(req.query.limit) || 16));
+    const match = { status: 'PUBLISHED' };
+    if (req.query.search) {
+      const search = String(req.query.search).trim().slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      if (search) {
+        const creators = await DesignerProfile.find({ $or: [{ username: { $regex: search, $options: 'i' } }, { displayName: { $regex: search, $options: 'i' } }] }).select('_id').lean();
+        match.$or = [{ name: { $regex: search, $options: 'i' } }, { tags: { $regex: search, $options: 'i' } }, { category: { $regex: search, $options: 'i' } }, { designerId: { $in: creators.map((creator) => creator._id) } }];
+      }
+    }
+    if (req.query.category) match.category = String(req.query.category).slice(0, 80);
+    if (req.query.color) match['color.name'] = String(req.query.color).slice(0, 80);
+    if (req.query.size) match.size = String(req.query.size).slice(0, 20);
+    if (req.query.collection && mongoose.Types.ObjectId.isValid(req.query.collection)) match.collectionId = new mongoose.Types.ObjectId(req.query.collection);
+    if (req.query.designer) {
+      const profile = await DesignerProfile.findOne({ username: String(req.query.designer).toLowerCase() }).select('_id');
+      if (!profile) return res.json({ success: true, data: { designs: [], pagination: { page, limit, total: 0, totalPages: 0 } } });
+      match.designerId = profile._id;
+    }
+    if (req.query.minPrice !== undefined || req.query.maxPrice !== undefined) {
+      const price = {};
+      if (req.query.minPrice !== undefined && Number.isFinite(Number(req.query.minPrice))) price.$gte = Number(req.query.minPrice);
+      if (req.query.maxPrice !== undefined && Number.isFinite(Number(req.query.maxPrice))) price.$lte = Number(req.query.maxPrice);
+      if (Object.keys(price).length) match.price = price;
+    }
+    const sortOptions = { Newest: { createdAt: -1 }, Popular: { likesCount: -1, createdAt: -1 }, 'Best Selling': { salesCount: -1, createdAt: -1 }, 'Price Low → High': { price: 1, createdAt: -1 }, 'Price High → Low': { price: -1, createdAt: -1 } };
+    const sort = sortOptions[req.query.sort] || { createdAt: -1 };
+    const pipeline = [
+      { $match: match },
+      { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } },
+      { $match: { '_baseProduct.isActive': true } },
+      { $lookup: { from: 'designerlikes', localField: '_id', foreignField: 'designId', as: '_likes' } },
+      { $addFields: { likesCount: { $size: '$_likes' } } },
+      { $lookup: { from: 'orders', let: { designId: '$_id' }, pipeline: [
+        { $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' },
+        { $match: { $expr: { $eq: ['$items.marketplaceDesignId', '$$designId'] } } },
+        { $group: { _id: null, count: { $sum: '$items.quantity' } } },
+      ], as: '_sales' } },
+      { $addFields: { salesCount: { $ifNull: [{ $arrayElemAt: ['$_sales.count', 0] }, 0] } } },
+      { $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit },
+      { $lookup: { from: 'designerprofiles', localField: 'designerId', foreignField: '_id', as: 'designerId' } },
+      { $unwind: '$designerId' },
+      { $unwind: '$_baseProduct' },
+      { $addFields: { productId: '$_baseProduct' } },
+      { $project: { _likes: 0, _sales: 0, _baseProduct: 0, 'designerId.userId': 0, 'designerId.__v': 0, 'productId.__v': 0 } },
+    ];
+    const [designs, total] = await Promise.all([
+      MarketplaceDesign.aggregate(pipeline),
+      MarketplaceDesign.aggregate([{ $match: match }, { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } }, { $match: { '_baseProduct.isActive': true } }, { $count: 'total' }]).then((result) => result[0]?.total || 0),
+    ]);
+    if (req.user && designs.length) {
+      const liked = new Set((await DesignerLike.find({ userId: req.user._id, designId: { $in: designs.map((item) => item._id) } }).distinct('designId')).map(String));
+      designs.forEach((item) => { item.isLiked = liked.has(String(item._id)); });
+    } else designs.forEach((item) => { item.isLiked = false; });
+    res.json({ success: true, data: { designs, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } } });
+  } catch (error) { next(error); }
+};
+
+exports.getFeaturedDesigners = async (req, res, next) => {
+  try {
+    const limit = Math.min(16, Math.max(1, Number(req.query.limit) || 8));
+    const designers = await DesignerProfile.aggregate([
+      { $lookup: { from: 'marketplacedesigns', let: { profileId: '$_id' }, pipeline: [
+        { $match: { $expr: { $and: [{ $eq: ['$designerId', '$$profileId'] }, { $eq: ['$status', 'PUBLISHED'] }] } } },
+        { $project: { _id: 1 } },
+      ], as: '_designs' } },
+      { $addFields: { publishedDesigns: { $size: '$_designs' } } },
+      { $lookup: { from: 'designerfollows', localField: '_id', foreignField: 'designerId', as: '_followers' } },
+      { $addFields: { followersCount: { $size: '$_followers' } } },
+      { $lookup: { from: 'orders', let: { profileId: '$_id' }, pipeline: [
+        { $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' },
+        { $match: { $expr: { $eq: ['$items.designerId', '$$profileId'] } } },
+        { $group: { _id: null, salesCount: { $sum: '$items.quantity' } } },
+      ], as: '_sales' } },
+      { $addFields: { salesCount: { $ifNull: [{ $arrayElemAt: ['$_sales.salesCount', 0] }, 0] } } },
+      { $match: { publishedDesigns: { $gt: 0 } } },
+      { $sort: { salesCount: -1, followersCount: -1, publishedDesigns: -1 } }, { $limit: limit },
+      { $project: { _id: 1, username: 1, displayName: 1, avatar: 1, coverImage: 1, publishedDesigns: 1, followersCount: 1, salesCount: 1 } },
+    ]);
+    res.json({ success: true, data: { designers } });
+  } catch (error) { next(error); }
+};
 
 exports.getSummary = async (req, res, next) => {
   try {
@@ -41,6 +136,21 @@ exports.getSummary = async (req, res, next) => {
       paidOrders: revenue[0]?.totalOrders || 0, commissionConfigured: commissionRate !== null,
       commissionRate, platformFee, designerEarnings: platformFee === null ? null : grossSales - platformFee,
     } });
+  } catch (error) { next(error); }
+};
+
+exports.getDesignerOrders = async (req, res, next) => {
+  try {
+    const profile = await profileForUser(req.user._id);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const limit = Math.min(40, Math.max(1, Number(req.query.limit) || 20));
+    const filter = { 'items.designerId': profile._id, paymentStatus: 'PAID' };
+    const [orders, total] = await Promise.all([
+      Order.find(filter).select('status paymentStatus createdAt items').sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+      Order.countDocuments(filter),
+    ]);
+    const ownedOrders = orders.map((order) => ({ ...order, items: order.items.filter((item) => String(item.designerId) === String(profile._id)) }));
+    res.json({ success: true, data: { orders: ownedOrders, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } } });
   } catch (error) { next(error); }
 };
 exports.getMyProfile = async (req, res, next) => {
@@ -107,9 +217,10 @@ exports.createDesign = async (req, res, next) => {
   try {
     const profile = await profileForUser(req.user._id), draft = await CustomDesignDraft.findOne({ _id: req.body.draftId, userId: req.user._id });
     if (!draft) throw fail(404, 'Owned design draft not found');
-    const name = String(req.body.name || '').trim(), price = Number(req.body.price), hasFront = Boolean(draft.frontDesign?.layers?.length), hasBack = Boolean(draft.backDesign?.layers?.length);
+    const name = String(req.body.name || '').trim(), price = Number(req.body.price), hasFront = Boolean(draft.frontDesign?.layers?.some((layer) => layer && layer.visible !== false)), hasBack = Boolean(draft.backDesign?.layers?.some((layer) => layer && layer.visible !== false));
     const hasRequiredLayers = draft.printSide === 'BACK' ? hasBack : draft.printSide === 'BOTH' ? hasFront && hasBack : hasFront;
     if (!name || !draft.productId || !draft.color || !draft.size || !hasRequiredLayers || !draft.thumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, color, size, design layer, preview, and valid price are required');
+    if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product, color, size, or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
     const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: 'PENDING_REVIEW' });
     res.status(201).json({ success: true, data: { design } });
@@ -150,7 +261,7 @@ exports.follow = async (req, res, next) => {
 };
 exports.unfollow = async (req, res, next) => { try { await DesignerFollow.deleteOne({ followerId: req.user._id, designerId: req.params.id }); res.json({ success: true }); } catch (error) { next(error); } };
 exports.getDesign = async (req, res, next) => {
-  try { const design = await MarketplaceDesign.findOne({ slug: req.params.slug, status: 'PUBLISHED' }).populate('designerId', 'username displayName avatar').populate('productId', 'name imageUrl price sizes colors printingTechniques'); if (!design) throw fail(404, 'Design not found'); const [likes, sales, isLiked] = await Promise.all([DesignerLike.countDocuments({ designId: design._id }), Order.aggregate([{ $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.marketplaceDesignId': design._id } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } }]), req.user ? DesignerLike.exists({ userId: req.user._id, designId: design._id }) : null]); res.json({ success: true, data: { design: design.toObject(), likesCount: likes, salesCount: sales[0]?.count || 0, isLiked: Boolean(isLiked) } }); }
+  try { const design = await MarketplaceDesign.findOne({ slug: req.params.slug, status: 'PUBLISHED' }).populate('designerId', 'username displayName avatar').populate('productId', 'name imageUrl price sizes colors printingTechniques isActive'); if (!design || !design.productId?.isActive) throw fail(404, 'Design not found'); const [likes, sales, isLiked] = await Promise.all([DesignerLike.countDocuments({ designId: design._id }), Order.aggregate([{ $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.marketplaceDesignId': design._id } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } }]), req.user ? DesignerLike.exists({ userId: req.user._id, designId: design._id }) : null]); res.json({ success: true, data: { design: design.toObject(), likesCount: likes, salesCount: sales[0]?.count || 0, isLiked: Boolean(isLiked) } }); }
   catch (error) { next(error); }
 };
 exports.moderate = async (req, res, next) => { try { const status = req.body.status; if (!['PUBLISHED', 'REJECTED', 'ARCHIVED'].includes(status)) throw fail(400, 'Invalid moderation status'); const design = await MarketplaceDesign.findByIdAndUpdate(req.params.id, { status, rejectionReason: status === 'REJECTED' ? String(req.body.rejectionReason || '').slice(0, 1000) : '' }, { new: true }); if (!design) throw fail(404, 'Design not found'); res.json({ success: true, data: { design } }); } catch (error) { next(error); } };

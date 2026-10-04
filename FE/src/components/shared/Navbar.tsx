@@ -28,9 +28,10 @@ interface NavItem {
 
 const NAV_LINKS: NavItem[] = [
   { label: 'About us', href: '/about' },
+  { label: 'Design Market', href: '/marketplace' },
   { label: 'AI Suggest', href: '/outfit' },
   { label: 'AI Design', href: '/design' },
-  { label: 'Studio', href: '/products' },
+  { label: 'Studio', href: '/studio' },
   { label: 'Membership', href: '/membership' },
 ]
 
@@ -112,7 +113,7 @@ export function Navbar() {
                 </Link>
               </Button>
               <Button variant="ghost" size="icon" asChild aria-label="My Designs" className="text-white hover:bg-white/10 hover:text-white">
-                <Link to="/designs">
+                <Link to="/my-designs">
                   <Palette className="h-[18px] w-[18px]" />
                 </Link>
               </Button>
@@ -251,7 +252,7 @@ export function Navbar() {
                     Yêu thích
                   </NavLink>
                   <NavLink
-                    to="/designs"
+                    to="/my-designs"
                     onClick={() => setMobileOpen(false)}
                     className={({ isActive }) =>
                       cn(

@@ -93,6 +93,7 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
   const [undoStack, setUndoStack] = useState<DesignState[]>([])
   const [redoStack, setRedoStack] = useState<DesignState[]>([])
   const [drafts, setDrafts] = useState<CustomDesignDraft[]>([])
+  const requestedDraftRef = useRef('')
   const [draftId, setDraftId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [draftNameInput, setDraftNameInput] = useState('')
@@ -304,7 +305,7 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
       setPublishCollections(designerResponse.data.collections || [])
     } catch { setPublishCollections([]) }
   }
-  const openDraft = async (draft: CustomDesignDraft) => {
+  const openDraft = useCallback(async (draft: CustomDesignDraft) => {
     try {
       const response = await DesignService.getCustomDraft(draft._id)
       const saved = response.data.data.draft
@@ -324,7 +325,22 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
       setDraftId(saved._id); setDraftName(saved.name); setDraftStatus('saved')
       setShowDraftGallery(false); setDraftError('')
     } catch (openError: unknown) { setDraftError(errorMessage(openError, 'Could not open this draft.')) }
-  }
+  }, [products])
+  useEffect(() => {
+    const requestedId = new URLSearchParams(window.location.search).get('draft')
+    if (!requestedId || requestedDraftRef.current === requestedId || !isAuthenticated || !products.length) return
+    const requestedDraft = drafts.find((draft) => draft._id === requestedId)
+    if (!requestedDraft) return
+    requestedDraftRef.current = requestedId
+    const timer = window.setTimeout(() => {
+      void openDraft(requestedDraft).then(() => {
+        const url = new URL(window.location.href)
+        url.searchParams.delete('draft')
+        window.history.replaceState({}, '', url)
+      })
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [drafts, isAuthenticated, products, openDraft])
   const renameDraft = async (draft: CustomDesignDraft) => {
     const name = window.prompt('Design name', draft.name)?.trim()
     if (!name || name === draft.name) return

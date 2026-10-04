@@ -47,7 +47,7 @@ test('generateDesign calls OpenAI once for transparent PNG print artwork', async
     assert.equal(imageRequest.background, 'transparent');
     assert.equal(imageRequest.output_format, 'png');
     assert.equal(imageRequest.n, 1);
-    assert.match(imageRequest.prompt, /USER IDEA: a dragon print/);
+    assert.match(imageRequest.prompt, /USER'S CORE CONCEPT: "a dragon print"/);
     assert.equal(result.imageUrl, 'https://cdn.example.com/generated.png');
     assert.equal(result.design.customImage, 'https://cdn.example.com/generated.png');
   } finally {

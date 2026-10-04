@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight } from 'lucide-react'
@@ -6,11 +7,12 @@ import homepage0 from '@/assets/homepage0.png'
 import homepage1 from '@/assets/homepage1.jpg'
 import homepage2 from '@/assets/homepage2.jpg'
 import logoSvg from '@/assets/logo2.png'
+import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
 
 const FEATURES = [
   {
     title: 'Shop Collection',
-    path: '/products',
+    path: '/marketplace',
     tags: ['Curated Styles', 'Premium Quality', 'Seasonal Drops']
   },
   {
@@ -31,8 +33,14 @@ const FEATURES = [
 ]
 
 export function HomePage() {
-
-  // Static Feature list renders directly
+  const [trending, setTrending] = useState<MarketplaceDesign[]>([])
+  useEffect(() => {
+    let active = true
+    MarketplaceService.list({ sort: 'Best Selling', limit: 4 }).then(({ data }) => {
+      if (active) setTrending(data.data.designs)
+    }).catch(() => { if (active) setTrending([]) })
+    return () => { active = false }
+  }, [])
 
   return (
     <div className="flex flex-col bg-white text-black overflow-hidden font-body selection:bg-electric-blue selection:text-white">
@@ -40,15 +48,22 @@ export function HomePage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           SECTION 1 — HERO
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative h-screen w-full flex items-center justify-center bg-gradient-brand">
-        <motion.h1 
-          className="heading-brand text-[clamp(4rem,20vw,15rem)] text-white tracking-tighter leading-none select-none"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-        >
-          ALTERA
-        </motion.h1>
+      <section className="relative flex min-h-[76dvh] items-end overflow-hidden bg-neutral-950 px-6 pb-14 pt-28 text-white md:min-h-[82dvh] md:px-12 md:pb-20">
+        <img src={homepage1} alt="ALTERA custom fashion" className="absolute inset-0 h-full w-full object-cover opacity-65" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/25 to-transparent" />
+        <motion.div className="relative mx-auto w-full max-w-7xl" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7 }}>
+          <p className="mb-5 text-xs font-semibold uppercase tracking-[.24em]">ALTERA · Wear your own idea</p>
+          <h1 className="max-w-4xl text-5xl font-black uppercase leading-[.94] tracking-tight md:text-8xl">Khám phá thiết kế độc đáo</h1>
+          <p className="mt-5 max-w-xl text-sm text-white/80 md:text-base">Chọn thiết kế từ cộng đồng hoặc tự tạo chiếc áo mang dấu ấn của bạn.</p>
+          <div className="mt-8 flex flex-wrap gap-3"><Link to="/marketplace" className="bg-white px-6 py-3 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-neutral-200">Khám phá ngay</Link><Link to="/design" className="border border-white px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-white hover:text-black">Thiết kế áo</Link></div>
+        </motion.div>
+      </section>
+
+      <section className="bg-white px-6 py-16 md:py-24">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8 flex items-end justify-between gap-4 border-b border-neutral-200 pb-5"><div><p className="text-xs uppercase tracking-[.2em] text-neutral-500">From the community</p><h2 className="mt-2 text-3xl font-bold uppercase tracking-tight">Creator best sellers</h2></div><Link to="/marketplace" className="text-xs font-semibold uppercase tracking-widest underline">Explore market</Link></div>
+          {trending.length ? <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">{trending.map((design) => <Link to={`/design/${design.slug}`} key={design._id} className="group"><div className="aspect-[4/5] overflow-hidden bg-neutral-100"><img src={design.thumbnail} alt={design.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/></div><h3 className="mt-3 truncate text-sm font-semibold uppercase">{design.name}</h3><p className="mt-1 text-xs text-neutral-500">{design.price.toLocaleString('vi-VN')} ₫ · {design.designerId.displayName}</p></Link>)}</div> : <div className="border-y border-neutral-200 py-14 text-center text-sm text-neutral-500"><p>Chưa có thiết kế được duyệt.</p><Link to="/design" className="mt-3 inline-block font-semibold text-black underline">Tạo thiết kế đầu tiên</Link></div>}
+        </div>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -63,7 +78,7 @@ export function HomePage() {
             We bring architecture to life through craft and innovation. Trusted by architects who demand precision, beauty, and care.
           </h2>
           <Button asChild variant="primary" className="bg-black text-white hover:bg-neutral-800 rounded-none px-12 py-6 uppercase tracking-widest font-bold text-xs border-none">
-            <Link to="/products">Shop <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Link to="/marketplace">Shop <ArrowRight className="ml-2 h-4 w-4" /></Link>
           </Button>
         </div>
       </section>

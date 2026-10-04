@@ -5,7 +5,7 @@ import { MainLayout, AdminLayout } from '@/layouts'
 import { ProtectedRoute } from './ProtectedRoute'
 
 // Public Pages
-import { HomePage } from '@/pages/home/HomePage'
+import { MarketplaceHomePage } from '@/pages/home/MarketplaceHomePage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
@@ -31,8 +31,10 @@ import { CheckoutPage } from '@/pages/checkout/CheckoutPage'
 import { WishlistPage } from '@/pages/wishlist/WishlistPage'
 import { DesignerProfilePage } from '@/pages/designer/DesignerProfilePage'
 import { DesignDetailPage } from '@/pages/designer/DesignDetailPage'
-import { DesignerDashboardPage } from '@/pages/designer/DesignerDashboardPage'
+import { CreatorStudioDashboardPage } from '@/pages/designer/CreatorStudioDashboardPage'
 import { MyDesignsPage } from '@/pages/design/MyDesignsPage'
+import { MyCreatorDesignsPage } from '@/pages/design/MyCreatorDesignsPage'
+import { MarketplacePage } from '@/pages/marketplace/MarketplacePage'
 
 // Admin Pages
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
@@ -50,8 +52,10 @@ export const router = createBrowserRouter([
     element: <MainLayout />,
     errorElement: <NotFoundPage />,
     children: [
-      { index: true, element: <HomePage /> },
+      { index: true, element: <MarketplaceHomePage /> },
       { path: 'products', element: <ProductsPage /> },
+      { path: 'marketplace', element: <MarketplacePage /> },
+      { path: 'shop', element: <MarketplacePage /> },
       { path: 'products/:id', element: <ProductDetailPage /> },
       { path: 'designer/:username', element: <DesignerProfilePage /> },
       { path: 'design/:slug', element: <DesignDetailPage /> },
@@ -86,7 +90,9 @@ export const router = createBrowserRouter([
           { path: 'checkout', element: <CheckoutPage /> },
           { path: 'wishlist', element: <WishlistPage /> },
           { path: 'designs', element: <MyDesignsPage /> },
-          { path: 'designer/dashboard', element: <DesignerDashboardPage /> },
+          { path: 'my-designs', element: <MyCreatorDesignsPage /> },
+          { path: 'designer/dashboard', element: <CreatorStudioDashboardPage /> },
+          { path: 'studio', element: <CreatorStudioDashboardPage /> },
         ],
       },
       { path: '*', element: <NotFoundPage /> },
