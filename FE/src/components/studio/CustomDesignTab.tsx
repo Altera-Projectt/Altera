@@ -193,7 +193,7 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
     setUploading(true)
     try {
       const { data } = await DesignService.uploadCustomImage(file)
-      setUploads((currentUploads) => [data.data.image, ...currentUploads])
+      addUploadedImage(data.data.image)
       setError('')
     } catch (uploadError: unknown) { setError(errorMessage(uploadError, 'Could not upload this image.')) }
     finally { setUploading(false); if (fileInput.current) fileInput.current.value = '' }
@@ -455,12 +455,7 @@ function CustomDesignEditor({ storageKey }: { storageKey: string }) {
         <button type="button" disabled={uploading} onClick={() => fileInput.current?.click()} className="mt-3 rounded border px-3 py-2 text-sm disabled:opacity-50">{uploading ? 'Uploading…' : 'Choose file'}</button>
         <input ref={fileInput} className="sr-only" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" onChange={(event) => void uploadFile(event.target.files?.[0])}/>
       </div>
-      <div className="space-y-2"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Uploaded images</p>
-        {uploads.length === 0 ? <p className="text-xs text-gray-500">Your uploaded images will appear here.</p> : <div className="grid grid-cols-3 gap-2">{uploads.map((image) => <div key={image._id} className="group relative min-w-0 rounded border p-1">
-          <button type="button" onClick={() => addUploadedImage(image)} title={`Add ${image.filename} to ${side === 'frontDesign' ? 'front' : 'back'}`} className="block w-full text-left"><img src={image.thumbnailUrl || image.url} alt={image.filename} loading="lazy" className="aspect-square w-full rounded object-cover"/><span className="mt-1 block truncate text-[10px]">{image.filename}</span><span className="block text-[10px] text-gray-500">{(image.size / (1024 * 1024)).toFixed(2)} MB</span></button>
-          <button type="button" onClick={() => void deleteUploadedImage(image)} aria-label={`Delete ${image.filename}`} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 shadow"><X size={13}/></button>
-        </div>)}</div>}
-      </div>
+
       <div className="flex gap-2"><button onClick={() => changeSide('frontDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'frontDesign' ? 'bg-black text-[var(--color-foreground)]' : ''}`}>Front</button><button onClick={() => changeSide('backDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'backDesign' ? 'bg-black text-[var(--color-foreground)]' : ''}`}>Back</button></div>
       <section aria-label="Layers" className="space-y-2 rounded-lg border p-2">
         <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider">Layers · {side === 'frontDesign' ? 'Front' : 'Back'}</p><div className="flex gap-1"><button title="Undo" aria-label="Undo" disabled={!undoStack.length} onClick={undo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↶</button><button title="Redo" aria-label="Redo" disabled={!redoStack.length} onClick={redo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↷</button></div></div>
