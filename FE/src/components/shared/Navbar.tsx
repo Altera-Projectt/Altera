@@ -62,7 +62,8 @@ export function Navbar() {
   return (
     <header className="fixed top-4 left-4 right-4 z-50 flex justify-center pointer-events-none">
       <nav
-        className="pointer-events-auto w-full max-w-[var(--spacing-contentMax)] h-[79px] rounded-[10px] flex items-center justify-between px-8 bg-neutral-950/90 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-white/10"
+        className="pointer-events-auto w-full max-w-[var(--spacing-contentMax)] h-[79px] rounded-[10px] flex items-center justify-between px-8 shadow-[0_8px_30px_rgb(0,0,0,0.08)]"
+        style={{ background: 'linear-gradient(180deg, #0011FF 0%, #00C8FF 100%)' }}
         aria-label="Main navigation"
       >
         {/* ── Logo ─────────────────────────────────────────────────────── */}
@@ -129,7 +130,7 @@ export function Navbar() {
                   <ShoppingBag className="h-[18px] w-[18px]" />
                   {totalItems > 0 && (
                     <span
-                      className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-black"
+                      className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-[#0011FF]"
                       aria-hidden="true"
                     >
                       {totalItems > 99 ? '99+' : totalItems}
@@ -166,7 +167,7 @@ export function Navbar() {
               <Link to="/auth/login" className="text-white font-medium text-sm tracking-wide opacity-90 hover:opacity-100 transition-opacity">
                 Sign in
               </Link>
-              <Link to="/auth/register" className="bg-white text-black px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm hover:scale-105 transition-transform">
+              <Link to="/auth/register" className="bg-white text-[#00C8FF] px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm hover:scale-105 transition-transform">
                 Sign up
               </Link>
             </div>

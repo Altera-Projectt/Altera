@@ -5,6 +5,7 @@ import { MainLayout, AdminLayout } from '@/layouts'
 import { ProtectedRoute } from './ProtectedRoute'
 
 // Public Pages
+import { HomePage } from '@/pages/home/HomePage'
 import { MarketplaceHomePage } from '@/pages/home/MarketplaceHomePage'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
@@ -52,7 +53,8 @@ export const router = createBrowserRouter([
     element: <MainLayout />,
     errorElement: <NotFoundPage />,
     children: [
-      { index: true, element: <MarketplaceHomePage /> },
+      { index: true, element: <HomePage /> },
+      { path: 'marketplace-home', element: <MarketplaceHomePage /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'marketplace', element: <MarketplacePage /> },
       { path: 'shop', element: <MarketplacePage /> },

@@ -13,7 +13,7 @@
   --color-cyan: #00e5ff; /* Cyan for gradients/accents */
   --color-neon-lime: #d4ff00; /* Secondary accent from motion frames */
 
-  --color-primary: #000000;
+  --color-primary: var(--color-electric-blue);
   --color-primary-foreground: #ffffff;
 
   --color-secondary: var(--color-cyan);
@@ -38,7 +38,7 @@
 
   --color-border: #000000; /* Brutalist strong borders */
   --color-input: #e4e4e7;
-  --color-ring: #000000;
+  --color-ring: var(--color-electric-blue);
 
   --color-popover: #ffffff;
   --color-popover-foreground: #000000;
@@ -207,12 +207,12 @@
 /* ── Scrollbar ── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #000000 transparent;
+  scrollbar-color: var(--color-electric-blue) transparent;
 }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #000000;
+  background: var(--color-electric-blue);
   border-radius: 0px; /* Blocky brutalist scrollbar */
 }
 
