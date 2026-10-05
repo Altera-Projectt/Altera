@@ -11,6 +11,8 @@ import {
   BookOpen,
   Plus,
   Download,
+  ImagePlus,
+  Shirt,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -31,6 +33,7 @@ import {
   DesignService,
   type Design,
   type GenerateDesignResponse,
+  type UploadedCustomImage,
 } from '@/services/design.api'
 import { cn } from '@/utils/cn'
 import { CustomDesignTab } from '@/components/studio/CustomDesignTab'
@@ -489,19 +492,27 @@ function ResultControls({
   isSaved,
   saving,
   refining,
+  savedToLibrary,
+  savingToLibrary,
   onSave,
   onOrder,
   onRefine,
   onReset,
+  onSaveToLibrary,
+  onDesignShirt,
 }: {
   result: GenerateDesignResponse
   isSaved: boolean
   saving: boolean
   refining: boolean
+  savedToLibrary: boolean
+  savingToLibrary: boolean
   onSave: () => Promise<void>
   onOrder: () => void
   onRefine: (prompt: string) => Promise<void>
   onReset: () => void
+  onSaveToLibrary: () => Promise<void>
+  onDesignShirt: () => Promise<void>
 }) {
   const [refinePrompt, setRefinePrompt] = useState('')
   const { design } = result
@@ -550,6 +561,33 @@ function ResultControls({
       </div>
 
       <div className="pt-4 border-t border-[var(--color-border)] flex flex-col gap-3">
+        {/* Use the AI image on a shirt in Custom Design (also saves it to the image library) */}
+        <Button
+          id="ai-design-shirt"
+          variant="primary"
+          size="md"
+          className="w-full gap-2"
+          onClick={onDesignShirt}
+          disabled={savingToLibrary}
+          loading={savingToLibrary}
+        >
+          <Shirt className="h-4 w-4" />
+          Dùng để thiết kế áo
+        </Button>
+
+        {/* Save the AI image into the personal image library used by Custom Design */}
+        <Button
+          id="ai-save-to-library"
+          variant="outline"
+          size="md"
+          className="w-full gap-2"
+          onClick={onSaveToLibrary}
+          disabled={savedToLibrary || savingToLibrary}
+        >
+          <ImagePlus className="h-4 w-4" />
+          {savedToLibrary ? '✓ Đã lưu vào thư viện ảnh' : 'Lưu vào thư viện ảnh'}
+        </Button>
+
         {/* Save */}
         <Button
           variant="outline"
@@ -820,6 +858,10 @@ function CreateTab({
   onReset,
   initialValues,
   cooldown,
+  savedToLibrary,
+  savingToLibrary,
+  onSaveToLibrary,
+  onDesignShirt,
 }: {
   viewState: 'form' | 'result'
   generating: boolean
@@ -835,6 +877,10 @@ function CreateTab({
   onReset: () => void
   initialValues?: Partial<FormValues>
   cooldown: number
+  savedToLibrary: boolean
+  savingToLibrary: boolean
+  onSaveToLibrary: () => Promise<void>
+  onDesignShirt: () => Promise<void>
 }) {
   return (
     <div className="flex flex-col lg:flex-row gap-0 h-full min-h-[750px] rounded-[var(--radius-xl)] border border-[var(--color-border)] overflow-hidden">
@@ -880,6 +926,10 @@ function CreateTab({
                   onOrder={onOrder}
                   onRefine={onRefine}
                   onReset={onReset}
+                  savedToLibrary={savedToLibrary}
+                  savingToLibrary={savingToLibrary}
+                  onSaveToLibrary={onSaveToLibrary}
+                  onDesignShirt={onDesignShirt}
                 />
               </motion.div>
             ) : (
@@ -1130,6 +1180,10 @@ export function DesignStudioPage() {
   const [loadingLibrary, setLoadingLibrary] = useState(false)
   const [libraryError, setLibraryError] = useState<string | null>(null)
   const [reuseInitial, setReuseInitial] = useState<Partial<FormValues> | undefined>(undefined)
+  // AI image -> personal image library -> Custom Design hand-off
+  const [libraryAssetByDesign, setLibraryAssetByDesign] = useState<Record<string, UploadedCustomImage>>({})
+  const [savingToLibrary, setSavingToLibrary] = useState(false)
+  const [pendingAsset, setPendingAsset] = useState<UploadedCustomImage | null>(null)
 
   const COOLDOWN_SECONDS = 20
   const [cooldown, setCooldown] = useState(0)
@@ -1260,6 +1314,40 @@ export function DesignStudioPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const saveCurrentToLibrary = async (): Promise<UploadedCustomImage | null> => {
+    if (!currentDesign) return null
+    const cached = libraryAssetByDesign[currentDesign.designId]
+    // A refine keeps the same designId but changes the image, so only reuse a matching URL.
+    const currentUrl = currentDesign.imageUrl || currentDesign.preview
+    if (cached && (!currentUrl || cached.url === currentUrl)) return cached
+    setSavingToLibrary(true)
+    try {
+      const res = await DesignService.saveGeneratedToLibrary(currentDesign.designId)
+      const image = res.data.data.image
+      setLibraryAssetByDesign((prev) => ({ ...prev, [currentDesign.designId]: image }))
+      return image
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      showToast(message || 'Không thể lưu vào thư viện ảnh', 'error')
+      return null
+    } finally {
+      setSavingToLibrary(false)
+    }
+  }
+
+  const handleSaveToLibrary = async () => {
+    const image = await saveCurrentToLibrary()
+    if (image) showToast('Đã lưu vào thư viện ảnh — dùng ngay trong Custom Design!')
+  }
+
+  const handleDesignShirt = async () => {
+    const image = await saveCurrentToLibrary()
+    if (!image) return
+    setPendingAsset(image)
+    setActiveTab('custom')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const openOrderModal = (designId: string, thumbnail?: string) => {
@@ -1417,10 +1505,20 @@ export function DesignStudioPage() {
           }}
           initialValues={reuseInitial}
           cooldown={cooldown}
+          savedToLibrary={Boolean(
+            currentDesign
+            && libraryAssetByDesign[currentDesign.designId]
+            && libraryAssetByDesign[currentDesign.designId].url === (currentDesign.imageUrl || currentDesign.preview || libraryAssetByDesign[currentDesign.designId].url),
+          )}
+          savingToLibrary={savingToLibrary}
+          onSaveToLibrary={handleSaveToLibrary}
+          onDesignShirt={handleDesignShirt}
         />
       )}
 
-      {activeTab === 'custom' && <CustomDesignTab />}
+      {activeTab === 'custom' && (
+        <CustomDesignTab pendingAsset={pendingAsset} onPendingAssetConsumed={() => setPendingAsset(null)} />
+      )}
 
       {activeTab === 'library' && (
         <LibraryTab

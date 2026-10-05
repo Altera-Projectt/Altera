@@ -1,6 +1,10 @@
+const mongoose = require('mongoose');
 const UploadedImage = require('../models/UploadedImage');
 const Design = require('../models/Design');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
+
+const toThumbnail = (url) => (url.includes('/upload/') ? url.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/') : url);
+const LIST_FIELDS = 'url thumbnailUrl filename mimeType size source prompt designId createdAt';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED = {
@@ -34,84 +38,41 @@ const upload = async (userId, file) => {
     public_id: `${userId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
     overwrite: false,
   });
-  const thumbnailUrl = result.url.includes('/upload/')
-    ? result.url.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/')
-    : result.url;
-  return UploadedImage.create({ userId, url: result.url, thumbnailUrl, publicId: result.publicId, filename, mimeType, size: file.size, source: 'UPLOAD' });
+  return UploadedImage.create({ userId, url: result.url, thumbnailUrl: toThumbnail(result.url), publicId: result.publicId, filename, mimeType, size: file.size, source: 'UPLOAD' });
 };
 
-/**
- * BE-2: Lưu ảnh AI vào thư viện.
- * Đọc Design record → copy URL lên UploadedImage với source='AI'.
- * Nếu đã lưu rồi thì trả về bản ghi cũ (idempotent).
- */
-const saveFromGenerated = async (userId, designId) => {
-  if (!designId) fail('designId is required.');
-
-  // Kiểm tra ownership
-  const design = await Design.findOne({ _id: designId, userId }).lean();
-  if (!design) fail('Design not found or does not belong to you.', 404);
-  if (!design.customImage) fail('This design has no generated image to save.', 400);
-
-  // Idempotent: tránh duplicate
-  const existing = await UploadedImage.findOne({ userId, designId }).lean();
-  if (existing) return existing;
-
-  const thumbnailUrl = design.customImage.includes('/upload/')
-    ? design.customImage.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/')
-    : design.customImage;
-
-  return UploadedImage.create({
-    userId,
-    url: design.customImage,
-    thumbnailUrl,
-    publicId: `ai_generated_${designId}`,   // không cần xoá Cloudinary khi remove
-    filename: `ai_${designId}.png`,
-    mimeType: 'image/png',
-    size: 0,                                 // ảnh AI, không có size thực
-    source: 'AI',
-    prompt: design.prompt || null,
-    designId: design._id,
-  });
-};
-
-/**
- * BE-3a + BE-3b: List thư viện với filter source và pagination.
- * ?source=ALL|UPLOAD|AI   (default: ALL)
- * ?page=1&limit=24
- * Trả về { images, total, page, totalPages }
- */
 const list = async (userId, { source = 'ALL', page = 1, limit = 24 } = {}) => {
-  const safeSource = ['UPLOAD', 'AI', 'ALL'].includes(String(source).toUpperCase())
-    ? String(source).toUpperCase()
-    : 'ALL';
-  const safePage  = Math.max(1, parseInt(page, 10) || 1);
+  const safeSource = ['UPLOAD', 'AI', 'ALL'].includes(String(source).toUpperCase()) ? String(source).toUpperCase() : 'ALL';
+  const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 24));
-  const skip = (safePage - 1) * safeLimit;
-
   const filter = { userId };
-  if (safeSource !== 'ALL') filter.source = safeSource;
-
+  if (safeSource === 'AI') filter.source = 'AI';
+  if (safeSource === 'UPLOAD') filter.source = { $ne: 'AI' };
   const [images, total] = await Promise.all([
-    UploadedImage.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(safeLimit)
-      .select('url thumbnailUrl source prompt designId filename mimeType size createdAt')
-      .lean(),
+    UploadedImage.find(filter).sort({ createdAt: -1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).select(LIST_FIELDS).lean(),
     UploadedImage.countDocuments(filter),
   ]);
-
   return { images, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
+};
+
+const addFromGenerated = async (userId, designId) => {
+  if (!mongoose.Types.ObjectId.isValid(designId)) fail('Invalid design id.');
+  const design = await Design.findOne({ _id: designId, userId }).select('previewImage customImage prompt').lean();
+  if (!design) fail('Generated design not found.', 404);
+  const url = design.previewImage || design.customImage;
+  if (!url) fail('This design has no image yet.');
+  const existing = await UploadedImage.findOne({ userId, designId: design._id, url }).select(LIST_FIELDS).lean();
+  if (existing) return { image: existing, created: false };
+  const image = await UploadedImage.create({ userId, url, thumbnailUrl: toThumbnail(url), filename: `ai-${Date.now()}.png`, mimeType: 'image/png', size: 0, source: 'AI', prompt: String(design.prompt || '').slice(0, 2000), designId: design._id });
+  return { image: image.toObject(), created: true };
 };
 
 const remove = async (userId, id, preserveFile = false) => {
   const image = await UploadedImage.findOne({ _id: id, userId });
   if (!image) fail('Uploaded image not found.', 404);
   await UploadedImage.deleteOne({ _id: image._id });
-  // Ảnh AI dùng publicId giả — không xoá file Cloudinary thật
-  if (!preserveFile && image.source !== 'AI') await deleteImage(image.publicId);
+  if (!preserveFile && image.source !== 'AI' && image.publicId) await deleteImage(image.publicId);
   return { message: 'Uploaded image deleted successfully.' };
 };
 
-module.exports = { upload, saveFromGenerated, list, remove, validateImageFile, sanitizeFilename, MAX_IMAGE_BYTES };
+module.exports = { upload, list, addFromGenerated, remove, validateImageFile, sanitizeFilename, MAX_IMAGE_BYTES };

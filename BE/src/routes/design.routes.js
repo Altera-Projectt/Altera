@@ -15,7 +15,7 @@ const {
   orderDesign,
   uploadCustomImage,
   getCustomImages,
-  saveCustomImageFromGenerated,
+  addGeneratedToLibrary,
   deleteCustomImage,
 } = require('../controllers/design.controller');
 const { protect } = require('../middlewares/auth.middleware');
@@ -37,9 +37,10 @@ router.delete('/custom/drafts/:draftId', customDraftController.remove);
 
 // CUSTOM DESIGN uploads use a separate endpoint and storage flow from AI Design.
 // NOTE: /from-generated MUST come before /:imageId to avoid route conflict
-router.post('/custom/uploads/from-generated', saveCustomImageFromGenerated);  // BE-2
 router.post('/custom/uploads', customImageUpload.single('image'), uploadCustomImage);
-router.get('/custom/uploads', getCustomImages);                                // BE-3a/3b
+router.get('/custom/uploads', getCustomImages);
+// Save an AI-generated image (by Design id) into the same personal asset library.
+router.post('/custom/uploads/from-generated', addGeneratedToLibrary);
 router.delete('/custom/uploads/:imageId', deleteCustomImage);
 
 /**

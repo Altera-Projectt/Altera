@@ -18,11 +18,11 @@ const getCustomImages = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-/** BE-2: Lưu ảnh AI vào thư viện từ designId */
-const saveCustomImageFromGenerated = async (req, res, next) => {
+
+const addGeneratedToLibrary = async (req, res, next) => {
   try {
-    const image = await customDesignUploadService.saveFromGenerated(req.user._id, req.body.designId);
-    res.status(201).json({ success: true, data: { image } });
+    const { image, created } = await customDesignUploadService.addFromGenerated(req.user._id, req.body.designId);
+    res.status(created ? 201 : 200).json({ success: true, message: created ? 'Saved to your library.' : 'Already in your library.', data: { image } });
   } catch (error) { next(error); }
 };
 
@@ -157,6 +157,6 @@ module.exports = {
   orderDesign,
   uploadCustomImage,
   getCustomImages,
-  saveCustomImageFromGenerated,
+  addGeneratedToLibrary,
   deleteCustomImage,
 };
