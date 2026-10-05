@@ -10,6 +10,8 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const slugify = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const fail = (status, message) => Object.assign(new Error(message), { statusCode: status });
+// No admin moderation yet: designs go live immediately. Set MARKETPLACE_REQUIRE_REVIEW=true to require review.
+const submissionStatus = () => (process.env.MARKETPLACE_REQUIRE_REVIEW === 'true' ? 'PENDING_REVIEW' : 'PUBLISHED');
 const profileForUser = async (userId) => {
   let profile = await DesignerProfile.findOne({ userId });
   if (!profile) {
@@ -222,7 +224,7 @@ exports.createDesign = async (req, res, next) => {
     if (!name || !draft.productId || !draft.color || !draft.size || !hasRequiredLayers || !draft.thumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, color, size, design layer, preview, and valid price are required');
     if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product, color, size, or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
-    const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: 'PENDING_REVIEW' });
+    const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: submissionStatus() });
     res.status(201).json({ success: true, data: { design } });
   } catch (error) { next(error); }
 };
@@ -235,7 +237,7 @@ exports.updateDesign = async (req, res, next) => {
     if (req.body.price !== undefined) { const price = Number(req.body.price); if (!Number.isFinite(price) || price <= 0) throw fail(400, 'Price must be greater than zero'); design.price = price; }
     if (req.body.tags !== undefined) design.tags = Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [];
     if (req.body.collectionId !== undefined) { if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer'); design.collectionId = req.body.collectionId || null; }
-    if (design.status === 'REJECTED' || design.status === 'DRAFT') design.status = 'PENDING_REVIEW';
+    if (design.status === 'REJECTED' || design.status === 'DRAFT') design.status = submissionStatus();
     await design.save(); res.json({ success: true, data: { design } });
   } catch (error) { next(error); }
 };

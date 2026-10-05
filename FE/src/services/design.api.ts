@@ -47,6 +47,7 @@ export interface DesignsListResponse {
 export type DesignsResponse = DesignsListResponse
 
 export interface GenerationHistoryItem {
+  designId?: string
   prompt: string
   imageUrl: string
   createdAt: string
@@ -63,6 +64,8 @@ export interface OrderDesignPayload {
   note?: string
 }
 
+export type AssetSource = 'UPLOAD' | 'AI'
+
 export interface UploadedCustomImage {
   _id: string
   url: string
@@ -70,6 +73,10 @@ export interface UploadedCustomImage {
   filename: string
   mimeType: string
   size: number
+  /** Missing on legacy records, which are uploads. */
+  source?: AssetSource
+  prompt?: string
+  designId?: string | null
   createdAt: string
 }
 
@@ -114,7 +121,10 @@ export const DesignService = {
     body.append('image', file)
     return api.post<ApiResponse<{ image: UploadedCustomImage }>>('/designs/custom/uploads', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 })
   },
-  getCustomImages: () => api.get<ApiResponse<{ images: UploadedCustomImage[] }>>('/designs/custom/uploads'),
+  getCustomImages: (source?: AssetSource) => api.get<ApiResponse<{ images: UploadedCustomImage[] }>>('/designs/custom/uploads', { params: source ? { source } : undefined }),
+  /** Save an AI-generated design image into the personal asset library (idempotent). */
+  saveGeneratedToLibrary: (designId: string) => api.post<ApiResponse<{ image: UploadedCustomImage }>>('/designs/custom/uploads/from-generated', { designId }),
+  createDesignerCollection: (name: string) => api.post<ApiResponse<{ collection: { _id: string; name: string } }>>('/designers/me/collections', { name }),
   deleteCustomImage: (id: string, preserveFile = false) => api.delete<ApiResponse<void>>(`/designs/custom/uploads/${id}`, { params: { preserveFile } }),
   listCustomDrafts: () => api.get<ApiResponse<{ drafts: CustomDesignDraft[] }>>('/designs/custom/drafts'),
   createCustomDraft: (payload: Partial<CustomDesignDraft>) => api.post<ApiResponse<{ draft: CustomDesignDraft }>>('/designs/custom/drafts', payload),

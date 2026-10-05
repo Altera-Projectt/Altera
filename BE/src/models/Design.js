@@ -36,6 +36,11 @@ const DesignSchema = new mongoose.Schema(
       trim: true,
       default: null,
     },
+    // Hidden from the AI generation history panel (images remain in library/drafts).
+    hiddenFromHistory: {
+      type: Boolean,
+      default: false,
+    },
     shirtType: {
       type: String,
       trim: true,

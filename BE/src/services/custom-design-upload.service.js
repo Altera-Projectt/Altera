@@ -1,5 +1,10 @@
+const mongoose = require('mongoose');
 const UploadedImage = require('../models/UploadedImage');
+const Design = require('../models/Design');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
+
+const toThumbnail = (url) => (url.includes('/upload/') ? url.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/') : url);
+const LIST_FIELDS = 'url thumbnailUrl filename mimeType size source prompt designId createdAt';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED = {
@@ -33,20 +38,48 @@ const upload = async (userId, file) => {
     public_id: `${userId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
     overwrite: false,
   });
-  const thumbnailUrl = result.url.includes('/upload/')
-    ? result.url.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/')
-    : result.url;
-  return UploadedImage.create({ userId, url: result.url, thumbnailUrl, publicId: result.publicId, filename, mimeType, size: file.size });
+  return UploadedImage.create({ userId, url: result.url, thumbnailUrl: toThumbnail(result.url), publicId: result.publicId, filename, mimeType, size: file.size, source: 'UPLOAD' });
 };
 
-const list = (userId) => UploadedImage.find({ userId }).sort({ createdAt: -1 }).select('url thumbnailUrl filename mimeType size createdAt').lean();
+const list = (userId, { source } = {}) => {
+  const filter = { userId };
+  if (source === 'UPLOAD') filter.source = { $ne: 'AI' }; // legacy docs have no source field
+  if (source === 'AI') filter.source = 'AI';
+  return UploadedImage.find(filter).sort({ createdAt: -1 }).limit(200).select(LIST_FIELDS).lean();
+};
+
+// Save an AI-generated Design image into the user's asset library (idempotent per design image).
+const addFromGenerated = async (userId, designId) => {
+  if (!mongoose.Types.ObjectId.isValid(designId)) fail('Invalid design id.');
+  const design = await Design.findOne({ _id: designId, userId }).select('previewImage customImage prompt').lean();
+  if (!design) fail('Generated design not found.', 404);
+  const url = design.previewImage || design.customImage;
+  if (!url) fail('This design has no image yet.');
+
+  const existing = await UploadedImage.findOne({ userId, designId: design._id, url }).select(LIST_FIELDS).lean();
+  if (existing) return { image: existing, created: false };
+
+  const image = await UploadedImage.create({
+    userId,
+    url,
+    thumbnailUrl: toThumbnail(url),
+    filename: `ai-${Date.now()}.png`,
+    mimeType: 'image/png',
+    size: 0,
+    source: 'AI',
+    prompt: String(design.prompt || '').slice(0, 2000),
+    designId: design._id,
+  });
+  return { image: image.toObject(), created: true };
+};
 
 const remove = async (userId, id, preserveFile = false) => {
   const image = await UploadedImage.findOne({ _id: id, userId });
   if (!image) fail('Uploaded image not found.', 404);
   await UploadedImage.deleteOne({ _id: image._id });
-  if (!preserveFile) await deleteImage(image.publicId);
+  // AI images share their file with the Design document, so only the library entry is removed.
+  if (!preserveFile && image.source !== 'AI' && image.publicId) await deleteImage(image.publicId);
   return { message: 'Uploaded image deleted successfully.' };
 };
 
-module.exports = { upload, list, remove, validateImageFile, sanitizeFilename, MAX_IMAGE_BYTES };
+module.exports = { upload, list, addFromGenerated, remove, validateImageFile, sanitizeFilename, MAX_IMAGE_BYTES };

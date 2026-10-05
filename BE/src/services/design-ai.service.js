@@ -223,12 +223,28 @@ const saveGeneratedDesign = async (designId, userId, role) => {
   return design;
 };
 
+// History is read from MongoDB so it survives server restarts / Render cold starts.
+// Only AI-generated designs carry a `style`, which distinguishes them from plain uploads.
+const HISTORY_FILTER = (userId) => ({ userId, style: { $nin: [null, ''] }, previewImage: { $ne: null }, hiddenFromHistory: { $ne: true } });
+
 const clearGeneratedDesignHistory = async (userId) => {
   clearUserGenerationState(userId);
+  // Hide from the history panel only; images stay available in the library and drafts.
+  await Design.updateMany(HISTORY_FILTER(userId), { $set: { hiddenFromHistory: true } });
 };
 
 const getGeneratedDesignHistory = async (userId) => {
-  return getUserGenerationHistory(userId);
+  const designs = await Design.find(HISTORY_FILTER(userId))
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .select('prompt previewImage createdAt')
+    .lean();
+  return designs.map((design) => ({
+    designId: design._id,
+    prompt: design.prompt || '',
+    imageUrl: design.previewImage,
+    createdAt: design.createdAt,
+  }));
 };
 
 const createOrderFromDesign = async (designId, userId, role, { shippingAddress, note, price } = {}) => {

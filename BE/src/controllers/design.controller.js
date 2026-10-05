@@ -11,8 +11,15 @@ const uploadCustomImage = async (req, res, next) => {
 
 const getCustomImages = async (req, res, next) => {
   try {
-    const images = await customDesignUploadService.list(req.user._id);
+    const images = await customDesignUploadService.list(req.user._id, { source: String(req.query.source || '').toUpperCase() });
     res.status(200).json({ success: true, data: { images } });
+  } catch (error) { next(error); }
+};
+
+const addGeneratedToLibrary = async (req, res, next) => {
+  try {
+    const { image, created } = await customDesignUploadService.addFromGenerated(req.user._id, req.body.designId);
+    res.status(created ? 201 : 200).json({ success: true, message: created ? 'Saved to your library.' : 'Already in your library.', data: { image } });
   } catch (error) { next(error); }
 };
 
@@ -146,5 +153,6 @@ module.exports = {
   orderDesign,
   uploadCustomImage,
   getCustomImages,
+  addGeneratedToLibrary,
   deleteCustomImage,
 };
