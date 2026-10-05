@@ -122,9 +122,11 @@ const generateOpenAIImage = async (prompt) => {
   }
   try {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, maxRetries: 0 });
-    const result = await openai.images.generate({ model: process.env.IMAGE_MODEL || 'dall-e-2', prompt, size: process.env.IMAGE_SIZE || '1024x1024', response_format: 'b64_json', n: 1 });
+    let model = process.env.IMAGE_MODEL || 'dall-e-2';
+    if (!['dall-e-2', 'dall-e-3'].includes(model)) model = 'dall-e-2';
+    const result = await openai.images.generate({ model, prompt, size: process.env.IMAGE_SIZE || '1024x1024', response_format: 'b64_json', n: 1 });
     if (!result.data?.[0]?.b64_json) throw new Error('OpenAI returned no image data.');
-    logger.info(`OpenAI image generation succeeded: model=${process.env.IMAGE_MODEL || 'dall-e-2'} size=${process.env.IMAGE_SIZE || '1024x1024'} n=1`);
+    logger.info(`OpenAI image generation succeeded: model=${model} size=${process.env.IMAGE_SIZE || '1024x1024'} n=1`);
     return Buffer.from(result.data[0].b64_json, 'base64');
   } catch (cause) {
     const status = cause.status || cause.statusCode;
