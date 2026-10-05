@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 const DesignerProfile = require('../models/DesignerProfile');
 const DesignerCollection = require('../models/DesignerCollection');
 const MarketplaceDesign = require('../models/MarketplaceDesign');
@@ -222,7 +222,10 @@ exports.createDesign = async (req, res, next) => {
     if (!name || !draft.productId || !draft.color || !draft.size || !hasRequiredLayers || !draft.thumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, color, size, design layer, preview, and valid price are required');
     if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product, color, size, or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
-    const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: 'PENDING_REVIEW' });
+    // BE-5: Publish thẳng PUBLISHED. Bật MARKETPLACE_REQUIRE_REVIEW=true để yêu cầu duyệt.
+    const requireReview = process.env.MARKETPLACE_REQUIRE_REVIEW === 'true';
+    const initialStatus = requireReview ? 'PENDING_REVIEW' : 'PUBLISHED';
+    const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: initialStatus });
     res.status(201).json({ success: true, data: { design } });
   } catch (error) { next(error); }
 };

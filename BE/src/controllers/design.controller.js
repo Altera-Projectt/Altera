@@ -9,10 +9,20 @@ const uploadCustomImage = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+/** BE-3a/3b: Lấy thư viện với lọc source + phân trang */
 const getCustomImages = async (req, res, next) => {
   try {
-    const images = await customDesignUploadService.list(req.user._id);
-    res.status(200).json({ success: true, data: { images } });
+    const { source = 'ALL', page = 1, limit = 24 } = req.query;
+    const result = await customDesignUploadService.list(req.user._id, { source, page, limit });
+    res.status(200).json({ success: true, data: result });
+  } catch (error) { next(error); }
+};
+
+/** BE-2: Lưu ảnh AI vào thư viện từ designId */
+const saveCustomImageFromGenerated = async (req, res, next) => {
+  try {
+    const image = await customDesignUploadService.saveFromGenerated(req.user._id, req.body.designId);
+    res.status(201).json({ success: true, data: { image } });
   } catch (error) { next(error); }
 };
 
@@ -22,6 +32,7 @@ const deleteCustomImage = async (req, res, next) => {
     res.status(200).json({ success: true, message: result.message });
   } catch (error) { next(error); }
 };
+
 
 const createDesign = async (req, res, next) => {
   try {
@@ -146,5 +157,6 @@ module.exports = {
   orderDesign,
   uploadCustomImage,
   getCustomImages,
+  saveCustomImageFromGenerated,
   deleteCustomImage,
 };
