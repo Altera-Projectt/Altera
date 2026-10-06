@@ -63,8 +63,8 @@ describe('BE-1: UploadedImage model có đủ trường mới', () => {
   });
 });
 
-// ─── BE-2: saveFromGenerated ─────────────────────────────────────────────────
-describe('BE-2: saveFromGenerated — lưu ảnh AI vào thư viện', () => {
+// ─── BE-2: addFromGenerated ─────────────────────────────────────────────────
+describe('BE-2: addFromGenerated — lưu ảnh AI vào thư viện', () => {
   let userId, design;
 
   beforeEach(async () => {
@@ -73,7 +73,7 @@ describe('BE-2: saveFromGenerated — lưu ảnh AI vào thư viện', () => {
   });
 
   it('nên tạo UploadedImage với source=AI', async () => {
-    const img = await uploadService.saveFromGenerated(userId, design._id);
+    const { image: img } = await uploadService.addFromGenerated(userId, design._id);
     expect(img.source).toBe('AI');
     expect(img.prompt).toBe('A cool eagle');
     expect(String(img.designId)).toBe(String(design._id));
@@ -81,8 +81,8 @@ describe('BE-2: saveFromGenerated — lưu ảnh AI vào thư viện', () => {
   });
 
   it('nên idempotent — gọi 2 lần không tạo record mới', async () => {
-    await uploadService.saveFromGenerated(userId, design._id);
-    await uploadService.saveFromGenerated(userId, design._id);
+    await uploadService.addFromGenerated(userId, design._id);
+    await uploadService.addFromGenerated(userId, design._id);
     const count = await UploadedImage.countDocuments({ userId, designId: design._id });
     expect(count).toBe(1);
   });
@@ -90,19 +90,19 @@ describe('BE-2: saveFromGenerated — lưu ảnh AI vào thư viện', () => {
   it('🔒 SECURITY: không được lưu design của user khác', async () => {
     const otherUserId = fakeUserId();
     await expect(
-      uploadService.saveFromGenerated(otherUserId, design._id)
+      uploadService.addFromGenerated(otherUserId, design._id)
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('nên throw 404 nếu designId không tồn tại', async () => {
     await expect(
-      uploadService.saveFromGenerated(userId, fakeDesignId())
+      uploadService.addFromGenerated(userId, fakeDesignId())
     ).rejects.toMatchObject({ statusCode: 404 });
   });
 
   it('nên throw 400 nếu thiếu designId', async () => {
     await expect(
-      uploadService.saveFromGenerated(userId, null)
+      uploadService.addFromGenerated(userId, null)
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 });
