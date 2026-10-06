@@ -25,10 +25,10 @@ const hasAvailableBaseVariant = async (design) => {
   if (!mongoose.Types.ObjectId.isValid(design.productId)) return false;
   const product = await Product.findOne({ _id: design.productId, isActive: true }).select('stock colors sizes printingTechniques');
   if (!product || product.stock < 1) return false;
-  const color = product.colors.find((item) => item.name === design.color?.name);
-  const size = product.sizes.find((item) => item.label === design.size);
+  const color = design.color ? product.colors.find((item) => item.name === design.color?.name) : true;
+  const size = design.size ? product.sizes.find((item) => item.label === design.size) : true;
   const technique = product.printingTechniques.find((item) => item.code === design.printingTechnique);
-  return Boolean(color && color.stock > 0 && size && size.stock > 0 && technique);
+  return Boolean(color && (color === true || color.stock > 0) && size && (size === true || size.stock > 0) && technique);
 };
 
 exports.getMarketplace = async (req, res, next) => {
@@ -221,8 +221,8 @@ exports.createDesign = async (req, res, next) => {
     if (!draft) throw fail(404, 'Owned design draft not found');
     const name = String(req.body.name || '').trim(), price = Number(req.body.price), hasFront = Boolean(draft.frontDesign?.layers?.some((layer) => layer && layer.visible !== false)), hasBack = Boolean(draft.backDesign?.layers?.some((layer) => layer && layer.visible !== false));
     const hasRequiredLayers = draft.printSide === 'BACK' ? hasBack : draft.printSide === 'BOTH' ? hasFront && hasBack : hasFront;
-    if (!name || !draft.productId || !draft.color || !draft.size || !hasRequiredLayers || !draft.thumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, color, size, design layer, preview, and valid price are required');
-    if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product, color, size, or printing technique is unavailable.');
+    if (!name || !draft.productId || !hasRequiredLayers || !draft.thumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, design layer, preview, and valid price are required');
+    if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
     const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: submissionStatus() });
     res.status(201).json({ success: true, data: { design } });

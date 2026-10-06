@@ -24,12 +24,18 @@ const addToCart = async (req, res, next) => {
       marketplaceDesign = await MarketplaceDesign.findOne({ _id: req.body.marketplaceDesignId, status: 'PUBLISHED' });
       if (!marketplaceDesign) return res.status(404).json({ success: false, message: 'Published design not found' });
       productId = marketplaceDesign.productId;
-      customization = { color: marketplaceDesign.color, size: marketplaceDesign.size, printSide: marketplaceDesign.printSide, printingTechnique: marketplaceDesign.printingTechnique, frontDesign: marketplaceDesign.frontDesign, backDesign: marketplaceDesign.backDesign };
+      customization = { ...(customization || {}), printSide: marketplaceDesign.printSide, printingTechnique: marketplaceDesign.printingTechnique, frontDesign: marketplaceDesign.frontDesign, backDesign: marketplaceDesign.backDesign };
     }
     const product = await Product.findById(productId);
     if (!product || !product.isActive) return res.status(404).json({ success: false, message: 'Product not found' });
+    if (marketplaceDesign && (!customization?.color?.name || !customization?.size)) {
+      return res.status(400).json({ success: false, message: 'Choose a product color and size.' });
+    }
     const selectedColor = customization && product.colors.find((item) => item.name === customization.color?.name);
     const selectedSize = customization && product.sizes.find((item) => item.label === customization.size);
+    if (marketplaceDesign && (!selectedColor || customization.color.hex !== selectedColor.hex || !selectedSize)) {
+      return res.status(400).json({ success: false, message: 'Choose an available product color and size.' });
+    }
     const availableStock = customization ? Math.min(product.stock, selectedColor?.stock ?? 0, selectedSize?.stock ?? 0) : product.stock;
     if (!Number.isInteger(quantity) || quantity < 1 || availableStock < quantity) return res.status(400).json({ success: false, message: `Insufficient stock. Available: ${availableStock}` });
     const unitPrice = marketplaceDesign ? marketplaceDesign.price : getCustomizationPrice(product, customization);
