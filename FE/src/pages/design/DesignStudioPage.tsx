@@ -301,7 +301,6 @@ function OrderModal({
 interface FormValues {
   prompt: string
   style: string
-  colorPalette: string
   shirtColor: string
 }
 
@@ -321,7 +320,6 @@ function GenerateForm({
   const [form, setForm] = useState<FormValues>({
     prompt: initialValues?.prompt ?? '',
     style: initialValues?.style ?? 'Graphic Art',       // default — phù hợp nhất cho print design
-    colorPalette: initialValues?.colorPalette ?? 'Black and white, high contrast', // default — luôn ra đẹp
     shirtColor: initialValues?.shirtColor ?? 'white',
   })
   const [promptError, setPromptError] = useState('')
@@ -417,15 +415,6 @@ function GenerateForm({
         <p className="-mt-3 text-[10px] text-[var(--color-muted-foreground)] italic">{currentStyleHint}</p>
       )}
 
-      {/* Color palette */}
-      <Input
-        placeholder="VD: Đỏ, vàng, đen — hoặc mô tả tông màu"
-        value={form.colorPalette}
-        onChange={setField('colorPalette')}
-        disabled={generating}
-        hint="Màu đen trắng cho kết quả in đẹp nhất"
-        leftIcon={<span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">Màu</span>}
-      />
 
       {/* Shirt color swatches */}
       <div>
@@ -1216,12 +1205,12 @@ export function DesignStudioPage() {
       setGenerating(true)
       setGenerateError(null)
       const payload = {
-        prompt: vals.prompt.trim(),
+        idea: vals.prompt.trim(),
         style: vals.style || 'Graphic Art',
-        colorPalette: vals.colorPalette || 'Black and white, high contrast',
-        shirtColor: getShirtHex(vals.shirtColor || 'white'),
+        globalShirtColor: getShirtHex(vals.shirtColor || 'white'),
+        printSide: 'Front' as const,
       }
-      const res = await DesignService.generateDesign(payload as any)
+      const res = await DesignService.generateDesign(payload)
       setCurrentDesign(res.data.data)
       setViewState('result')
       setIsSaved(false)
@@ -1384,7 +1373,6 @@ export function DesignStudioPage() {
     setReuseInitial({
       prompt: design.prompt,
       style: design.style,
-      colorPalette: design.colorPalette,
       shirtColor: design.shirtColor,
     })
     setViewState('form')

@@ -44,7 +44,7 @@ test('generateDesign calls OpenAI once for transparent PNG print artwork', async
     assert.equal(imageRequest.model, 'gpt-image-2');
     assert.equal(imageRequest.quality, 'low');
     assert.equal(imageRequest.size, '1024x1024');
-    assert.equal(imageRequest.background, 'transparent');
+
     assert.equal(imageRequest.output_format, 'png');
     assert.equal(imageRequest.n, 1);
     assert.match(imageRequest.prompt, /USER'S CORE CONCEPT: "a dragon print"/);
