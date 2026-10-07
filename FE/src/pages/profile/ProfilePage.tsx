@@ -185,9 +185,11 @@ export function ProfilePage() {
 
       {/* ── Cinematic Cover & Header ────────────────────────────────── */}
       <div className="flex flex-col items-center mb-56 md:mb-64 relative">
-        <div className="h-48 md:h-80 w-full bg-[var(--color-muted)] overflow-hidden relative group rounded-xl">
+        <div className="h-48 md:h-80 w-full bg-black overflow-hidden relative group rounded-xl">
           {user.coverImage ? (
             <img src={user.coverImage} alt="Cover" className="h-full w-full object-cover mix-blend-luminosity opacity-40 transition-transform duration-700 group-hover:scale-105" />
+          ) : user.avatar ? (
+            <img src={user.avatar} alt="Cover Fallback" className="h-full w-full object-cover opacity-50 blur-xl scale-110" />
           ) : (
             <div className="absolute inset-0 bg-[#E5E7EB]" />
           )}
@@ -292,20 +294,8 @@ export function ProfilePage() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                  {/* Fake blank items like wireframe */}
-                  {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="flex flex-col gap-3 group cursor-pointer">
-                      <div className="aspect-[3/4] bg-[#E5E7EB] rounded-lg w-full group-hover:opacity-80 transition-opacity"></div>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-heading text-sm font-black uppercase tracking-tight text-[var(--color-foreground)]">ÁO THUN MẪU {i}</p>
-                          <p className="text-[8px] uppercase tracking-widest text-[var(--color-muted-foreground)] mt-1">TÁC GIẢ: <span className="underline">{user.fullName}</span></p>
-                        </div>
-                        <p className="text-xs font-bold text-[var(--color-muted-foreground)]">100.000 VNĐ</p>
-                      </div>
-                    </div>
-                  ))}
+                <div className="border border-dashed border-[var(--color-border)] rounded-[var(--radius-xl)] p-12 text-center bg-[var(--color-card)]/50 mt-4">
+                  <p className="text-[var(--color-muted-foreground)] text-sm font-medium">Bạn chưa đăng thiết kế nào.</p>
                 </div>
               </motion.div>
             )}

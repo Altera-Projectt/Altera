@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { WishlistService, type WishlistProduct } from '@/services/wishlist.api'
+import { WishlistService } from '@/services/wishlist.api'
+import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
+import api from '@/utils/axios'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatVND } from '@/utils/format'
+import { formatVND, enhanceThumbnail } from '@/utils/format'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -13,18 +15,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 export function WishlistPage() {
   const { fetchCart } = useCartStore()
-  const [products, setProducts] = useState<WishlistProduct[]>([])
+  const [products, setProducts] = useState<MarketplaceDesign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
-  const [adding, setAdding] = useState<string | null>(null)
 
   const fetchWishlist = async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await WishlistService.getWishlist()
-      setProducts(response.data.data.wishlist.products || [])
+      const response = await MarketplaceService.getLikedDesigns()
+      setProducts(response.data.data.designs || [])
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Không thể tải danh sách yêu thích')
     } finally {
@@ -39,26 +40,13 @@ export function WishlistPage() {
   const handleRemove = async (productId: string) => {
     try {
       setRemoving(productId)
-      await WishlistService.removeFromWishlist(productId)
+      await api.request({ method: 'DELETE', url: `/designers/${productId}/like` })
       setProducts((prev) => prev.filter((p) => p._id !== productId))
       toast.success('Đã xóa khỏi danh sách yêu thích')
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Xóa thất bại, vui lòng thử lại')
     } finally {
       setRemoving(null)
-    }
-  }
-
-  const handleAddToCart = async (productId: string) => {
-    try {
-      setAdding(productId)
-      await CartService.addToCart({ productId, quantity: 1 })
-      await fetchCart()
-      toast.success('Đã thêm vào giỏ hàng!')
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Thêm vào giỏ hàng thất bại')
-    } finally {
-      setAdding(null)
     }
   }
 
@@ -187,10 +175,10 @@ export function WishlistPage() {
               >
                 {/* Image */}
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)] mb-4">
-                  <Link to={`/products/${product._id}`}>
-                    {product.imageUrl ? (
+                  <Link to={`/design/${product.slug}`}>
+                    {product.thumbnail ? (
                       <img
-                        src={product.imageUrl}
+                        src={enhanceThumbnail(product.thumbnail, product.productId?.imageUrl || product.productId?.images?.[0])}
                         alt={product.name}
                         className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                       />
@@ -224,17 +212,14 @@ export function WishlistPage() {
                   {/* Add to Cart Overlay Button */}
                   <div className="absolute bottom-4 left-4 right-4 translate-y-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
                     <Button
+                      asChild
                       variant="primary"
                       className="w-full text-[10px] uppercase font-bold tracking-widest bg-white text-black hover:bg-zinc-200"
-                      disabled={isAdding || product.stock === 0}
-                      onClick={() => handleAddToCart(product._id)}
                     >
-                      {isAdding ? (
-                        <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      ) : (
+                      <Link to={`/design/${product.slug}`}>
                         <ShoppingBag className="h-3.5 w-3.5 mr-2" />
-                      )}
-                      {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                        Tùy chỉnh & Mua
+                      </Link>
                     </Button>
                   </div>
                 </div>
@@ -243,7 +228,7 @@ export function WishlistPage() {
                 <div className="flex flex-col px-1">
                   <div className="flex items-start justify-between gap-4 mb-1">
                     <Link
-                      to={`/products/${product._id}`}
+                      to={`/design/${product.slug}`}
                       className="text-xs font-bold text-[var(--color-foreground)] hover:underline line-clamp-1 uppercase tracking-wider"
                     >
                       {product.name}
@@ -253,10 +238,7 @@ export function WishlistPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)]">{product.category}</span>
-                    {product.stock === 0 && (
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-error)]">Sold Out</span>
-                    )}
+                    <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)]">{product.category || 'Custom Design'}</span>
                   </div>
                 </div>
               </motion.div>

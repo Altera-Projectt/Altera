@@ -50,4 +50,5 @@ export interface FeaturedDesigner {
 export const MarketplaceService = {
   list: (params: MarketplaceQuery) => api.get<ApiResponse<MarketplaceResponse>>('/designers/marketplace', { params }),
   featuredDesigners: (limit = 8) => api.get<ApiResponse<{ designers: FeaturedDesigner[] }>>('/designers/featured', { params: { limit } }),
+  getLikedDesigns: () => api.get<ApiResponse<{ designs: MarketplaceDesign[] }>>('/designers/me/likes'),
 }

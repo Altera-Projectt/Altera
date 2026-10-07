@@ -140,3 +140,19 @@ export function formatCompact(num: number): string {
     maximumFractionDigits: 1,
   }).format(num)
 }
+
+const escapeXml = (value: string) => value.replace(/[<>&"']/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]!)
+
+export function enhanceThumbnail(thumbnail: string, productPreview?: string) {
+  if (!productPreview || !thumbnail.startsWith('data:image/svg+xml')) return thumbnail;
+  try {
+    const decoded = decodeURIComponent(thumbnail.replace(/^data:image\/svg\+xml;(charset=utf-8,)?/, ''));
+    const replaced = decoded.replace(
+      /<path d="M72 38 96 28[^>]+>/,
+      `<image href="${escapeXml(productPreview)}" x="0" y="0" width="240" height="320" preserveAspectRatio="xMidYMid slice" style="mix-blend-mode: multiply;"/>`
+    );
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(replaced)}`;
+  } catch (e) {
+    return thumbnail;
+  }
+}
