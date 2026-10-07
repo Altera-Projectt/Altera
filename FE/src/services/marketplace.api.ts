@@ -12,7 +12,7 @@ export interface MarketplaceDesign {
   color: { name: string; hex: string }
   size: string
   designerId: { username: string; displayName: string; avatar?: string }
-  productId?: { name: string; category: string; imageUrl?: string }
+  productId?: { name: string; category: string; imageUrl?: string; images?: string[] }
   likesCount: number
   salesCount: number
   isLiked: boolean

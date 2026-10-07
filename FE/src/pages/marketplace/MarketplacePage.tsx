@@ -7,22 +7,9 @@ import { useAuth } from '@/hooks/useAuth'
 import api from '@/utils/axios'
 import { toast } from 'sonner'
 
-const money = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`
+import { extractDesignLayers } from '@/utils/format'
 
-const escapeXml = (value: string) => value.replace(/[<>&"']/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]!)
-function enhanceThumbnail(thumbnail: string, productPreview?: string) {
-  if (!productPreview || !thumbnail.startsWith('data:image/svg+xml')) return thumbnail;
-  try {
-    const decoded = decodeURIComponent(thumbnail.replace(/^data:image\/svg\+xml;(charset=utf-8,)?/, ''));
-    const replaced = decoded.replace(
-      /<path d="M72 38 96 28[^>]+>/,
-      `<image href="${escapeXml(productPreview)}" x="0" y="0" width="240" height="320" preserveAspectRatio="xMidYMid slice" style="mix-blend-mode: multiply;"/>`
-    );
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(replaced)}`;
-  } catch (e) {
-    return thumbnail;
-  }
-}
+const money = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`
 export function MarketplacePage() {
   const [designs, setDesigns] = useState<MarketplaceDesign[]>([])
   const [search, setSearch] = useState('')
@@ -102,7 +89,12 @@ export function MarketplacePage() {
       {loading && !error && <div aria-label="Đang tải thiết kế" className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="animate-pulse"><div className="aspect-[4/5] bg-neutral-100"/><div className="mt-3 h-4 w-3/4 bg-neutral-100"/><div className="mt-2 h-3 w-1/2 bg-neutral-100"/></div>)}</div>}
       {!loading && !error && designs.length === 0 && <div className="border-y border-neutral-200 py-20 text-center"><p className="text-lg font-semibold">Chưa có thiết kế phù hợp</p><p className="mt-2 text-sm text-neutral-500">Hãy thử từ khóa khác hoặc quay lại sau.</p></div>}
       {!loading && !error && designs.length > 0 && <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 md:gap-x-6 lg:grid-cols-4">{designs.map((design) => <article key={design._id}>
-        <div className="group relative"><Link to={`/design/${design.slug}`} className="block"><div className="relative aspect-[4/5] overflow-hidden bg-neutral-100"><img src={enhanceThumbnail(design.thumbnail, design.productId?.imageUrl || design.productId?.images?.[0])} alt={design.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/><span className="absolute bottom-3 left-3 bg-white/95 px-2 py-1 text-[10px] uppercase tracking-widest">{design.category || design.productId?.category || 'Custom'}</span></div><h3 className="mt-3 truncate text-sm font-semibold uppercase tracking-wide">{design.name}</h3></Link><button onClick={() => void toggleLike(design)} aria-label={design.isLiked ? 'Unlike design' : 'Like design'} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/95"><Heart className={`h-4 w-4 ${design.isLiked ? 'fill-black' : ''}`}/></button></div>
+        <div className="group relative"><Link to={`/design/${design.slug}`} className="block"><div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
+          <img src={design.productId?.imageUrl || design.productId?.images?.[0] || design.thumbnail} alt={design.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/>
+          {(design.productId?.imageUrl || (design.productId?.images && design.productId.images.length > 0)) && (
+            <img src={extractDesignLayers(design.thumbnail)} alt={`${design.name} overlay`} loading="lazy" className="absolute inset-0 h-full w-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.03]"/>
+          )}
+          <span className="absolute bottom-3 left-3 z-10 bg-white/95 px-2 py-1 text-[10px] uppercase tracking-widest">{design.category || design.productId?.category || 'Custom'}</span></div><h3 className="mt-3 truncate text-sm font-semibold uppercase tracking-wide">{design.name}</h3></Link><button onClick={() => void toggleLike(design)} aria-label={design.isLiked ? 'Unlike design' : 'Like design'} className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-sm"><Heart className={`h-4 w-4 ${design.isLiked ? 'fill-black' : ''}`}/></button></div>
         <p className="mt-1 text-sm">{money(design.price)}</p><Link to={`/designer/${design.designerId.username}`} className="mt-1 inline-block text-xs text-neutral-500 hover:text-black">Designed by {design.designerId.displayName}</Link>
       </article>)}</div>}
       {!loading && pages > 1 && <nav aria-label="Marketplace pages" className="mt-12 flex items-center justify-center gap-5 text-sm"><button disabled={page <= 1} onClick={() => setPage(page - 1)} className="border px-4 py-2 disabled:opacity-40">Trước</button><span>{page} / {pages}</span><button disabled={page >= pages} onClick={() => setPage(page + 1)} className="border px-4 py-2 disabled:opacity-40">Tiếp</button></nav>}

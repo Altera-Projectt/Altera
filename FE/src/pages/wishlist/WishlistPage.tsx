@@ -2,19 +2,17 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
-import { WishlistService } from '@/services/wishlist.api'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
 import api from '@/utils/axios'
-import { CartService } from '@/services/cart.api'
-import { useCartStore } from '@/store/cartStore'
-import { formatVND, enhanceThumbnail } from '@/utils/format'
+import { formatVND, extractDesignLayers } from '@/utils/format'
+import { formatVND, extractDesignLayers } from '@/utils/format'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function WishlistPage() {
-  const { fetchCart } = useCartStore()
+  // const { fetchCart } = useCartStore()
   const [products, setProducts] = useState<MarketplaceDesign[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -161,7 +159,7 @@ export function WishlistPage() {
         <AnimatePresence>
           {products.map((product) => {
             const isRemoving = removing === product._id
-            const isAdding = adding === product._id
+            // const isAdding = adding === product._id
 
             return (
               <motion.div
@@ -177,11 +175,20 @@ export function WishlistPage() {
                 <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)] mb-4">
                   <Link to={`/design/${product.slug}`}>
                     {product.thumbnail ? (
-                      <img
-                        src={enhanceThumbnail(product.thumbnail, product.productId?.imageUrl || product.productId?.images?.[0])}
-                        alt={product.name}
-                        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
+                      <>
+                        <img
+                          src={product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail}
+                          alt={product.name}
+                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                        />
+                        {(product.productId?.imageUrl || (product.productId?.images && product.productId.images.length > 0)) && (
+                          <img
+                            src={extractDesignLayers(product.thumbnail)}
+                            alt={`${product.name} overlay`}
+                            className="absolute inset-0 h-full w-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                          />
+                        )}
+                      </>
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <ShoppingBag className="h-5 w-5 text-[var(--color-border)]" strokeWidth={1} />
