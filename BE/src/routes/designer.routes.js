@@ -8,6 +8,7 @@ router.get('/featured', designer.getFeaturedDesigners);
 router.get('/me/profile', protect, designer.getMyProfile);
 router.get('/me/summary', protect, designer.getSummary);
 router.get('/me/orders', protect, designer.getDesignerOrders);
+router.get('/me/likes', protect, designer.getMyLikes);
 router.get('/design/:slug', optionalProtect, designer.getDesign);
 router.get('/:username', optionalProtect, designer.getProfile);
 router.patch('/me/profile', protect, designer.updateProfile);
