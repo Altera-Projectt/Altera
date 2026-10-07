@@ -20,12 +20,12 @@ export function AboutPage() {
         <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto relative z-10 flex flex-col lg:flex-row justify-between items-center mt-12 md:mt-24">
           <div className="w-full lg:w-[60%] relative z-30">
             <motion.h1
-              className="font-heading text-[clamp(6rem,20vw,16rem)] leading-[0.75] tracking-tighter text-electric-blue uppercase font-black"
+              className="font-heading text-[clamp(6rem,20vw,16rem)] leading-[0.75] tracking-normal text-electric-blue uppercase font-black"
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 1 }}
             >
-              <span className="text-transparent" style={{ WebkitTextStroke: '4px #0011FF' }}>WHO</span> <br />
+              <span className="text-transparent" style={{ WebkitTextStroke: '2px #0011FF' }}>WHO</span> <br />
               WE ARE?
             </motion.h1>
             <motion.p
@@ -88,12 +88,12 @@ export function AboutPage() {
         <div className="max-w-[var(--spacing-contentMax)] mx-auto">
           {/* Header */}
           <div className="flex justify-between items-end mb-24 w-full">
-            <h2 className="font-heading text-[clamp(4rem,10vw,8rem)] tracking-tighter leading-none text-electric-blue font-black w-full flex flex-col md:flex-row justify-between uppercase">
+            <h2 className="font-heading text-[clamp(4rem,10vw,8rem)] tracking-normal leading-none text-electric-blue font-black w-full flex flex-col md:flex-row justify-between uppercase">
               <div className="flex gap-4 md:gap-8">
-                <span className="text-transparent" style={{ WebkitTextStroke: '3px #0011FF' }}>HOW</span>
+                <span className="text-transparent" style={{ WebkitTextStroke: '2px #002bff' }}>HOW</span>
                 <span>ALTERA</span>
               </div>
-              <span className="text-transparent mt-4 md:mt-0" style={{ WebkitTextStroke: '3px #0011FF' }}>WORKS</span>
+              <span className="text-transparent mt-4 md:mt-0" style={{ WebkitTextStroke: '2px #002bff' }}>WORKS</span>
             </h2>
           </div>
 

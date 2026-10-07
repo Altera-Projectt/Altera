@@ -71,7 +71,7 @@ export function LoginPage() {
           <img src={logoSvg} alt="ALTERA" className="h-7 w-auto" />
         </Link>
         <div className="my-auto mt-20 md:mt-auto hidden md:block">
-          <h1 className="text-[3rem] md:text-6xl lg:text-[72px] font-black uppercase tracking-tighter leading-[1]">
+          <h1 className="text-[3rem] md:text-6xl lg:text-[72px] font-black uppercase tracking-normal leading-[1]">
             <div className="text-transparent" style={{ WebkitTextStroke: '2px #0011FF' }}>WELCOME</div>
             <div className="text-transparent" style={{ WebkitTextStroke: '2px #0011FF' }}>TO</div>
             <div className="text-[#0011FF]">ALTERA</div>

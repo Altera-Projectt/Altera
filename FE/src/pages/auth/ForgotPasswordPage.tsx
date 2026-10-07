@@ -103,7 +103,7 @@ export function ForgotPasswordPage() {
               <img src={logoSvg} alt="ALTERA" className="h-7 w-auto" />
             </Link>
             <div className="my-auto mt-20 md:mt-auto">
-              <h1 className="text-[3rem] md:text-6xl lg:text-[72px] font-black uppercase tracking-tighter leading-[1]">
+              <h1 className="text-[3rem] md:text-6xl lg:text-[72px] font-black uppercase tracking-normal leading-[1]">
                 <div className="text-transparent" style={{ WebkitTextStroke: '1.5px white' }}>WELCOME</div>
                 <div className="text-transparent" style={{ WebkitTextStroke: '1.5px white' }}>TO</div>
                 <div className="text-white">ALTERA</div>
