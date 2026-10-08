@@ -153,7 +153,12 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
 
   useEffect(() => {
     if (!isAuthenticated) return
-    DesignService.getCustomImages().then(({ data }) => setUploads(data.data.images)).catch(() => setError('Unable to load your image library.'))
+    DesignService.getCustomImages()
+      .then(({ data }) => setUploads(data.data.images || []))
+      .catch((e) => {
+        console.warn('Unable to load your image library.', e)
+        setUploads([])
+      })
   }, [isAuthenticated])
 
   const colors = product?.colors ?? []
@@ -609,7 +614,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         <p className="text-sm font-semibold">{formatVND(product.discountPrice ?? product.price)} <span className="font-normal text-gray-500">· Stock {stock}</span></p>
         <div><p className="mb-2 text-xs font-medium">Color</p><div className="flex flex-wrap gap-2">{colors.map((item) => <button key={item.name} title={item.stock <= 0 ? `${item.name} · Out of Stock` : item.name} aria-label={item.name} onClick={() => setColorName(item.name)} className={`h-8 w-8 rounded-full border-2 ${item.stock <= 0 ? 'opacity-40' : ''} ${colorName === item.name ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}`} style={{ backgroundColor: item.hex }} />)}{colors.length === 0 && <span className="text-xs text-gray-500">No colors configured</span>}</div>{selectedColor && <p className="mt-1 text-xs text-gray-500">{selectedColor.name} · {selectedColor.stock} in stock</p>}</div>
         <label className="block text-sm">Size<select aria-label="Size" className="mt-1 w-full rounded border p-2" value={size} onChange={(e) => setSize(e.target.value)}><option value="">Select size</option>{sizes.map((option) => <option key={option.label} value={option.label}>{option.label}{option.stock <= 0 ? ' · Out of Stock' : ` · ${option.stock} left`}</option>)}</select></label>
-        <div><p className="mb-2 text-xs font-medium">Print side</p><div className="grid grid-cols-3 gap-1">{([['FRONT', 'Front'], ['BACK', 'Back'], ['BOTH', 'Both Sides']] as const).map(([value, label]) => <button key={value} onClick={() => setPrintSide(value)} className={`rounded border px-1 py-2 text-xs ${printSide === value ? 'bg-black text-white' : ''}`}>{label}</button>)}</div></div>
+        <div><p className="mb-2 text-xs font-medium">Print side</p><div className="grid grid-cols-3 gap-1">{([['FRONT', 'Front'], ['BACK', 'Back'], ['BOTH', 'Both Sides']] as const).map(([value, label]) => <button key={value} onClick={() => { setPrintSide(value); if (value === 'FRONT') setSide('frontDesign'); if (value === 'BACK') setSide('backDesign'); }} className={`rounded border px-1 py-2 text-xs ${printSide === value ? 'bg-black text-white' : ''}`}>{label}</button>)}</div></div>
         <label className="block text-sm">Printing technique<select className="mt-1 w-full rounded border p-2" value={technique} onChange={(e) => setTechnique(e.target.value)}><option value="">Select technique</option>{techniques.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
         <div><p className="mb-2 text-xs font-medium">Quantity</p><div className="flex items-center gap-3"><button aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="rounded border px-3 py-1 disabled:opacity-40">−</button><span>{quantity}</span><button aria-label="Increase quantity" disabled={quantity >= stock} onClick={() => setQuantity((value) => Math.min(stock, value + 1))} className="rounded border px-3 py-1 disabled:opacity-40">+</button><span className="text-xs text-gray-500">Max {stock}</span></div></div>
         <div className="border-t pt-3"><p className="flex justify-between text-sm"><span>Estimated total</span><strong>{formatVND(estimatedPrice * quantity)}</strong></p><p className="mt-1 text-xs text-gray-500">Product {formatVND(product.discountPrice ?? product.price)} + print {formatVND(selectedTechnique?.price ?? 0)}{printSide === 'BOTH' ? ` + second side ${formatVND(selectedTechnique?.additionalSidePrice ?? 0)}` : ''}{selectedTechnique?.customizationPrice ? ` + customization ${formatVND(selectedTechnique.customizationPrice)}` : ''}</p>{quantity > stock && <p className="mt-1 text-xs text-red-600">Quantity exceeds available stock.</p>}</div>
@@ -628,9 +633,9 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
           <button type="button" onClick={() => void deleteUploadedImage(image)} aria-label={`Remove ${image.filename} from library`} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 opacity-0 shadow transition group-hover:opacity-100 focus:opacity-100"><X size={13}/></button>
         </div>)}</div>}
       </section>
-      <div className="flex gap-2"><button onClick={() => changeSide('frontDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'frontDesign' ? 'bg-black text-white' : ''}`}>Front</button><button onClick={() => changeSide('backDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'backDesign' ? 'bg-black text-white' : ''}`}>Back</button></div>
+      {printSide === 'BOTH' && <div className="flex gap-2"><button onClick={() => changeSide('frontDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'frontDesign' ? 'bg-black text-white' : ''}`}>Front</button><button onClick={() => changeSide('backDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'backDesign' ? 'bg-black text-white' : ''}`}>Back</button></div>}
       <section aria-label="Layers" className="space-y-2 rounded-lg border p-2">
-        <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider">Layers · {side === 'frontDesign' ? 'Front' : 'Back'}</p><div className="flex gap-1"><button title="Undo" aria-label="Undo" disabled={!undoStack.length} onClick={undo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↶</button><button title="Redo" aria-label="Redo" disabled={!redoStack.length} onClick={redo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↷</button></div></div>
+        <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider">Layers · {printSide === 'BOTH' ? (side === 'frontDesign' ? 'Front' : 'Back') : (printSide === 'FRONT' ? 'Front' : 'Back')}</p><div className="flex gap-1"><button title="Undo" aria-label="Undo" disabled={!undoStack.length} onClick={undo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↶</button><button title="Redo" aria-label="Redo" disabled={!redoStack.length} onClick={redo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↷</button></div></div>
         {!current.length && <p className="text-sm text-gray-500">No layers yet.</p>}
         {[...current].reverse().map((layer) => <div key={layer.id} className={`rounded border p-1 ${selectedId === layer.id ? 'border-black bg-gray-50' : ''}`}>
           <div className="flex items-center gap-1"><button type="button" title={layer.visible ? 'Hide layer' : 'Show layer'} aria-label={layer.visible ? `Hide ${layer.name}` : `Show ${layer.name}`} onClick={() => toggleVisibility(layer)} className="rounded p-1">{layer.visible ? <Eye size={15}/> : <EyeOff size={15}/>}</button><button type="button" onClick={() => setSelectedId(layer.id)} className="min-w-0 flex-1 truncate text-left text-sm">{layer.name}</button><button type="button" title={layer.locked ? 'Unlock layer' : 'Lock layer'} aria-label={layer.locked ? `Unlock ${layer.name}` : `Lock ${layer.name}`} onClick={() => changeLayer(layer.id, { locked: !layer.locked })} className="rounded p-1">{layer.locked ? <Lock size={14}/> : <Unlock size={14}/>}</button></div>
@@ -647,7 +652,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
            decalRotationDegrees={activeImageLayer?.rotation ?? 0}
            decalScaleMultiplier={activeImageLayer?.scaleX ?? 1}
            decalLocked={activeImageLayer?.locked ?? false}
-           printSide={printSide}
+           printSide={printSide === 'BOTH' ? (side === 'frontDesign' ? 'FRONT' : 'BACK') : printSide}
          />
       </div>
     </div>
