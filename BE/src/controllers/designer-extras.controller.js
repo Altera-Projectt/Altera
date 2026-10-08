@@ -10,15 +10,8 @@ const fail = (status, message) => Object.assign(new Error(message), { statusCode
 const ownProfile = (userId) => DesignerProfile.findOne({ userId });
 // No admin moderation yet: designs go live immediately. Set MARKETPLACE_REQUIRE_REVIEW=true to require review.
 const submissionStatus = () => (process.env.MARKETPLACE_REQUIRE_REVIEW === 'true' ? 'PENDING_REVIEW' : 'PUBLISHED');
-const hasAvailableBaseVariant = async (design) => {
-  if (!mongoose.Types.ObjectId.isValid(design.productId)) return false;
-  const product = await Product.findOne({ _id: design.productId, isActive: true }).select('stock colors sizes printingTechniques');
-  if (!product || product.stock < 1) return false;
-  const color = design.color ? product.colors.find((item) => item.name === design.color?.name) : true;
-  const size = design.size ? product.sizes.find((item) => item.label === design.size) : true;
-  const technique = product.printingTechniques.find((item) => item.code === design.printingTechnique);
-  return Boolean(color && (color === true || color.stock > 0) && size && (size === true || size.stock > 0) && technique);
-};
+const hasAvailableBaseVariant = async (design) => mongoose.Types.ObjectId.isValid(design.productId)
+  && Boolean(await Product.exists({ _id: design.productId, isActive: true }));
 exports.renameCollection = async (req, res, next) => { try { const profile=await ownProfile(req.user._id),name=String(req.body.name||'').trim(); if(!name)throw fail(400,'Collection name is required'); const collection=await DesignerCollection.findOne({_id:req.params.id,designerId:profile?._id}); if(!collection)throw fail(404,'Collection not found'); collection.name=name; collection.slug=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); await collection.save(); res.json({success:true,data:{collection}}); }catch(e){next(e)} };
 exports.like = async (req,res,next) => { try { const design=await MarketplaceDesign.findOne({_id:req.params.id,status:'PUBLISHED'}); if(!design)throw fail(404,'Design not found'); await DesignerLike.updateOne({userId:req.user._id,designId:design._id},{$setOnInsert:{userId:req.user._id,designId:design._id}},{upsert:true}); res.json({success:true,data:{likesCount:await DesignerLike.countDocuments({designId:design._id})}}); }catch(e){next(e)} };
 exports.unlike = async (req,res,next) => { try { await DesignerLike.deleteOne({userId:req.user._id,designId:req.params.id}); res.json({success:true}); }catch(e){next(e)} };

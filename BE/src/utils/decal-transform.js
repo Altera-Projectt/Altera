@@ -1,4 +1,4 @@
-const DEFAULT_TRANSFORM = Object.freeze({ x: 0, y: 0, z: 0, rotation: 0, scale: 1, opacity: 1 });
+const DEFAULT_TRANSFORM = Object.freeze({ x: undefined, y: undefined, z: 0, rotation: 0, scale: 1, opacity: 1 });
 
 const normalizeDecalTransform = (value) => {
   if (value === undefined || value === null) return undefined;

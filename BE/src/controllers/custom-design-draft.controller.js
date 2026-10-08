@@ -1,4 +1,6 @@
 const draftService = require('../services/custom-design-draft.service');
+const draftFields = ['name', 'productId', 'color', 'size', 'printSide', 'printingTechnique', 'frontDesign', 'backDesign', 'thumbnail', 'thumbnailUrl', 'shirtColor', 'designUrl', 'decalTransform'];
+const pickDraftFields = (body = {}) => Object.fromEntries(draftFields.filter((field) => body[field] !== undefined).map((field) => [field, body[field]]));
 
 const asyncHandler = (handler) => async (req, res, next) => {
   try { await handler(req, res); } catch (error) { next(error); }
@@ -6,9 +8,9 @@ const asyncHandler = (handler) => async (req, res, next) => {
 
 module.exports = {
   list: asyncHandler(async (req, res) => res.status(200).json({ success: true, data: { drafts: await draftService.list(req.user._id) } })),
-  create: asyncHandler(async (req, res) => res.status(201).json({ success: true, data: { draft: await draftService.create(req.user._id, req.body) } })),
+  create: asyncHandler(async (req, res) => res.status(201).json({ success: true, data: { draft: await draftService.create(req.user._id, pickDraftFields(req.body)) } })),
   get: asyncHandler(async (req, res) => res.status(200).json({ success: true, data: { draft: await draftService.get(req.params.draftId, req.user._id) } })),
-  update: asyncHandler(async (req, res) => res.status(200).json({ success: true, data: { draft: await draftService.update(req.params.draftId, req.user._id, req.body) } })),
+  update: asyncHandler(async (req, res) => res.status(200).json({ success: true, data: { draft: await draftService.update(req.params.draftId, req.user._id, pickDraftFields(req.body)) } })),
   remove: asyncHandler(async (req, res) => { await draftService.remove(req.params.draftId, req.user._id); res.status(200).json({ success: true, message: 'Draft deleted.' }); }),
   duplicate: asyncHandler(async (req, res) => res.status(201).json({ success: true, data: { draft: await draftService.duplicate(req.params.draftId, req.user._id) } })),
 };

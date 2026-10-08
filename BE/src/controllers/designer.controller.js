@@ -24,12 +24,7 @@ const profileForUser = async (userId) => {
 const ownedProfile = (userId) => DesignerProfile.findOne({ userId });
 const hasAvailableBaseVariant = async (design) => {
   if (!mongoose.Types.ObjectId.isValid(design.productId)) return false;
-  const product = await Product.findOne({ _id: design.productId, isActive: true }).select('stock colors sizes printingTechniques');
-  if (!product || product.stock < 1) return false;
-  const color = design.color ? product.colors.find((item) => item.name === design.color?.name) : true;
-  const size = design.size ? product.sizes.find((item) => item.label === design.size) : true;
-  const technique = product.printingTechniques.find((item) => item.code === design.printingTechnique);
-  return Boolean(color && (color === true || color.stock > 0) && size && (size === true || size.stock > 0) && technique);
+  return Boolean(await Product.exists({ _id: design.productId, isActive: true }));
 };
 
 exports.getMarketplace = async (req, res, next) => {

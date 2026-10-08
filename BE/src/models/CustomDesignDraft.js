@@ -12,8 +12,8 @@ const CustomDesignDraftSchema = new mongoose.Schema({
   shirtColor: { type: String, trim: true, default: undefined },
   designUrl: { type: String, trim: true, default: undefined },
   decalTransform: {
-    x: { type: Number, default: 0 },
-    y: { type: Number, default: 0 },
+    x: { type: Number, default: undefined },
+    y: { type: Number, default: undefined },
     z: { type: Number, default: 0 },
     rotation: { type: Number, default: 0 },
     scale: { type: Number, default: 1 },

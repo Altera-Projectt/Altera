@@ -38,7 +38,7 @@ const addToCart = async (req, res, next) => {
     }
     const availableStock = customization ? Math.min(product.stock, selectedColor?.stock ?? 0, selectedSize?.stock ?? 0) : product.stock;
     if (!Number.isInteger(quantity) || quantity < 1 || availableStock < quantity) return res.status(400).json({ success: false, message: `Insufficient stock. Available: ${availableStock}` });
-    const unitPrice = marketplaceDesign ? (product.discountPrice ?? product.price) + marketplaceDesign.price : getCustomizationPrice(product, customization);
+    const unitPrice = marketplaceDesign ? marketplaceDesign.price : getCustomizationPrice(product, customization);
     let cart = await Cart.findOne({ userId: req.user._id });
     if (!cart) cart = new Cart({ userId: req.user._id, items: [] });
     const configKey = JSON.stringify(customization || null);
@@ -73,7 +73,7 @@ const updateCartItem = async (req, res, next) => {
       if (!Number.isInteger(quantity) || (line.customization ? Math.min(product?.stock ?? 0, color?.stock ?? 0, size?.stock ?? 0) : product?.stock ?? 0) < quantity) {
         return res.status(400).json({ success: false, message: 'Quantity exceeds available stock' });
       }
-      if (line.marketplaceDesignId) { const listing = await MarketplaceDesign.findOne({ _id: line.marketplaceDesignId, status: 'PUBLISHED' }); if (!listing) return res.status(400).json({ success: false, message: 'A design in your cart is no longer available.' }); line.price = (product.discountPrice ?? product.price) + listing.price; } else if (product) line.price = getCustomizationPrice(product, line.customization?.toObject?.() || line.customization);
+      if (line.marketplaceDesignId) { const listing = await MarketplaceDesign.findOne({ _id: line.marketplaceDesignId, status: 'PUBLISHED' }); if (!listing) return res.status(400).json({ success: false, message: 'A design in your cart is no longer available.' }); line.price = listing.price; } else if (product) line.price = getCustomizationPrice(product, line.customization?.toObject?.() || line.customization);
       cart.items[index].quantity = quantity;
     }
 
