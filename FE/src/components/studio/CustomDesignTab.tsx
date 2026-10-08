@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Copy, Eye, EyeOff, Italic, Lock, Plus, RotateCw, Trash2, Underline, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Lock, Plus, RotateCw, Trash2, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
 import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
@@ -10,35 +10,21 @@ import { useAuthStore } from '@/store/authStore'
 import type { Product } from '@/types/product.types'
 import { formatVND } from '@/utils/format'
 import ShirtCanvas3D from './ShirtCanvas3D'
-type TextEffect = 'Straight' | 'Wave' | 'Pinch' | 'Tilt Right' | 'Tilt Left' | 'Curve Up' | 'Flag' | 'Inflate' | 'Curve Down'
-type TextLayer = {
-  id: string; type: 'text'; name: string; visible: boolean; locked: boolean; zIndex: number; text: string; fontFamily: string; fontSize: number; fontWeight: number
-  italic: boolean; underline: boolean; textTransform: 'none' | 'uppercase' | 'lowercase'
-  align: 'left' | 'center' | 'right'; color: string; stroke: string; strokeWidth: number; opacity: number
-  x: number; y: number; rotation: number; scaleX: number; scaleY: number; effect: TextEffect
-}
 type ImageLayer = { id: string; type: 'image'; name: string; visible: boolean; locked: boolean; zIndex: number; src: string; x: number; y: number; rotation: number; scaleX: number; scaleY: number; opacity: number }
-type DesignLayer = TextLayer | ImageLayer
+type DesignLayer = ImageLayer
 type DesignState = { frontDesign: { layers: DesignLayer[] }; backDesign: { layers: DesignLayer[] } }
-const FONTS = ['Inter', 'Roboto', 'Montserrat', 'Poppins', 'Bebas Neue', 'Arial']
-const EFFECTS: TextEffect[] = ['Straight', 'Wave', 'Pinch', 'Tilt Right', 'Tilt Left', 'Curve Up', 'Flag', 'Inflate', 'Curve Down']
 
 const escapeXml = (value: string) => value.replace(/[<>&"']/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]!)
 function makeDraftThumbnail(color: string, layers: DesignLayer[]) {
   const items = layers.filter((layer) => layer.visible).map((layer) => {
     const transform = `translate(${layer.x * 2.4} ${layer.y * 3.2}) rotate(${layer.rotation}) scale(${layer.scaleX} ${layer.scaleY})`
-    if (layer.type === 'image') return `<image href="${escapeXml(layer.src)}" x="-28" y="-28" width="56" height="56" opacity="${layer.opacity}" preserveAspectRatio="xMidYMid meet" transform="${transform}"/>`
-    return `<text x="0" y="0" text-anchor="middle" font-family="Arial,sans-serif" font-size="${Math.min(layer.fontSize, 32)}" font-weight="${layer.fontWeight}" fill="${escapeXml(layer.color)}" opacity="${layer.opacity}" transform="${transform}">${escapeXml(layer.text)}</text>`
+    return `<image href="${escapeXml(layer.src)}" x="-28" y="-28" width="56" height="56" opacity="${layer.opacity}" preserveAspectRatio="xMidYMid meet" transform="${transform}"/>`
   }).join('')
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><path d="M72 38 96 28h48l24 10 48 32-27 48-27-16v190H78V102l-27 16-27-48z" fill="${escapeXml(color)}" stroke="#d1d5db" stroke-width="3"/>${items}</svg>`
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
-const makeText = (): TextLayer => ({
-  id: crypto.randomUUID(), type: 'text', name: 'Text', visible: true, locked: false, zIndex: Date.now(), text: 'Your Text', fontFamily: 'Inter', fontSize: 32, fontWeight: 400,
-  italic: false, underline: false, textTransform: 'none', align: 'center', color: '#111111', stroke: '#ffffff',
-  strokeWidth: 0, opacity: 1, x: 50, y: 50, rotation: 0, scaleX: 1, scaleY: 1, effect: 'Straight',
-})
+
 const makeImage = (src: string): ImageLayer => ({ id: crypto.randomUUID(), type: 'image', name: 'Image', visible: true, locked: false, zIndex: Date.now(), src, x: 50, y: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 })
 
 function readDesign(storageKey: string): DesignState {
@@ -73,18 +59,7 @@ function readSelection() {
   catch { return {} }
 }
 
-function effectStyle(effect: TextEffect): React.CSSProperties {
-  return effect === 'Inflate' ? { letterSpacing: '.04em' } : {}
-}
 
-function effectTransform(effect: TextEffect): string {
-  const transforms: Record<TextEffect, string> = {
-    Straight: '', Wave: 'skewY(-8deg) rotate(-2deg)', Pinch: 'scaleX(.78) scaleY(1.12)',
-    'Tilt Right': 'rotate(8deg)', 'Tilt Left': 'rotate(-8deg)', 'Curve Up': 'rotate(-5deg) scaleX(.94)',
-    Flag: 'skewY(9deg) scaleX(1.06)', Inflate: 'scale(1.12)', 'Curve Down': 'rotate(5deg) scaleX(.94)',
-  }
-  return transforms[effect]
-}
 
 type CustomDesignTabProps = {
   /** Image handed over from another tab (e.g. an AI result) to place on the shirt. */
@@ -150,7 +125,6 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const fetchCart = useCartStore((state) => state.fetchCart)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const authenticatedUserId = useAuthStore((state) => state.user?._id)
-  const drag = useRef<{ id: string; x: number; y: number; left: number; top: number } | null>(null)
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
   const activeImageLayer = current.find(l => l.type === 'image' && l.visible) as ImageLayer | undefined;
   const selected = current.find((layer) => layer.id === selectedId) ?? null
@@ -184,7 +158,6 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const colors = product?.colors ?? []
   const sizes = product?.sizes ?? []
   const selectedColor = colors.find((color) => color.name === colorName) ?? null
-  const productPreview = selectedColor?.imageUrl ?? product?.imageUrl ?? product?.images?.[0]
   const selectedSize = sizes.find((option) => option.label === size) ?? null
   const stock = product ? Math.min(product.stock, selectedColor?.stock ?? product.stock, selectedSize?.stock ?? product.stock) : 0
   const techniques = product?.printingTechniques ?? []
@@ -227,7 +200,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   }, [design, storageKey])
   useEffect(() => { if (product?._id) localStorage.setItem('altera-custom-selection-v1', JSON.stringify({ productId: product._id, colorName, size, printSide, technique, quantity })) }, [product?._id, colorName, size, printSide, technique, quantity])
   const update = (id: string, patch: Partial<TextLayer> | Partial<ImageLayer>) => { const next = { ...design, [side]: { layers: design[side].layers.map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) } }; commit(next) }
-  const addText = () => { const layer = { ...makeText(), name: `Text ${design[side].layers.filter((item) => item.type === 'text').length + 1}`, zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 }; commit({ ...design, [side]: { layers: [...design[side].layers, layer] } }); setSelectedId(layer.id) }
+
   const uploadFile = async (file?: File) => {
     if (!file) return
     if (file.size > 10 * 1024 * 1024) { setError('Image size exceeds the 10MB limit.'); return }
@@ -572,12 +545,6 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     setTechnique(next?.printingTechniques?.[0]?.code ?? '')
     setQuantity(1)
   }
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current) return
-    const bounds = event.currentTarget.getBoundingClientRect()
-    const layer = current.find((item) => item.id === drag.current?.id); if (layer?.locked) return
-    update(drag.current.id, { x: Math.min(100, Math.max(0, drag.current.left + (event.clientX - drag.current.x) / bounds.width * 100)), y: Math.min(100, Math.max(0, drag.current.top + (event.clientY - drag.current.y) / bounds.height * 100)) })
-  }
 
   const addToOrder = async (orderNow: boolean) => {
     if (!product || !colorName || !size || !printSide || !selectedTechnique) {
@@ -646,7 +613,6 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         <div><p className="mb-2 text-xs font-medium">Quantity</p><div className="flex items-center gap-3"><button aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="rounded border px-3 py-1 disabled:opacity-40">−</button><span>{quantity}</span><button aria-label="Increase quantity" disabled={quantity >= stock} onClick={() => setQuantity((value) => Math.min(stock, value + 1))} className="rounded border px-3 py-1 disabled:opacity-40">+</button><span className="text-xs text-gray-500">Max {stock}</span></div></div>
         <div className="border-t pt-3"><p className="flex justify-between text-sm"><span>Estimated total</span><strong>{formatVND(estimatedPrice * quantity)}</strong></p><p className="mt-1 text-xs text-gray-500">Product {formatVND(product.discountPrice ?? product.price)} + print {formatVND(selectedTechnique?.price ?? 0)}{printSide === 'BOTH' ? ` + second side ${formatVND(selectedTechnique?.additionalSidePrice ?? 0)}` : ''}{selectedTechnique?.customizationPrice ? ` + customization ${formatVND(selectedTechnique.customizationPrice)}` : ''}</p>{quantity > stock && <p className="mt-1 text-xs text-red-600">Quantity exceeds available stock.</p>}</div>
       </>}
-      <button onClick={addText} className="flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white"><Plus size={16}/>Add Text</button>
       <div onDragOver={(event) => { event.preventDefault(); setDragOver(true) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOver(false) }} onDrop={(event) => { event.preventDefault(); setDragOver(false); void uploadFile(event.dataTransfer.files[0]) }} className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${dragOver ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}>
         <Upload className="mx-auto mb-2" size={20}/><p className="text-sm font-semibold">Drag and drop or click to upload</p><p className="mt-1 text-xs text-gray-500">PNG, JPG, JPEG, WEBP · Maximum 10MB</p>
         <button type="button" disabled={uploading} onClick={() => fileInput.current?.click()} className="mt-3 rounded border px-3 py-2 text-sm disabled:opacity-50">{uploading ? 'Uploading…' : 'Choose file'}</button>
@@ -685,24 +651,12 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       </div>
     </div>
     <aside className="max-h-[720px] space-y-4 overflow-auto rounded-xl border border-[var(--color-border)] bg-white p-4">
-      {selected?.type === 'text' ? <>
-        <label className="block text-sm font-medium">Enter text...<textarea maxLength={500} rows={4} value={selected.text} onChange={(e) => update(selected.id, { text: e.target.value })} className="mt-1 w-full rounded border p-2"/><span className="text-xs text-gray-500">{selected.text.length}/500</span></label>
-        <label className="block text-sm">Font<select className="mt-1 w-full rounded border p-2" value={selected.fontFamily} onChange={(e) => update(selected.id, { fontFamily: e.target.value })}>{FONTS.map((font) => <option key={font}>{font}</option>)}</select></label>
-        <label className="block text-sm">Size · {selected.fontSize}px<input className="w-full" type="range" min="8" max="200" value={selected.fontSize} onChange={(e) => update(selected.id, { fontSize: Number(e.target.value) })}/></label>
-        <div className="flex gap-2">{[[Bold, 'bold'], [Italic, 'italic'], [Underline, 'underline']].map(([Icon, key]) => <button key={key as string} title={key as string} onClick={() => update(selected.id, key === 'bold' ? { fontWeight: selected.fontWeight === 700 ? 400 : 700 } : key === 'italic' ? { italic: !selected.italic } : { underline: !selected.underline })} className="rounded border p-2"><Icon size={16}/></button>)}<button title="Uppercase" className="rounded border px-2 text-xs" onClick={() => update(selected.id, { textTransform: selected.textTransform === 'uppercase' ? 'none' : 'uppercase' })}>AA</button><button title="Lowercase" className="rounded border px-2 text-xs" onClick={() => update(selected.id, { textTransform: selected.textTransform === 'lowercase' ? 'none' : 'lowercase' })}>aa</button></div>
-        <div className="flex gap-2">{[[AlignLeft, 'left'], [AlignCenter, 'center'], [AlignRight, 'right']].map(([Icon, align]) => <button key={align as string} onClick={() => update(selected.id, { align: align as TextLayer['align'] })} className={`rounded border p-2 ${selected.align === align ? 'bg-gray-100' : ''}`}><Icon size={16}/></button>)}</div>
-        <div className="grid grid-cols-2 gap-3">{([['Text color', 'color'], ['Stroke color', 'stroke']] as const).map(([label, key]) => <label key={key} className="text-sm">{label}<input className="mt-1 h-10 w-full" type="color" value={selected[key]} onChange={(e) => update(selected.id, { [key]: e.target.value })}/></label>)}</div>
-        <label className="block text-sm">Stroke width · {selected.strokeWidth}px<input className="w-full" type="range" min="0" max="12" value={selected.strokeWidth} onChange={(e) => update(selected.id, { strokeWidth: Number(e.target.value) })}/></label>
-        <label className="block text-sm">Opacity · {Math.round(selected.opacity * 100)}%<input className="w-full" type="range" min="0" max="1" step="0.01" value={selected.opacity} onChange={(e) => update(selected.id, { opacity: Number(e.target.value) })}/></label>
-        <label className="block text-sm">Effect<select className="mt-1 w-full rounded border p-2" value={selected.effect} onChange={(e) => update(selected.id, { effect: e.target.value as TextEffect })}>{EFFECTS.map((effect) => <option key={effect}>{effect}</option>)}</select></label>
-        <label className="block text-sm">Rotate · {selected.rotation}°<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
-        <label className="block text-sm">Resize · {selected.scaleX.toFixed(1)}×<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
-      </> : selected?.type === 'image' ? <>
+      {selected?.type === 'image' ? <>
         <p className="text-sm font-medium">Image layer</p>
         <label className="block text-sm">Opacity · {Math.round(selected.opacity * 100)}%<input className="w-full" type="range" min="0" max="1" step="0.01" value={selected.opacity} onChange={(e) => update(selected.id, { opacity: Number(e.target.value) })}/></label>
         <label className="block text-sm">Rotate · {selected.rotation}°<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
         <label className="block text-sm">Resize · {selected.scaleX.toFixed(1)}×<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
-      </> : <p className="text-sm text-gray-500">Select a layer or add text/image to edit its properties.</p>}
+      </> : <p className="text-sm text-gray-500">Select a layer to edit its properties.</p>}
       {selected && <button onClick={() => removeLayer(selected.id)} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Delete layer</button>}
       <div className="flex items-center gap-2 border-t pt-3 text-xs text-gray-500"><RotateCw size={14}/>Drag on canvas to move · use controls to resize and rotate</div>
       {error && <p role="status" className={`text-sm ${error.startsWith('Added') ? 'text-green-700' : 'text-red-600'}`}>{error}</p>}
