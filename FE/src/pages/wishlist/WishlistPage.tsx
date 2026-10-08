@@ -185,7 +185,7 @@ export function WishlistPage() {
                           <img
                             src={extractDesignLayers(product.thumbnail)}
                             alt={`${product.name} overlay`}
-                            className="absolute inset-0 h-full w-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                            className="absolute inset-0 h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
                           />
                         )}
                       </>
