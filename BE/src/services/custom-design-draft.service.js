@@ -1,7 +1,8 @@
 const CustomDesignDraft = require('../models/CustomDesignDraft');
 const mongoose = require('mongoose');
+const normalizeDecalTransform = require('../utils/decal-transform');
 
-const draftFields = ['name', 'productId', 'color', 'size', 'printSide', 'printingTechnique', 'frontDesign', 'backDesign', 'thumbnail'];
+const draftFields = ['name', 'productId', 'color', 'size', 'printSide', 'printingTechnique', 'frontDesign', 'backDesign', 'thumbnail', 'thumbnailUrl', 'shirtColor', 'designUrl', 'decalTransform'];
 const ownedDraft = async (id, userId) => {
   if (!mongoose.isValidObjectId(id)) {
     const error = new Error('Draft not found.');
@@ -16,7 +17,7 @@ const ownedDraft = async (id, userId) => {
   }
   return draft;
 };
-const safeData = (data) => Object.fromEntries(draftFields.filter((field) => data[field] !== undefined).map((field) => [field, data[field]]));
+const safeData = (data) => Object.fromEntries(draftFields.filter((field) => data[field] !== undefined).map((field) => [field, field === 'decalTransform' ? normalizeDecalTransform(data[field]) : data[field]]));
 
 const list = (userId) => CustomDesignDraft.find({ userId }).sort({ updatedAt: -1 }).lean();
 const create = (userId, data) => CustomDesignDraft.create({ ...safeData(data), userId });

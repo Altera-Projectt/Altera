@@ -8,6 +8,7 @@ const CustomDesignDraft = require('../models/CustomDesignDraft');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const normalizeDecalTransform = require('../utils/decal-transform');
 const slugify = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const fail = (status, message) => Object.assign(new Error(message), { statusCode: status });
 // No admin moderation yet: designs go live immediately. Set MARKETPLACE_REQUIRE_REVIEW=true to require review.
@@ -225,11 +226,14 @@ exports.createDesign = async (req, res, next) => {
     const profile = await profileForUser(req.user._id), draft = await CustomDesignDraft.findOne({ _id: req.body.draftId, userId: req.user._id });
     if (!draft) throw fail(404, 'Owned design draft not found');
     const name = String(req.body.name || '').trim(), price = Number(req.body.price), hasFront = Boolean(draft.frontDesign?.layers?.some((layer) => layer && layer.visible !== false)), hasBack = Boolean(draft.backDesign?.layers?.some((layer) => layer && layer.visible !== false));
-    const hasRequiredLayers = draft.printSide === 'BACK' ? hasBack : draft.printSide === 'BOTH' ? hasFront && hasBack : hasFront;
-    if (!name || !draft.productId || !hasRequiredLayers || !draft.thumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, design layer, preview, and valid price are required');
+    const has3dDesign = Boolean(req.body.designUrl || draft.designUrl);
+    const hasRequiredLayers = draft.printSide === 'BACK' ? hasBack || has3dDesign : draft.printSide === 'BOTH' ? (hasFront && hasBack) || has3dDesign : hasFront || has3dDesign;
+    const thumbnailUrl = req.body.thumbnailUrl || draft.thumbnailUrl || draft.thumbnail;
+    if (!name || !draft.productId || !hasRequiredLayers || !thumbnailUrl || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, design layer, preview, and valid price are required');
     if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
-    const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: submissionStatus() });
+    const decalTransform = normalizeDecalTransform(req.body.decalTransform ?? draft.decalTransform);
+    const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail || thumbnailUrl, thumbnailUrl, shirtColor: req.body.shirtColor ?? draft.shirtColor, designUrl: req.body.designUrl ?? draft.designUrl, decalTransform, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: submissionStatus() });
     res.status(201).json({ success: true, data: { design } });
   } catch (error) { next(error); }
 };
@@ -238,6 +242,8 @@ exports.updateDesign = async (req, res, next) => {
     const profile = await ownedProfile(req.user._id), design = await MarketplaceDesign.findOne({ _id: req.params.id, designerId: profile?._id });
     if (!design) throw fail(404, 'Design not found');
     if (design.status === 'PUBLISHED') throw fail(409, 'Duplicate a published design to make a new version');
+    for (const key of ['thumbnailUrl', 'shirtColor', 'designUrl']) if (req.body[key] !== undefined) design[key] = req.body[key];
+    if (req.body.decalTransform !== undefined) design.decalTransform = normalizeDecalTransform(req.body.decalTransform);
     for (const key of ['name', 'description', 'category']) if (req.body[key] !== undefined) design[key] = req.body[key];
     if (req.body.price !== undefined) { const price = Number(req.body.price); if (!Number.isFinite(price) || price <= 0) throw fail(400, 'Price must be greater than zero'); design.price = price; }
     if (req.body.tags !== undefined) design.tags = Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [];
