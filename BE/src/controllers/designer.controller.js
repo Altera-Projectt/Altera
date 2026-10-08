@@ -64,22 +64,23 @@ exports.getMarketplace = async (req, res, next) => {
     const sortOptions = { Newest: { createdAt: -1 }, Popular: { likesCount: -1, createdAt: -1 }, 'Best Selling': { salesCount: -1, createdAt: -1 }, 'Price Low → High': { price: 1, createdAt: -1 }, 'Price High → Low': { price: -1, createdAt: -1 } };
     const sort = sortOptions[req.query.sort] || { createdAt: -1 };
     
-    const pageStages = [{ $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit }];
-    const pipeline = [
-      { $match: match },
-      { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } },
-      { $match: { '_baseProduct.isActive': true } },
-      ...pageStages,
-      { $lookup: { from: 'designerprofiles', localField: 'designerId', foreignField: '_id', as: 'designerId' } },
-      { $unwind: '$designerId' },
-      { $unwind: '$_baseProduct' },
-      { $addFields: { productId: '$_baseProduct' } },
-      { $project: { _likes: 0, _sales: 0, _baseProduct: 0, 'designerId.userId': 0, 'designerId.__v': 0, 'productId.__v': 0 } },
-    ];
+    // Fetch active products
+    const Product = require('../models/Product');
+    const activeProducts = await Product.find({ isActive: true }).distinct('_id');
+    match.productId = { $in: activeProducts };
+
     const [designs, total] = await Promise.all([
-      MarketplaceDesign.aggregate(pipeline),
-      MarketplaceDesign.aggregate([{ $match: match }, { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } }, { $match: { '_baseProduct.isActive': true } }, { $count: 'total' }]).then((result) => result[0]?.total || 0),
+      MarketplaceDesign.find(match)
+        .select('-frontDesign -backDesign')
+        .sort(sort)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('designerId', 'username displayName avatar coverImage')
+        .populate('productId', 'name imageUrl price discountPrice isActive')
+        .lean(),
+      MarketplaceDesign.countDocuments(match)
     ]);
+
     if (req.user && designs.length) {
       const liked = new Set((await DesignerLike.find({ userId: req.user._id, designId: { $in: designs.map((item) => item._id) } }).distinct('designId')).map(String));
       designs.forEach((item) => { item.isLiked = liked.has(String(item._id)); });
@@ -185,12 +186,16 @@ exports.getProfile = async (req, res, next) => {
     const page = Math.max(1, Number(req.query.page) || 1), limit = Math.min(40, Math.max(1, Number(req.query.limit) || 16));
     const sort = { Newest: { createdAt: -1 }, Popular: { likesCount: -1, createdAt: -1 }, 'Best Selling': { salesCount: -1, createdAt: -1 }, 'Price Low → High': { price: 1 }, 'Price High → Low': { price: -1 } }[req.query.sort] || { createdAt: -1 };
     
-    const pipeline = [
-      { $match: match },
-      { $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit },
-    ];
     const [designs, total, collections, followersCount, followingCount, isFollowing] = await Promise.all([
-      MarketplaceDesign.aggregate(pipeline), MarketplaceDesign.countDocuments(match), DesignerCollection.find({ designerId: profile._id }).sort({ name: 1 }).lean(),
+      MarketplaceDesign.find(match)
+        .select('-frontDesign -backDesign')
+        .sort(sort)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate('designerId', 'username displayName avatar coverImage')
+        .populate('productId', 'name imageUrl price discountPrice isActive')
+        .lean(),
+      MarketplaceDesign.countDocuments(match), DesignerCollection.find({ designerId: profile._id }).sort({ name: 1 }).lean(),
       DesignerFollow.countDocuments({ designerId: profile._id }), DesignerFollow.countDocuments({ followerId: profile.userId._id }),
       req.user ? DesignerFollow.exists({ followerId: req.user._id, designerId: profile._id }) : null,
     ]);
@@ -233,7 +238,7 @@ exports.createDesign = async (req, res, next) => {
     const has3dDesign = Boolean(req.body.designUrl || draft.designUrl);
     const hasRequiredLayers = hasFront || hasBack || has3dDesign;
     
-    let finalThumbnail = draft.thumbnail || req.body.thumbnailUrl || draft.thumbnailUrl;
+    let finalThumbnail = req.body.thumbnailUrl || draft.thumbnail || draft.thumbnailUrl;
     try {
       if (req.body.thumbnailBase64) {
         const { uploadImage } = require('../utils/cloudinary');
