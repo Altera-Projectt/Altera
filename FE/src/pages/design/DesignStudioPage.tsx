@@ -620,12 +620,10 @@ function ResultControls({
 function DesignCard({
   design,
   onReuse,
-  onOrder,
   onDelete,
 }: {
   design: Design
   onReuse: (d: Design) => void
-  onOrder: (d: Design) => void
   onDelete: (id: string) => void
 }) {
   const img = design.previewImage || design.customImage
@@ -1121,7 +1119,6 @@ function LibraryTab({
   loading,
   error,
   onReuse,
-  onOrder,
   onDelete,
   onRefetch,
   onCreateNew,
@@ -1130,7 +1127,6 @@ function LibraryTab({
   loading: boolean
   error: string | null
   onReuse: (d: Design) => void
-  onOrder: (d: Design) => void
   onDelete: (id: string) => void
   onRefetch: () => void
   onCreateNew: () => void
@@ -1167,7 +1163,6 @@ function LibraryTab({
               key={design._id}
               design={design}
               onReuse={onReuse}
-              onOrder={onOrder}
               onDelete={onDelete}
             />
           ))}
@@ -1409,7 +1404,9 @@ export function DesignStudioPage() {
       try {
         const res = await DesignService.saveGeneratedToLibrary(design._id)
         image = res.data.data.image
-        setLibraryAssetByDesign((prev) => ({ ...prev, [design._id]: image }))
+        if (image) {
+          setLibraryAssetByDesign((prev) => ({ ...prev, [design._id]: image! }))
+        }
       } catch (err: any) {
         showToast(err?.response?.data?.message || 'Không thể đưa ảnh vào Custom Design', 'error')
         return
@@ -1421,10 +1418,6 @@ export function DesignStudioPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleOrderFromLibrary = (design: Design) => {
-    const thumb = design.previewImage || design.customImage
-    openOrderModal(design._id, thumb)
-  }
 
   const handleDeleteDesign = async (id: string) => {
     try {
@@ -1554,7 +1547,6 @@ export function DesignStudioPage() {
           loading={loadingLibrary}
           error={libraryError}
           onReuse={handleReuseFromLibrary}
-          onOrder={handleOrderFromLibrary}
           onDelete={handleDeleteDesign}
           onRefetch={fetchLibrary}
           onCreateNew={() => setActiveTab('create')}

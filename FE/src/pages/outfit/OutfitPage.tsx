@@ -174,7 +174,6 @@ export function OutfitPage() {
           season,
           budget,
           occasion: quizData.hobby, // Map hobby to occasion for backend compatibility
-          quizResult,
         }),
         fetchOutfitImage(quizResult.style),
       ])
@@ -790,8 +789,6 @@ function RecommendedProductCard({
   reason?: string
   onNavigate: () => void
 }) {
-  const imageUrl = product.imageUrl || product.image || null
-
   return (
     <div 
       className="flex flex-col bg-white/5 border border-white/10 rounded-2xl hover:border-[#00C8FF] transition-all cursor-pointer group hover:bg-white/10 p-5"
