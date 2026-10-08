@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const CustomDesignDraftSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
-  name: { type: String, required: true, trim: true, maxlength: 100 },
+  name: { type: String, default: 'Untitled Design', trim: true, maxlength: 100 },
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', default: null },
   color: { type: mongoose.Schema.Types.Mixed, default: undefined },
   size: { type: String, default: undefined },
