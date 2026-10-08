@@ -4,7 +4,7 @@ import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
 import api from '@/utils/axios'
-import { formatVND, extractDesignLayers } from '@/utils/format'
+import { formatVND, extractDesignLayers, optimizeImage } from '@/utils/format'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -176,8 +176,9 @@ export function WishlistPage() {
                     {product.thumbnail ? (
                       <>
                         <img
-                          src={product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail}
+                          src={optimizeImage(product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail, 400)}
                           alt={product.name}
+                          loading="lazy"
                           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                         />
                         {(product.productId?.imageUrl || (product.productId?.images && product.productId.images.length > 0)) && (

@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
-import { formatVND, extractDesignLayers } from '@/utils/format'
+import { formatVND, extractDesignLayers, optimizeImage } from '@/utils/format'
 import { ShoppingBag } from 'lucide-react'
 
 type TabType = 'store' | 'overview' | 'measurements' | 'preferences'
@@ -361,8 +361,9 @@ export function ProfilePage() {
                             {product.thumbnail ? (
                               <>
                                 <img
-                                  src={product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail}
+                                  src={optimizeImage(product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail, 400)}
                                   alt={product.name}
+                                  loading="lazy"
                                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                                 />
                                 {(product.productId?.imageUrl || (product.productId?.images && product.productId.images.length > 0)) && (

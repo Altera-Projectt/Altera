@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import api from '@/utils/axios'
 import { toast } from 'sonner'
 
-import { extractDesignLayers } from '@/utils/format'
+import { extractDesignLayers, optimizeImage } from '@/utils/format'
 
 const money = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`
 export function MarketplacePage() {
@@ -90,7 +90,7 @@ export function MarketplacePage() {
       {!loading && !error && designs.length === 0 && <div className="border-y border-neutral-200 py-20 text-center"><p className="text-lg font-semibold">Chưa có thiết kế phù hợp</p><p className="mt-2 text-sm text-neutral-500">Hãy thử từ khóa khác hoặc quay lại sau.</p></div>}
       {!loading && !error && designs.length > 0 && <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 md:gap-x-6 lg:grid-cols-4">{designs.map((design) => <article key={design._id}>
         <div className="group relative"><Link to={`/design/${design.slug}`} className="block"><div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
-          <img src={design.productId?.imageUrl || design.productId?.images?.[0] || design.thumbnail} alt={design.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/>
+          <img src={optimizeImage(design.productId?.imageUrl || design.productId?.images?.[0] || design.thumbnail, 400)} alt={design.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/>
           {(design.productId?.imageUrl || (design.productId?.images && design.productId.images.length > 0)) && (
             <img src={extractDesignLayers(design.thumbnail)} alt={`${design.name} overlay`} loading="lazy" className="absolute inset-0 h-full w-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.03]"/>
           )}

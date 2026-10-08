@@ -156,3 +156,20 @@ export function extractDesignLayers(thumbnail: string) {
     return thumbnail;
   }
 }
+
+/**
+ * Tối ưu hoá ảnh Cloudinary bằng URL parameters
+ * Tự động chuyển đổi định dạng (f_auto), nén chất lượng (q_auto), và scale kích thước.
+ */
+export function optimizeImage(url: string | undefined | null, width = 600): string {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url; // Bỏ qua base64/svg
+  if (url.includes('res.cloudinary.com')) {
+    // Nếu URL chưa có biến đổi nào (thường nằm trước /v1234567/)
+    if (url.includes('/upload/v')) {
+      return url.replace('/upload/v', `/upload/c_scale,w_${width},q_auto,f_auto/v`);
+    }
+  }
+  return url;
+}
+
