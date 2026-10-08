@@ -124,7 +124,7 @@ export const DesignService = {
     shirtColor?: string;
     designUrl?: string;
     decalTransform?: { rotation: number; scale: number; opacity: number };
-    thumbnailBase64?: string;
+    thumbnailUrl?: string;
   }) => api.post<ApiResponse<{ design: any }>>('/designers/me/designs', payload),
   getMyDesignerProfile: () => api.get<ApiResponse<{ profile: { username: string } }>>('/designers/me/profile'),
   getDesignerCollections: (username: string) => api.get<ApiResponse<{ collections: { _id: string; name: string }[] }>>(`/designers/${username}`),
