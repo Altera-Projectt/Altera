@@ -130,7 +130,7 @@ export function CartPage() {
             </p>
           </div>
           <Button asChild variant="primary" size="lg" className="gap-2 uppercase font-bold tracking-widest">
-            <Link to="/products" className="flex items-center gap-2">
+            <Link to="/marketplace" className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
               Return to Shop
             </Link>
