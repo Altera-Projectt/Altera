@@ -146,7 +146,6 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
-  const [preview3D, setPreview3D] = useState(false)
   const navigate = useNavigate()
   const fetchCart = useCartStore((state) => state.fetchCart)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -154,7 +153,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const drag = useRef<{ id: string; x: number; y: number; left: number; top: number } | null>(null)
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
   const activeImageLayer = current.find(l => l.type === 'image' && l.visible) as ImageLayer | undefined;
-  const selected = preview3D ? (activeImageLayer ?? null) : (current.find((layer) => layer.id === selectedId) ?? null)
+  const selected = current.find((layer) => layer.id === selectedId) ?? null
   const commit = (next: DesignState) => { setUndoStack((stack) => [...stack.slice(-49), design]); setRedoStack([]); setDesign(next) }
   const undo = () => { const previous = undoStack.at(-1); if (!previous) return; setRedoStack((stack) => [...stack, design]); setUndoStack((stack) => stack.slice(0, -1)); setDesign(previous) }
   const redo = () => { const next = redoStack.at(-1); if (!next) return; setUndoStack((stack) => [...stack, design]); setRedoStack((stack) => stack.slice(0, -1)); setDesign(next) }
@@ -263,7 +262,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
           const blob = await res.blob();
           const file = new File([blob], 'ai-design.png', { type: blob.type });
           const { data } = await DesignService.uploadCustomImage(file);
-          finalAsset = { ...pendingAsset, url: data.data.image.url };
+          finalAsset = { ...pendingAsset, url: data.data.image.url, source: 'AI' };
         } catch (e) {
           console.error('Failed to upload base64 AI image', e);
           setError('Could not upload AI image to cloud. Please try again.');
@@ -272,6 +271,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         } finally {
           setUploading(false);
         }
+      } else {
+        finalAsset = { ...pendingAsset, source: 'AI' };
       }
       setUploads((items) => [finalAsset, ...items.filter((item) => item._id !== pendingAsset._id)])
       setAssetFilter('ALL')
@@ -413,25 +414,22 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       id = saved.data.data.draft._id; setDraftId(id)
       
       let thumbnailUrl: string | undefined = undefined;
-      if (preview3D) {
-        let canvas = document.getElementById('r3f-shirt-canvas') as HTMLCanvasElement | null;
-        if (canvas && typeof canvas.toDataURL !== 'function') {
-           // It's a div wrapper, try to find the inner canvas
-           canvas = canvas.querySelector('canvas');
-        }
-        if (canvas && typeof canvas.toDataURL === 'function') {
-           const thumbnailBase64 = canvas.toDataURL('image/jpeg', 0.8);
-           const res = await fetch(thumbnailBase64);
-           const blob = await res.blob();
-           const file = new File([blob], 'thumbnail.jpg', { type: blob.type });
-           const { data } = await DesignService.uploadCustomImage(file);
-           thumbnailUrl = data.data.image.url;
-        } else {
-           console.error("Failed to target WebGL canvas for snapshot.");
-           setDraftError('Lỗi hệ thống: Không thể tạo ảnh xem trước 3D.');
-           setPublishing(false);
-           return; 
-        }
+      let canvas = document.getElementById('r3f-shirt-canvas') as HTMLCanvasElement | null;
+      if (canvas && typeof canvas.toDataURL !== 'function') {
+         canvas = canvas.querySelector('canvas');
+      }
+      if (canvas && typeof canvas.toDataURL === 'function') {
+         const thumbnailBase64 = canvas.toDataURL('image/jpeg', 0.8);
+         const res = await fetch(thumbnailBase64);
+         const blob = await res.blob();
+         const file = new File([blob], 'thumbnail.jpg', { type: blob.type });
+         const { data } = await DesignService.uploadCustomImage(file);
+         thumbnailUrl = data.data.image.url;
+      } else {
+         console.error("Failed to target WebGL canvas for snapshot.");
+         setDraftError('Lỗi hệ thống: Không thể tạo ảnh xem trước 3D.');
+         setPublishing(false);
+         return; 
       }
       const publishPayload = { 
         draftId: id, 
@@ -656,7 +654,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       </div>
       <section aria-label="My image library" className="space-y-2">
         <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">THƯ VIỆN ẢNH (AI & UPLOAD)</p><span className="text-[10px] text-gray-400">{visibleAssets.length} images</span></div>
-        <div role="tablist" className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1">{([['ALL', 'All'], ['UPLOAD', 'Uploaded'], ['AI', 'AI']] as const).map(([value, label]) => <button key={value} id={`asset-filter-${value.toLowerCase()}`} role="tab" aria-selected={assetFilter === value} type="button" onClick={() => setAssetFilter(value)} className={`rounded-md px-2 py-1 text-xs transition ${assetFilter === value ? 'bg-white font-semibold shadow-sm' : 'text-gray-500 hover:text-black'}`}>{label}</button>)}</div>
+        <div role="tablist" className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1">{([['ALL', 'All'], ['UPLOADED', 'Uploaded'], ['AI', 'AI']] as const).map(([value, label]) => <button key={value} id={`asset-filter-${value.toLowerCase()}`} role="tab" aria-selected={assetFilter === value} type="button" onClick={() => setAssetFilter(value as any)} className={`rounded-md px-2 py-1 text-xs transition ${assetFilter === value ? 'bg-white font-semibold shadow-sm' : 'text-gray-500 hover:text-black'}`}>{label}</button>)}</div>
         {!isAuthenticated ? <p className="text-xs text-gray-500">Sign in to keep uploaded and AI-generated images in your library.</p> : visibleAssets.length === 0 ? <p className="text-xs text-gray-500">{assetFilter === 'AI' ? 'Generate an image in “Phác thảo mới” and tap “Lưu vào thư viện ảnh”.' : 'Your uploaded and AI images will appear here.'}</p> : <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">{visibleAssets.map((image) => <div key={image._id} className="group relative min-w-0 rounded border p-1 transition hover:border-black">
           <button type="button" onClick={() => addUploadedImage(image)} title={image.source === 'AI' && image.prompt ? `AI: ${image.prompt}` : `Add ${image.filename} to ${side === 'frontDesign' ? 'front' : 'back'}`} className="block w-full text-left"><img src={image.thumbnailUrl || image.url} alt={image.source === 'AI' ? (image.prompt || 'AI design') : image.filename} loading="lazy" className="aspect-square w-full rounded bg-gray-50 object-cover"/><span className="mt-1 block truncate text-[10px]">{image.source === 'AI' ? (image.prompt || 'AI design') : image.filename}</span></button>
           {image.source === 'AI' && <span className="pointer-events-none absolute left-1 top-1 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">AI</span>}
@@ -674,32 +672,17 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       </section>
     </aside>
     <div className="flex min-h-[520px] flex-col items-center justify-center rounded-xl border border-gray-200 bg-gray-100 p-8 relative">
-      <div className="absolute top-4 right-4 z-10 flex bg-white rounded-lg shadow-sm overflow-hidden border">
-        <button onClick={() => setPreview3D(false)} className={`px-4 py-2 text-sm font-semibold transition-colors ${!preview3D ? 'bg-black text-white' : 'hover:bg-gray-50'}`}>2D Editor</button>
-        <button onClick={() => setPreview3D(true)} className={`px-4 py-2 text-sm font-semibold transition-colors ${preview3D ? 'bg-black text-white' : 'hover:bg-gray-50'}`}>3D Preview</button>
+      <div className="w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden shadow-2xl border border-gray-300">
+         <ShirtCanvas3D 
+           shirtColor={selectedColor?.hex ?? '#ffffff'} 
+           designImage={activeImageLayer?.src}
+           decalOpacity={activeImageLayer?.opacity ?? 1}
+           decalRotationDegrees={activeImageLayer?.rotation ?? 0}
+           decalScaleMultiplier={activeImageLayer?.scaleX ?? 1}
+           decalLocked={activeImageLayer?.locked ?? false}
+           printSide={printSide}
+         />
       </div>
-      
-      {preview3D ? (() => {
-        return (
-          <div className="w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden shadow-2xl border border-gray-300">
-             <ShirtCanvas3D 
-               shirtColor={selectedColor?.hex ?? '#ffffff'} 
-               designImage={activeImageLayer?.src}
-               decalOpacity={activeImageLayer?.opacity ?? 1}
-               decalRotationDegrees={activeImageLayer?.rotation ?? 0}
-               decalScaleMultiplier={activeImageLayer?.scaleX ?? 1}
-               decalLocked={activeImageLayer?.locked ?? false}
-             />
-          </div>
-        )
-      })() : (
-        <div className="relative aspect-[3/4] w-full max-w-[360px] overflow-hidden rounded-[28px] border border-gray-300 shadow-xl mt-8" style={{ backgroundColor: selectedColor?.hex ?? '#ffffff' }} onPointerMove={onPointerMove} onPointerUp={() => { drag.current = null }} onPointerLeave={() => { drag.current = null }}>
-          {productPreview ? <img src={productPreview} alt={`${product?.name ?? 'T-shirt'} ${selectedColor?.name ?? ''} preview`} className="absolute inset-0 h-full w-full object-cover mix-blend-multiply" /> : <svg aria-label={`${product?.name ?? 'T-shirt'} preview`} className="absolute inset-0 h-full w-full" viewBox="0 0 360 480" role="img"><path d="M112 45 145 30h70l33 15 67 43-39 67-38-22v288H122V133l-38 22-39-67z" fill={selectedColor?.hex ?? '#fff'} stroke="rgba(0,0,0,.15)" strokeWidth="3"/><path d="M145 30c2 32 17 49 35 49s33-17 35-49" fill="none" stroke="rgba(0,0,0,.16)" strokeWidth="3"/></svg>}
-          <div className="absolute right-2 top-2 rounded bg-white/80 px-2 py-1 text-[10px] font-semibold">{side === 'frontDesign' ? 'FRONT' : 'BACK'}</div>
-          <div className="absolute left-1/2 top-0 h-10 w-24 -translate-x-1/2 rounded-b-full border-b border-gray-200" />
-          {current.filter((layer) => layer.visible).map((layer) => <div key={layer.id} onPointerDown={(event) => { setSelectedId(layer.id); if (layer.locked) return; event.currentTarget.setPointerCapture(event.pointerId); drag.current = { id: layer.id, x: event.clientX, y: event.clientY, left: layer.x, top: layer.y } }} onClick={() => setSelectedId(layer.id)} className={`absolute ${layer.locked ? 'cursor-default' : 'cursor-move'} ${selectedId === layer.id ? 'outline outline-1 outline-blue-500 outline-dashed' : ''}`} style={{ left: `${layer.x}%`, top: `${layer.y}%`, zIndex: layer.zIndex, transform: `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scaleX}, ${layer.scaleY}) ${layer.type === 'text' ? effectTransform(layer.effect) : ''}`, transformOrigin: 'center', opacity: layer.opacity, touchAction: 'none', ...(layer.type === 'text' ? { maxWidth: '90%', whiteSpace: 'pre-wrap' as const, overflowWrap: 'break-word' as const, paddingLeft: '0.5rem', paddingRight: '0.5rem', fontFamily: `"${layer.fontFamily}", sans-serif`, fontSize: `${layer.fontSize}px`, fontWeight: layer.fontWeight, fontStyle: layer.italic ? 'italic' : 'normal', textDecoration: layer.underline ? 'underline' : 'none', textTransform: layer.textTransform, textAlign: layer.align, color: layer.color, WebkitTextStroke: `${layer.strokeWidth}px ${layer.stroke}`, ...effectStyle(layer.effect) } : { width: '140px', height: '140px' }) }}>{layer.type === 'text' ? layer.text || ' ' : <img src={layer.src} alt="Custom design layer" draggable="false" className="h-full w-full object-contain"/>}</div>)}
-        </div>
-      )}
     </div>
     <aside className="max-h-[720px] space-y-4 overflow-auto rounded-xl border border-[var(--color-border)] bg-white p-4">
       {selected?.type === 'text' ? <>

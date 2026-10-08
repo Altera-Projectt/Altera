@@ -63,6 +63,7 @@ interface ShirtModelProps {
   decalRotationDegrees?: number;
   decalScaleMultiplier?: number;
   decalLocked?: boolean;
+  printSide?: 'FRONT' | 'BACK' | 'BOTH';
   isDragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -79,6 +80,7 @@ function ShirtModel({
   decalRotationDegrees = 0,
   decalScaleMultiplier = 1,
   decalLocked = false,
+  printSide = 'FRONT',
   isDragging,
   onDragStart,
   onDragEnd,
@@ -88,7 +90,7 @@ function ShirtModel({
   const { nodes } = useGLTF('/models/shirt.glb') as any;
   
   return (
-    <group dispose={null} rotation={[-Math.PI / 2, 0, 0]}>
+    <group dispose={null} rotation={[-Math.PI / 2, 0, printSide === 'BACK' ? Math.PI : 0]}>
       <Bounds fit clip observe margin={1.2}>
         <Center>
           {Object.values(nodes).map((node: any) => {
@@ -203,6 +205,7 @@ export interface ShirtCanvas3DProps {
   decalRotationDegrees?: number;
   decalScaleMultiplier?: number;
   decalLocked?: boolean;
+  printSide?: 'FRONT' | 'BACK' | 'BOTH';
 }
 
 export default function ShirtCanvas3D({ 
@@ -213,7 +216,8 @@ export default function ShirtCanvas3D({
   decalOpacity = 1,
   decalRotationDegrees = 0,
   decalScaleMultiplier = 1,
-  decalLocked = false
+  decalLocked = false,
+  printSide = 'FRONT'
 }: ShirtCanvas3DProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [pos, setPos] = useState<[number, number, number]>(decalPosition || [0, 0.1, 0.15]);
@@ -265,6 +269,7 @@ export default function ShirtCanvas3D({
             decalRotationDegrees={decalRotationDegrees}
             decalScaleMultiplier={decalScaleMultiplier}
             decalLocked={decalLocked}
+            printSide={printSide}
             isDragging={isDragging}
             onDragStart={() => setIsDragging(true)}
             onDragEnd={() => setIsDragging(false)}
