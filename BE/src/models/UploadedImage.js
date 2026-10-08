@@ -17,6 +17,7 @@ const UploadedImageSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 UploadedImageSchema.index({ userId: 1, source: 1, createdAt: -1 });
+UploadedImageSchema.index({ userId: 1, createdAt: -1 });
 UploadedImageSchema.index({ userId: 1, designId: 1 });
 
 module.exports = mongoose.model('UploadedImage', UploadedImageSchema);
