@@ -11,6 +11,7 @@ const UploadedImageSchema = new mongoose.Schema({
   mimeType: { type: String, required: true, enum: ['image/png', 'image/jpeg', 'image/webp'] },
   size: { type: Number, default: 0, max: 10 * 1024 * 1024 },
   source: { type: String, enum: ['UPLOAD', 'AI'], default: 'UPLOAD', index: true },
+  imageType: { type: String, enum: ['AI', 'UPLOADED'], default: 'UPLOADED', index: true },
   prompt: { type: String, default: '', maxlength: 2000 },
   designId: { type: mongoose.Schema.Types.ObjectId, ref: 'Design', default: null },
 }, { timestamps: true });

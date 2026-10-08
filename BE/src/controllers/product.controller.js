@@ -88,6 +88,9 @@ const createProduct = async (req, res, next) => {
       productData.colors = [
         { name: 'White', hex: '#ffffff', stock: 10 },
         { name: 'Black', hex: '#000000', stock: 10 },
+        { name: 'Red', hex: '#ff0000', stock: 10 },
+        { name: 'Green', hex: '#008000', stock: 10 },
+        { name: 'Blue', hex: '#0000ff', stock: 10 },
       ];
     }
 

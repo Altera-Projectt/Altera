@@ -65,6 +65,7 @@ export interface OrderDesignPayload {
 }
 
 export type AssetSource = 'UPLOAD' | 'AI'
+export type ImageType = 'AI' | 'UPLOADED'
 
 export interface UploadedCustomImage {
   _id: string
@@ -75,6 +76,7 @@ export interface UploadedCustomImage {
   size: number
   /** Missing on legacy records, which are uploads. */
   source?: AssetSource
+  imageType?: ImageType
   prompt?: string
   designId?: string | null
   createdAt: string
@@ -128,9 +130,10 @@ export const DesignService = {
   }) => api.post<ApiResponse<{ design: any }>>('/designers/me/designs', payload),
   getMyDesignerProfile: () => api.get<ApiResponse<{ profile: { username: string } }>>('/designers/me/profile'),
   getDesignerCollections: (username: string) => api.get<ApiResponse<{ collections: { _id: string; name: string }[] }>>(`/designers/${username}`),
-  uploadCustomImage: (file: File) => {
+  uploadCustomImage: (file: File, imageType: ImageType = 'UPLOADED') => {
     const body = new FormData()
     body.append('image', file)
+    body.append('imageType', imageType)
     return api.post<ApiResponse<{ image: UploadedCustomImage }>>('/designs/custom/uploads', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 })
   },
   getCustomImages: (source?: AssetSource) => api.get<ApiResponse<{ images: UploadedCustomImage[] }>>('/designs/custom/uploads', { params: source ? { source } : undefined }),

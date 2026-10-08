@@ -22,6 +22,7 @@ type DesignLayer = TextLayer | ImageLayer
 type DesignState = { frontDesign: { layers: DesignLayer[] }; backDesign: { layers: DesignLayer[] } }
 const FONTS = ['Inter', 'Roboto', 'Montserrat', 'Poppins', 'Bebas Neue', 'Arial']
 const EFFECTS: TextEffect[] = ['Straight', 'Wave', 'Pinch', 'Tilt Right', 'Tilt Left', 'Curve Up', 'Flag', 'Inflate', 'Curve Down']
+const isAIAsset = (image: UploadedCustomImage) => image.imageType === 'AI' || image.source === 'AI'
 
 const escapeXml = (value: string) => value.replace(/[<>&"']/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]!)
 function makeDraftThumbnail(color: string, layers: DesignLayer[]) {
@@ -140,7 +141,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [uploads, setUploads] = useState<UploadedCustomImage[]>([])
-  const [assetFilter, setAssetFilter] = useState<'ALL' | 'UPLOAD' | 'AI'>('ALL')
+  const [assetFilter, setAssetFilter] = useState<'ALL' | 'UPLOADED' | 'AI'>('ALL')
   const [newCollectionName, setNewCollectionName] = useState('')
   const [creatingCollection, setCreatingCollection] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -245,8 +246,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     } catch (uploadError: unknown) { setError(errorMessage(uploadError, 'Could not upload this image.')) }
     finally { setUploading(false); if (fileInput.current) fileInput.current.value = '' }
   }
-  const addUploadedImage = (image: UploadedCustomImage) => { const layer = { ...makeImage(image.url), name: image.source === 'AI' ? `AI · ${(image.prompt || 'Design').slice(0, 24)}` : image.filename, zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 }; commit({ ...design, [side]: { layers: [...design[side].layers, layer] } }); setSelectedId(layer.id); setError('') }
-  const visibleAssets = uploads.filter((image) => assetFilter === 'ALL' || (assetFilter === 'AI' ? image.source === 'AI' : image.source !== 'AI'))
+  const addUploadedImage = (image: UploadedCustomImage) => { const layer = { ...makeImage(image.url), name: isAIAsset(image) ? `AI · ${(image.prompt || 'Design').slice(0, 24)}` : image.filename, zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 }; commit({ ...design, [side]: { layers: [...design[side].layers, layer] } }); setSelectedId(layer.id); setError('') }
+  const visibleAssets = uploads.filter((image) => assetFilter === 'ALL' || (assetFilter === 'AI' ? isAIAsset(image) : !isAIAsset(image)))
   // Place an asset handed over from the AI tab exactly once.
   const consumedAssetRef = useRef<string | null>(null)
   useEffect(() => {
@@ -261,8 +262,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
           const res = await fetch(pendingAsset.url);
           const blob = await res.blob();
           const file = new File([blob], 'ai-design.png', { type: blob.type });
-          const { data } = await DesignService.uploadCustomImage(file);
-          finalAsset = { ...pendingAsset, url: data.data.image.url, source: 'AI' };
+          const { data } = await DesignService.uploadCustomImage(file, 'AI');
+          finalAsset = { ...pendingAsset, url: data.data.image.url, source: 'AI', imageType: 'AI' };
         } catch (e) {
           console.error('Failed to upload base64 AI image', e);
           setError('Could not upload AI image to cloud. Please try again.');
@@ -656,8 +657,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">THƯ VIỆN ẢNH (AI & UPLOAD)</p><span className="text-[10px] text-gray-400">{visibleAssets.length} images</span></div>
         <div role="tablist" className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1">{([['ALL', 'All'], ['UPLOADED', 'Uploaded'], ['AI', 'AI']] as const).map(([value, label]) => <button key={value} id={`asset-filter-${value.toLowerCase()}`} role="tab" aria-selected={assetFilter === value} type="button" onClick={() => setAssetFilter(value as any)} className={`rounded-md px-2 py-1 text-xs transition ${assetFilter === value ? 'bg-white font-semibold shadow-sm' : 'text-gray-500 hover:text-black'}`}>{label}</button>)}</div>
         {!isAuthenticated ? <p className="text-xs text-gray-500">Sign in to keep uploaded and AI-generated images in your library.</p> : visibleAssets.length === 0 ? <p className="text-xs text-gray-500">{assetFilter === 'AI' ? 'Generate an image in “Phác thảo mới” and tap “Lưu vào thư viện ảnh”.' : 'Your uploaded and AI images will appear here.'}</p> : <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">{visibleAssets.map((image) => <div key={image._id} className="group relative min-w-0 rounded border p-1 transition hover:border-black">
-          <button type="button" onClick={() => addUploadedImage(image)} title={image.source === 'AI' && image.prompt ? `AI: ${image.prompt}` : `Add ${image.filename} to ${side === 'frontDesign' ? 'front' : 'back'}`} className="block w-full text-left"><img src={image.thumbnailUrl || image.url} alt={image.source === 'AI' ? (image.prompt || 'AI design') : image.filename} loading="lazy" className="aspect-square w-full rounded bg-gray-50 object-cover"/><span className="mt-1 block truncate text-[10px]">{image.source === 'AI' ? (image.prompt || 'AI design') : image.filename}</span></button>
-          {image.source === 'AI' && <span className="pointer-events-none absolute left-1 top-1 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">AI</span>}
+          <button type="button" onClick={() => addUploadedImage(image)} title={isAIAsset(image) && image.prompt ? `AI: ${image.prompt}` : `Add ${image.filename} to ${side === 'frontDesign' ? 'front' : 'back'}`} className="block w-full text-left"><img src={image.thumbnailUrl || image.url} alt={isAIAsset(image) ? (image.prompt || 'AI design') : image.filename} loading="lazy" className="aspect-square w-full rounded bg-gray-50 object-cover"/><span className="mt-1 block truncate text-[10px]">{isAIAsset(image) ? (image.prompt || 'AI design') : image.filename}</span></button>
+          {isAIAsset(image) && <span className="pointer-events-none absolute left-1 top-1 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">AI</span>}
           <button type="button" onClick={() => void deleteUploadedImage(image)} aria-label={`Remove ${image.filename} from library`} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 opacity-0 shadow transition group-hover:opacity-100 focus:opacity-100"><X size={13}/></button>
         </div>)}</div>}
       </section>

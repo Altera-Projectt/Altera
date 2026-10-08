@@ -4,7 +4,7 @@ const Design = require('../models/Design');
 const { uploadImage, deleteImage } = require('../utils/cloudinary');
 
 const toThumbnail = (url) => (url.includes('/upload/') ? url.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/') : url);
-const LIST_FIELDS = 'url thumbnailUrl filename mimeType size source prompt designId createdAt';
+const LIST_FIELDS = 'url thumbnailUrl filename mimeType size source imageType prompt designId createdAt';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ALLOWED = {
@@ -31,14 +31,16 @@ const validateImageFile = (file) => {
 };
 
 /** BE-3 (upload thủ công): user upload file lên thư viện với source=UPLOAD */
-const upload = async (userId, file) => {
+const upload = async (userId, file, imageType = 'UPLOADED') => {
+  const normalizedImageType = String(imageType || 'UPLOADED').toUpperCase();
+  if (!['AI', 'UPLOADED'].includes(normalizedImageType)) fail('imageType must be AI or UPLOADED.');
   const { filename, mimeType } = validateImageFile(file);
   const result = await uploadImage(`data:${mimeType};base64,${file.buffer.toString('base64')}`, 'altera/custom-design/uploads', {
     resource_type: 'image',
     public_id: `${userId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
     overwrite: false,
   });
-  return UploadedImage.create({ userId, url: result.url, thumbnailUrl: toThumbnail(result.url), publicId: result.publicId, filename, mimeType, size: file.size, source: 'UPLOAD' });
+  return UploadedImage.create({ userId, url: result.url, thumbnailUrl: toThumbnail(result.url), publicId: result.publicId, filename, mimeType, size: file.size, source: 'UPLOAD', imageType: normalizedImageType });
 };
 
 const list = async (userId, { source = 'ALL', page = 1, limit = 24 } = {}) => {
@@ -52,7 +54,8 @@ const list = async (userId, { source = 'ALL', page = 1, limit = 24 } = {}) => {
     UploadedImage.find(filter).sort({ createdAt: -1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).select(LIST_FIELDS).lean(),
     UploadedImage.countDocuments(filter),
   ]);
-  return { images, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
+  const normalizedImages = images.map((image) => ({ ...image, imageType: image.imageType || (image.source === 'AI' ? 'AI' : 'UPLOADED') }));
+  return { images: normalizedImages, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
 };
 
 const addFromGenerated = async (userId, designId) => {
@@ -62,8 +65,8 @@ const addFromGenerated = async (userId, designId) => {
   const url = design.previewImage || design.customImage;
   if (!url) fail('This design has no image yet.');
   const existing = await UploadedImage.findOne({ userId, designId: design._id, url }).select(LIST_FIELDS).lean();
-  if (existing) return { image: existing, created: false };
-  const image = await UploadedImage.create({ userId, url, thumbnailUrl: toThumbnail(url), filename: `ai-${Date.now()}.png`, mimeType: 'image/png', size: 0, source: 'AI', prompt: String(design.prompt || '').slice(0, 2000), designId: design._id });
+  if (existing) return { image: { ...existing, imageType: existing.imageType || 'AI' }, created: false };
+  const image = await UploadedImage.create({ userId, url, thumbnailUrl: toThumbnail(url), filename: `ai-${Date.now()}.png`, mimeType: 'image/png', size: 0, source: 'AI', imageType: 'AI', prompt: String(design.prompt || '').slice(0, 2000), designId: design._id });
   return { image: image.toObject(), created: true };
 };
 

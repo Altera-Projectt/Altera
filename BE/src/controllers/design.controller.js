@@ -4,7 +4,7 @@ const customDesignUploadService = require('../services/custom-design-upload.serv
 
 const uploadCustomImage = async (req, res, next) => {
   try {
-    const image = await customDesignUploadService.upload(req.user._id, req.file);
+    const image = await customDesignUploadService.upload(req.user._id, req.file, req.body.imageType);
     res.status(201).json({ success: true, message: 'Image uploaded successfully.', data: { image } });
   } catch (error) { next(error); }
 };
