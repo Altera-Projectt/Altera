@@ -67,6 +67,7 @@ exports.getMarketplace = async (req, res, next) => {
     const pageStages = [{ $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit }];
     const pipeline = [
       { $match: match },
+      { $project: { frontDesign: 0, backDesign: 0 } },
       { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } },
       { $match: { '_baseProduct.isActive': true } },
       ...pageStages,
@@ -77,8 +78,8 @@ exports.getMarketplace = async (req, res, next) => {
       { $project: { _likes: 0, _sales: 0, _baseProduct: 0, 'designerId.userId': 0, 'designerId.__v': 0, 'productId.__v': 0 } },
     ];
     const [designs, total] = await Promise.all([
-      MarketplaceDesign.aggregate(pipeline),
-      MarketplaceDesign.aggregate([{ $match: match }, { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } }, { $match: { '_baseProduct.isActive': true } }, { $count: 'total' }]).then((result) => result[0]?.total || 0),
+      MarketplaceDesign.aggregate(pipeline).allowDiskUse(true),
+      MarketplaceDesign.aggregate([{ $match: match }, { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } }, { $match: { '_baseProduct.isActive': true } }, { $count: 'total' }]).allowDiskUse(true).then((result) => result[0]?.total || 0),
     ]);
     if (req.user && designs.length) {
       const liked = new Set((await DesignerLike.find({ userId: req.user._id, designId: { $in: designs.map((item) => item._id) } }).distinct('designId')).map(String));
@@ -122,7 +123,7 @@ exports.getFeaturedDesigners = async (req, res, next) => {
       { $match: { publishedDesigns: { $gt: 0 } } },
       { $sort: { salesCount: -1, followersCount: -1, publishedDesigns: -1 } }, { $limit: limit },
       { $project: { _id: 1, username: 1, displayName: 1, avatar: 1, coverImage: 1, publishedDesigns: 1, followersCount: 1, salesCount: 1 } },
-    ]);
+    ]).allowDiskUse(true);
     res.json({ success: true, data: { designers } });
   } catch (error) { next(error); }
 };
@@ -137,7 +138,7 @@ exports.getSummary = async (req, res, next) => {
         { $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.designerId': profile._id } },
         { $group: { _id: null, grossSales: { $sum: { $multiply: ['$items.price', '$items.quantity'] } }, totalSales: { $sum: '$items.quantity' }, orderIds: { $addToSet: '$_id' } } },
         { $project: { _id: 0, grossSales: 1, totalSales: 1, totalOrders: { $size: '$orderIds' } } },
-      ]),
+      ]).allowDiskUse(true),
     ]);
     const grossSales = revenue[0]?.grossSales || 0;
     const configuredRate = process.env.DESIGNER_COMMISSION_RATE;
@@ -187,10 +188,11 @@ exports.getProfile = async (req, res, next) => {
     
     const pipeline = [
       { $match: match },
+      { $project: { frontDesign: 0, backDesign: 0 } },
       { $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit },
     ];
     const [designs, total, collections, followersCount, followingCount, isFollowing] = await Promise.all([
-      MarketplaceDesign.aggregate(pipeline), MarketplaceDesign.countDocuments(match), DesignerCollection.find({ designerId: profile._id }).sort({ name: 1 }).lean(),
+      MarketplaceDesign.aggregate(pipeline).allowDiskUse(true), MarketplaceDesign.countDocuments(match), DesignerCollection.find({ designerId: profile._id }).sort({ name: 1 }).lean(),
       DesignerFollow.countDocuments({ designerId: profile._id }), DesignerFollow.countDocuments({ followerId: profile.userId._id }),
       req.user ? DesignerFollow.exists({ followerId: req.user._id, designerId: profile._id }) : null,
     ]);
@@ -321,7 +323,7 @@ exports.follow = async (req, res, next) => {
 };
 exports.unfollow = async (req, res, next) => { try { await DesignerFollow.deleteOne({ followerId: req.user._id, designerId: req.params.id }); res.json({ success: true }); } catch (error) { next(error); } };
 exports.getDesign = async (req, res, next) => {
-  try { const design = await MarketplaceDesign.findOne({ slug: req.params.slug, status: 'PUBLISHED' }).populate('designerId', 'username displayName avatar').populate('productId', 'name imageUrl price discountPrice sizes colors printingTechniques isActive'); if (!design || !design.productId?.isActive) throw fail(404, 'Design not found'); const [likes, sales, isLiked] = await Promise.all([DesignerLike.countDocuments({ designId: design._id }), Order.aggregate([{ $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.marketplaceDesignId': design._id } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } }]), req.user ? DesignerLike.exists({ userId: req.user._id, designId: design._id }) : null]); res.json({ success: true, data: { design: design.toObject(), likesCount: likes, salesCount: sales[0]?.count || 0, isLiked: Boolean(isLiked) } }); }
+  try { const design = await MarketplaceDesign.findOne({ slug: req.params.slug, status: 'PUBLISHED' }).populate('designerId', 'username displayName avatar').populate('productId', 'name imageUrl price discountPrice sizes colors printingTechniques isActive'); if (!design || !design.productId?.isActive) throw fail(404, 'Design not found'); const [likes, sales, isLiked] = await Promise.all([DesignerLike.countDocuments({ designId: design._id }), Order.aggregate([{ $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.marketplaceDesignId': design._id } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } }]).allowDiskUse(true), req.user ? DesignerLike.exists({ userId: req.user._id, designId: design._id }) : null]); res.json({ success: true, data: { design: design.toObject(), likesCount: likes, salesCount: sales[0]?.count || 0, isLiked: Boolean(isLiked) } }); }
   catch (error) { next(error); }
 };
 exports.moderate = async (req, res, next) => { try { const status = req.body.status; if (!['PUBLISHED', 'REJECTED', 'ARCHIVED'].includes(status)) throw fail(400, 'Invalid moderation status'); const design = await MarketplaceDesign.findByIdAndUpdate(req.params.id, { status, rejectionReason: status === 'REJECTED' ? String(req.body.rejectionReason || '').slice(0, 1000) : '' }, { new: true }); if (!design) throw fail(404, 'Design not found'); res.json({ success: true, data: { design } }); } catch (error) { next(error); } };
