@@ -165,9 +165,23 @@ export function optimizeImage(url: string | undefined | null, width = 600): stri
   if (!url) return '';
   if (url.startsWith('data:')) return url; // Bỏ qua base64/svg
   if (url.includes('res.cloudinary.com')) {
-    // Nếu URL chưa có biến đổi nào (thường nằm trước /v1234567/)
     if (url.includes('/upload/v')) {
       return url.replace('/upload/v', `/upload/c_scale,w_${width},q_auto,f_auto/v`);
+    }
+  }
+  return url;
+}
+
+/**
+ * Tạo link ảnh chất lượng cực thấp (LQIP - Low Quality Image Placeholder) 
+ * dùng cho hiệu ứng Blur-up
+ */
+export function getLqipImage(url: string | undefined | null): string {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  if (url.includes('res.cloudinary.com')) {
+    if (url.includes('/upload/v')) {
+      return url.replace('/upload/v', `/upload/c_scale,w_50,e_blur:200,q_10,f_auto/v`);
     }
   }
   return url;

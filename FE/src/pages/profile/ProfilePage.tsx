@@ -11,7 +11,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
-import { formatVND, extractDesignLayers, optimizeImage } from '@/utils/format'
+import { formatVND, extractDesignLayers, optimizeImage, getLqipImage } from '@/utils/format'
+import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { ShoppingBag } from 'lucide-react'
 
 type TabType = 'store' | 'overview' | 'measurements' | 'preferences'
@@ -360,8 +361,9 @@ export function ProfilePage() {
                           <Link to={`/design/${product.slug}`}>
                             {product.thumbnail ? (
                               <>
-                                <img
+                                <ProgressiveImage
                                   src={optimizeImage(product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail, 400)}
+                                  placeholderSrc={getLqipImage(product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail)}
                                   alt={product.name}
                                   loading="lazy"
                                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
