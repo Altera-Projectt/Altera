@@ -44,7 +44,14 @@ exports.getMarketplace = async (req, res, next) => {
     if (req.query.size) match.size = String(req.query.size).slice(0, 20);
     if (req.query.collection && mongoose.Types.ObjectId.isValid(req.query.collection)) match.collectionId = new mongoose.Types.ObjectId(req.query.collection);
     if (req.query.designer) {
-      const profile = await DesignerProfile.findOne({ username: String(req.query.designer).toLowerCase() }).select('_id');
+      const designerParam = String(req.query.designer).toLowerCase();
+      let profile;
+      if (mongoose.Types.ObjectId.isValid(designerParam)) {
+        profile = await DesignerProfile.findOne({ $or: [{ userId: designerParam }, { username: designerParam }] }).select('_id');
+      } else {
+        profile = await DesignerProfile.findOne({ username: designerParam }).select('_id');
+      }
+      
       if (!profile) return res.json({ success: true, data: { designs: [], pagination: { page, limit, total: 0, totalPages: 0 } } });
       match.designerId = profile._id;
     }
