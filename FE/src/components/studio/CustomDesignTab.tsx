@@ -150,7 +150,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const authenticatedUserId = useAuthStore((state) => state.user?._id)
   const drag = useRef<{ id: string; x: number; y: number; left: number; top: number } | null>(null)
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
-  const selected = current.find((layer) => layer.id === selectedId) ?? null
+  const activeImageLayer = current.find(l => l.type === 'image' && l.visible) as ImageLayer | undefined;
+  const selected = preview3D ? (activeImageLayer ?? null) : (current.find((layer) => layer.id === selectedId) ?? null)
   const commit = (next: DesignState) => { setUndoStack((stack) => [...stack.slice(-49), design]); setRedoStack([]); setDesign(next) }
   const undo = () => { const previous = undoStack.at(-1); if (!previous) return; setRedoStack((stack) => [...stack, design]); setUndoStack((stack) => stack.slice(0, -1)); setDesign(previous) }
   const redo = () => { const next = redoStack.at(-1); if (!next) return; setUndoStack((stack) => [...stack, design]); setRedoStack((stack) => stack.slice(0, -1)); setDesign(next) }
@@ -306,7 +307,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return }
     const hasFront = design.frontDesign.layers.some((layer) => layer.visible)
     const hasBack = design.backDesign.layers.some((layer) => layer.visible)
-    const hasValidLayers = printSide === 'FRONT' ? hasFront : printSide === 'BACK' ? hasBack : hasFront && hasBack
+    const hasValidLayers = hasFront || hasBack
     if (!publishName.trim()) { setDraftError('Vui lòng nhập tên thiết kế.'); return }
     if (!Number.isFinite(Number(publishPrice)) || Number(publishPrice) <= 0) { setDraftError('Vui lòng nhập giá lớn hơn 0.'); return }
     if (!product || !hasValidLayers) { setDraftError('Vui lòng chọn mẫu áo và thêm ít nhất một lớp thiết kế.'); return }
@@ -316,10 +317,51 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       const payload = draftPayload(draftName || publishName)
       const saved = id ? await DesignService.updateCustomDraft(id, payload) : await DesignService.createCustomDraft(payload)
       id = saved.data.data.draft._id; setDraftId(id)
-      const published = await DesignService.publishCustomDraft({ draftId: id, name: publishName.trim(), description: publishDescription, price: Number(publishPrice), category: publishCategory.trim(), tags: publishTags.split(',').map((tag) => tag.trim()).filter(Boolean), collectionId: publishCollectionId || undefined })
+      
+      let thumbnailBase64: string | undefined = undefined;
+      if (preview3D) {
+        let canvas = document.getElementById('r3f-shirt-canvas') as HTMLCanvasElement | null;
+        if (canvas && typeof canvas.toDataURL !== 'function') {
+           // It's a div wrapper, try to find the inner canvas
+           canvas = canvas.querySelector('canvas');
+        }
+        if (canvas && typeof canvas.toDataURL === 'function') {
+           thumbnailBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        } else {
+           console.error("Failed to target WebGL canvas for snapshot.");
+           setDraftError('Lỗi hệ thống: Không thể tạo ảnh xem trước 3D.');
+           setPublishing(false);
+           return; 
+        }
+      }
+      const publishPayload = { 
+        draftId: id, 
+        name: publishName.trim(), 
+        description: publishDescription, 
+        price: Number(publishPrice), 
+        category: publishCategory.trim(), 
+        tags: publishTags.split(',').map((tag) => tag.trim()).filter(Boolean), 
+        collectionId: publishCollectionId || undefined,
+        shirtColor: selectedColor?.hex ?? '#ffffff',
+        designUrl: activeImageLayer?.src,
+        decalTransform: activeImageLayer ? {
+          rotation: activeImageLayer.rotation,
+          scale: activeImageLayer.scaleX,
+          opacity: activeImageLayer.opacity
+        } : undefined,
+        thumbnailBase64
+      };
+      
+      console.log("PAYLOAD SENDING:", publishPayload);
+      const published = await DesignService.publishCustomDraft(publishPayload);
       const status = published.data.data.design?.status
       setShowPublish(false); setDraftError(status === 'PUBLISHED' ? 'Published to your collection and the Design Market.' : 'Design submitted for review.'); await refreshDrafts()
-    } catch (err) { setDraftError(errorMessage(err, 'Could not publish this design.')) } finally { setPublishing(false) }
+    } catch (err: any) { 
+      console.error("PUBLISH ERROR:", err.response?.data || err.message);
+      setDraftError(errorMessage(err, 'Could not publish this design.')); 
+    } finally { 
+      setPublishing(false) 
+    }
   }
   const createCollection = async () => {
     const name = newCollectionName.trim()
@@ -519,14 +561,20 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         <button onClick={() => setPreview3D(true)} className={`px-4 py-2 text-sm font-semibold transition-colors ${preview3D ? 'bg-black text-white' : 'hover:bg-gray-50'}`}>3D Preview</button>
       </div>
       
-      {preview3D ? (
-        <div className="w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden shadow-2xl border border-gray-300">
-           <ShirtCanvas3D 
-             shirtColor={selectedColor?.hex ?? '#ffffff'} 
-             designImage={current.find(l => l.type === 'image' && l.visible)?.src} 
-           />
-        </div>
-      ) : (
+      {preview3D ? (() => {
+        return (
+          <div className="w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden shadow-2xl border border-gray-300">
+             <ShirtCanvas3D 
+               shirtColor={selectedColor?.hex ?? '#ffffff'} 
+               designImage={activeImageLayer?.src}
+               decalOpacity={activeImageLayer?.opacity ?? 1}
+               decalRotationDegrees={activeImageLayer?.rotation ?? 0}
+               decalScaleMultiplier={activeImageLayer?.scaleX ?? 1}
+               decalLocked={activeImageLayer?.locked ?? false}
+             />
+          </div>
+        )
+      })() : (
         <div className="relative aspect-[3/4] w-full max-w-[360px] overflow-hidden rounded-[28px] border border-gray-300 shadow-xl mt-8" style={{ backgroundColor: selectedColor?.hex ?? '#ffffff' }} onPointerMove={onPointerMove} onPointerUp={() => { drag.current = null }} onPointerLeave={() => { drag.current = null }}>
           {productPreview ? <img src={productPreview} alt={`${product?.name ?? 'T-shirt'} ${selectedColor?.name ?? ''} preview`} className="absolute inset-0 h-full w-full object-cover mix-blend-multiply" /> : <svg aria-label={`${product?.name ?? 'T-shirt'} preview`} className="absolute inset-0 h-full w-full" viewBox="0 0 360 480" role="img"><path d="M112 45 145 30h70l33 15 67 43-39 67-38-22v288H122V133l-38 22-39-67z" fill={selectedColor?.hex ?? '#fff'} stroke="rgba(0,0,0,.15)" strokeWidth="3"/><path d="M145 30c2 32 17 49 35 49s33-17 35-49" fill="none" stroke="rgba(0,0,0,.16)" strokeWidth="3"/></svg>}
           <div className="absolute right-2 top-2 rounded bg-white/80 px-2 py-1 text-[10px] font-semibold">{side === 'frontDesign' ? 'FRONT' : 'BACK'}</div>

@@ -1,6 +1,6 @@
-import React, { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useGLTF, useTexture, Decal, OrbitControls, Environment } from '@react-three/drei';
+import { useGLTF, useTexture, Decal, OrbitControls, Center, Bounds, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
 // ----------------------------------------------------------------------
@@ -11,14 +11,21 @@ function DesignDecal({
   image, 
   position, 
   rotation, 
-  scale 
+  scale,
+  opacity = 1
 }: { 
   image: string; 
   position: [number, number, number]; 
   rotation: [number, number, number]; 
   scale: [number, number, number];
+  opacity?: number;
 }) {
-  const texture = useTexture(image);
+  // Optimize Cloudinary URL for WebGL memory if applicable
+  const optimizedImage = image.includes('cloudinary.com') 
+    ? image.replace('/upload/', '/upload/q_auto,f_auto,w_1024/') 
+    : image;
+    
+  const texture = useTexture(optimizedImage);
   
   // Optional: Ensure texture looks correct (transparency, color space)
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -29,9 +36,17 @@ function DesignDecal({
       position={position} 
       rotation={rotation} 
       scale={scale}
-      map={texture}
-      // You can adjust depthTest or polygonOffset if there's z-fighting
-    />
+    >
+      <meshStandardMaterial 
+        map={texture} 
+        transparent={true} 
+        opacity={opacity}
+        depthTest={true} 
+        depthWrite={false} 
+        polygonOffset 
+        polygonOffsetFactor={-1} 
+      />
+    </Decal>
   );
 }
 
@@ -44,51 +59,134 @@ interface ShirtModelProps {
   decalPosition?: [number, number, number];
   decalRotation?: [number, number, number];
   decalScale?: [number, number, number];
+  decalOpacity?: number;
+  decalRotationDegrees?: number;
+  decalScaleMultiplier?: number;
+  decalLocked?: boolean;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragMove: (pos: [number, number, number], rot: [number, number, number]) => void;
 }
 
 function ShirtModel({ 
   colorHex, 
   designImage, 
-  // Default values for where the print sits on the chest
-  decalPosition = [0, 0.04, 0.15], 
-  decalRotation = [0, 0, 0], 
-  decalScale = [0.2, 0.2, 0.2] 
+  decalPosition = [0, 0.1, 0.15], 
+  decalRotation = [Math.PI / 2, 0, 0], 
+  decalScale = [0.25, 0.25, 0.25],
+  decalOpacity = 1,
+  decalRotationDegrees = 0,
+  decalScaleMultiplier = 1,
+  decalLocked = false,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+  onDragMove
 }: ShirtModelProps) {
   // Load the GLTF model. Make sure you place `shirt.glb` in public/models/
   const { nodes } = useGLTF('/models/shirt.glb') as any;
   
-  // We assume the first mesh found in the GLTF is the shirt.
-  // If your model has a specific name, use nodes['Shirt_Mesh_Name'] instead.
-  const mainMesh = Object.values(nodes).find((node: any) => node.isMesh) as THREE.Mesh;
-
   return (
-    <group dispose={null}>
-      {mainMesh && (
-        <mesh 
-          castShadow 
-          receiveShadow 
-          geometry={mainMesh.geometry}
-          // If the model comes with a default position/scale, apply it here,
-          // or just rely on the defaults.
-        >
-          {/* Dynamic Color Changing */}
-          <meshStandardMaterial 
-            color={colorHex} 
-            roughness={0.8}
-            metalness={0.1}
-          />
-          
-          {/* Projecting the Design */}
-          {designImage && (
-            <DesignDecal 
-              image={designImage}
-              position={decalPosition}
-              rotation={decalRotation}
-              scale={decalScale}
-            />
-          )}
-        </mesh>
-      )}
+    <group dispose={null} rotation={[-Math.PI / 2, 0, 0]}>
+      <Bounds fit clip observe margin={1.2}>
+        <Center>
+          {Object.values(nodes).map((node: any) => {
+            if (node.isMesh) {
+              // Heuristic to find the main body mesh for the Decal (usually has the most vertices)
+              const isMainBody = node.geometry.attributes.position.count > 1500; 
+              
+              return (
+                <mesh 
+                  key={node.uuid}
+                  castShadow 
+                  receiveShadow 
+                  geometry={node.geometry}
+                  dispose={null}
+                  onPointerDown={(e) => {
+                    if (isMainBody && designImage) {
+                      if (decalLocked) return; // Do not start dragging if the layer is locked
+                      e.stopPropagation();
+                      onDragStart();
+                    }
+                  }}
+                  onPointerUp={(e) => {
+                    if (isMainBody && designImage) {
+                      e.stopPropagation();
+                      onDragEnd();
+                    }
+                  }}
+                  onPointerMissed={() => {
+                    if (isDragging) onDragEnd();
+                  }}
+                  onPointerMove={(e) => {
+                    if (isMainBody && designImage) {
+                      if (decalLocked) {
+                        document.body.style.cursor = 'not-allowed';
+                      } else {
+                        document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
+                      }
+                      
+                      if (isDragging) {
+                        e.stopPropagation();
+                        
+                        // Convert world point to local space of the mesh
+                        const localPoint = e.object.worldToLocal(e.point.clone());
+                        
+                        // e.face.normal is usually in local space
+                        const localNormal = e.face?.normal?.clone() || new THREE.Vector3(0, 0, 1);
+                        
+                        // Create a dummy object to calculate the correct rotation
+                        const dummy = new THREE.Object3D();
+                        dummy.position.copy(localPoint);
+                        // Look at the normal direction to project flush against the surface
+                        dummy.lookAt(localPoint.clone().add(localNormal));
+                        
+                        onDragMove(
+                          [localPoint.x, localPoint.y, localPoint.z], 
+                          [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]
+                        );
+                      }
+                    }
+                  }}
+                  onPointerOut={() => {
+                    if (isMainBody) {
+                      document.body.style.cursor = 'auto';
+                    }
+                  }}
+                >
+                  {/* Dynamic Color Changing applied to ALL parts (body, collar, sleeves) */}
+                  <meshStandardMaterial 
+                    color={colorHex} 
+                    roughness={0.8}
+                    metalness={0.1}
+                  />
+                  
+                  {/* Projecting the Design ONLY on the main body */}
+                  {isMainBody && designImage && (
+                    <DesignDecal 
+                      image={designImage}
+                      position={decalPosition}
+                      rotation={[
+                        decalRotation[0], 
+                        decalRotation[1], 
+                        decalRotation[2] + (decalRotationDegrees * Math.PI) / 180
+                      ]}
+                      scale={[
+                        decalScale[0] * decalScaleMultiplier,
+                        decalScale[1] * decalScaleMultiplier,
+                        decalScale[2]
+                      ]}
+                      opacity={decalOpacity}
+                    />
+                  )}
+                </mesh>
+              );
+            }
+            return null;
+          })}
+        </Center>
+      </Bounds>
     </group>
   );
 }
@@ -101,44 +199,89 @@ export interface ShirtCanvas3DProps {
   designImage?: string | null;
   decalPosition?: [number, number, number];
   decalScale?: [number, number, number];
+  decalOpacity?: number;
+  decalRotationDegrees?: number;
+  decalScaleMultiplier?: number;
+  decalLocked?: boolean;
 }
 
 export default function ShirtCanvas3D({ 
-  shirtColor = '#ffffff', 
+  shirtColor = '#111111', 
   designImage, 
   decalPosition, 
-  decalScale 
+  decalScale,
+  decalOpacity = 1,
+  decalRotationDegrees = 0,
+  decalScaleMultiplier = 1,
+  decalLocked = false
 }: ShirtCanvas3DProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [pos, setPos] = useState<[number, number, number]>(decalPosition || [0, 0.1, 0.15]);
+  const [rot, setRot] = useState<[number, number, number]>([Math.PI / 2, 0, 0]);
+
   return (
-    <div className="w-full h-full relative min-h-[400px] bg-gray-100 rounded-xl overflow-hidden shadow-inner">
-      <Canvas shadows camera={{ position: [0, 0, 2.5], fov: 45 }}>
+    <div className="w-full h-full relative min-h-[400px] rounded-xl overflow-hidden shadow-inner border border-gray-300">
+      <Canvas 
+        id="r3f-shirt-canvas"
+        shadows 
+        style={{ backgroundColor: '#f3f4f6' }}
+        gl={{ preserveDrawingBuffer: true }}
+      >
+        <PerspectiveCamera makeDefault position={[0, 0, 5]} />
         {/* Lighting Setup */}
-        <ambientLight intensity={0.5} />
+        <ambientLight intensity={0.6} />
+        {/* Main Key Light (Front Right) */}
         <directionalLight 
-          position={[5, 5, 5]} 
-          intensity={1} 
+          position={[2, 2, 5]} 
+          intensity={1.2}  
           castShadow 
           shadow-mapSize={1024}
         />
-        {/* Realistic reflections */}
-        <Environment preset="city" />
-        
+        {/* Fill Light (Front Left) */}
+        <directionalLight 
+          position={[-3, 0, 4]} 
+          intensity={0.8}  
+        />
+        {/* Back Light (Rim Light) */}
+        <directionalLight 
+          position={[0, 2, -5]} 
+          intensity={1.5}  
+        />
+        {/* Top Light */}
+        <directionalLight 
+          position={[0, 5, 0]} 
+          intensity={0.5}  
+        />
+        {/* Realistic reflections without fetching external HDR files */}
         {/* 3D Content */}
         <Suspense fallback={null}>
           <ShirtModel 
             colorHex={shirtColor} 
             designImage={designImage}
-            decalPosition={decalPosition}
-            decalScale={decalScale}
+            decalPosition={pos}
+            decalRotation={rot}
+            decalScale={decalScale || [0.25, 0.25, 0.25]}
+            decalOpacity={decalOpacity}
+            decalRotationDegrees={decalRotationDegrees}
+            decalScaleMultiplier={decalScaleMultiplier}
+            decalLocked={decalLocked}
+            isDragging={isDragging}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={() => setIsDragging(false)}
+            onDragMove={(newPos, newRot) => {
+              setPos(newPos);
+              setRot(newRot);
+            }}
           />
         </Suspense>
 
         {/* Camera Controls */}
         <OrbitControls 
+          makeDefault
+          enabled={!isDragging}
           enableZoom={false}
           enablePan={false}
-          minPolarAngle={Math.PI / 3} // Prevent looking from too far above
-          maxPolarAngle={Math.PI / 1.5} // Prevent looking from under the shirt
+          enableRotate={true}
         />
       </Canvas>
     </div>

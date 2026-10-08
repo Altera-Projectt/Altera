@@ -222,16 +222,49 @@ exports.deleteCollection = async (req, res, next) => {
 
 exports.createDesign = async (req, res, next) => {
   try {
+    console.log("RECEIVED BODY:", { ...req.body, thumbnailBase64: req.body.thumbnailBase64 ? 'BASE64_STRING_PRESENT' : undefined });
+    
     const profile = await profileForUser(req.user._id), draft = await CustomDesignDraft.findOne({ _id: req.body.draftId, userId: req.user._id });
     if (!draft) throw fail(404, 'Owned design draft not found');
     const name = String(req.body.name || '').trim(), price = Number(req.body.price), hasFront = Boolean(draft.frontDesign?.layers?.some((layer) => layer && layer.visible !== false)), hasBack = Boolean(draft.backDesign?.layers?.some((layer) => layer && layer.visible !== false));
-    const hasRequiredLayers = draft.printSide === 'BACK' ? hasBack : draft.printSide === 'BOTH' ? hasFront && hasBack : hasFront;
-    if (!name || !draft.productId || !hasRequiredLayers || !draft.thumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, design layer, preview, and valid price are required');
+    const hasRequiredLayers = hasFront || hasBack;
+    
+    let finalThumbnail = draft.thumbnail;
+    try {
+      if (req.body.thumbnailBase64) {
+        const { uploadImage } = require('../utils/cloudinary');
+        const uploadResult = await uploadImage(req.body.thumbnailBase64, 'marketplace_designs');
+        finalThumbnail = uploadResult.url;
+      }
+    } catch (uploadError) {
+      console.error("CLOUDINARY UPLOAD CRASH:", uploadError);
+      throw fail(500, 'Failed to upload thumbnail image');
+    }
+
+    if (!name || !draft.productId || !hasRequiredLayers || !finalThumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, design layer, preview, and valid price are required');
     if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
-    const design = await MarketplaceDesign.create({ designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, description: req.body.description || '', thumbnail: draft.thumbnail, productId: draft.productId, color: draft.color, size: draft.size, printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], collectionId: req.body.collectionId || null, status: submissionStatus() });
+    
+    let design;
+    try {
+      design = await MarketplaceDesign.create({ 
+        designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, 
+        description: req.body.description || '', thumbnail: finalThumbnail, productId: draft.productId, color: draft.color, size: draft.size, 
+        printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, 
+        price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], 
+        collectionId: req.body.collectionId || null, status: submissionStatus(),
+        shirtColor: req.body.shirtColor, designUrl: req.body.designUrl, decalTransform: req.body.decalTransform
+      });
+    } catch (dbError) {
+      console.error("MONGODB SAVE CRASH:", dbError);
+      throw fail(500, 'Failed to save design to database');
+    }
+    
     res.status(201).json({ success: true, data: { design } });
-  } catch (error) { next(error); }
+  } catch (error) { 
+    console.error("BE CRASH REASON:", error);
+    next(error); 
+  }
 };
 exports.updateDesign = async (req, res, next) => {
   try {
