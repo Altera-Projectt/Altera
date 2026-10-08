@@ -741,7 +741,13 @@ export function OutfitPage() {
                       key={product._id ?? i}
                       product={product}
                       reason={reasoning?.reason}
-                      onNavigate={() => navigate(`/products/${product._id}`)}
+                      onNavigate={() => {
+                        if (product.isDesign && product.slug) {
+                          navigate(`/design/${product.slug}`)
+                        } else {
+                          navigate(`/products/${product._id}`)
+                        }
+                      }}
                     />
                   )
                 })}

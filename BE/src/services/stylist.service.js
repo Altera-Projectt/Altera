@@ -201,15 +201,27 @@ const recommend = async (userId, { style, gender, season, budget, occasion, quiz
     throw error;
   }
 
-  const products = await productService.getStylistProducts({ 
-    style: resolvedStyle, 
-    gender, 
-    season, 
-    budget, 
-    keyPieces: derivedQuizResult?.keyPieces,
-    limit: 6 
-  });
-  const catalog = buildCatalogPromptSection(products);
+  const [products, designs] = await Promise.all([
+    productService.getStylistProducts({ 
+      style: resolvedStyle, 
+      gender, 
+      season, 
+      budget, 
+      keyPieces: derivedQuizResult?.keyPieces,
+      limit: 3 
+    }),
+    productService.getStylistMarketplaceDesigns({
+      style: resolvedStyle,
+      gender,
+      season,
+      budget,
+      keyPieces: derivedQuizResult?.keyPieces,
+      limit: 3
+    })
+  ]);
+
+  const combinedCatalog = [...designs, ...products];
+  const catalog = buildCatalogPromptSection(combinedCatalog);
   const user = mongoose.isValidObjectId(userId)
     ? await User.findById(userId).select('measurements preferences').lean()
     : null;
@@ -280,7 +292,7 @@ Trả về JSON đầy đủ:
     aiResult = await cerebrasService.generateJson(prompt, { maxOutputTokens: 1200 });
   } catch (error) {
     logger.warn('Cerebras stylist recommendation failed, using fallback. %s', error?.message || 'Unknown error');
-    return buildFallbackRecommendation(resolvedStyle, derivedQuizResult, products, occasion);
+    return buildFallbackRecommendation(resolvedStyle, derivedQuizResult, combinedCatalog, occasion);
   }
 
   return {
@@ -292,7 +304,7 @@ Trả về JSON đầy đủ:
     bodyTips: aiResult.bodyTips || '',
     tips: Array.isArray(aiResult.tips) ? aiResult.tips : [],
     completeOutfit: aiResult.completeOutfit || {},
-    recommendedProducts: products,
+    recommendedProducts: combinedCatalog,
     productReasoning: Array.isArray(aiResult.productReasoning) ? aiResult.productReasoning : [],
   };
 };

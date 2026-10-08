@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const MarketplaceDesign = require('../models/MarketplaceDesign');
 
 const getStylistProducts = async ({ style, gender, season, budget, keyPieces, limit = 6 } = {}) => {
   const normalizedBudget = budget ? Number(budget) : null;
@@ -90,4 +91,84 @@ const getStylistProducts = async ({ style, gender, season, budget, keyPieces, li
   return products;
 };
 
-module.exports = { getStylistProducts };
+const getStylistMarketplaceDesigns = async ({ style, gender, season, budget, keyPieces, limit = 4 } = {}) => {
+  const normalizedBudget = budget ? Number(budget) : null;
+  const query = {
+    status: 'PUBLISHED',
+    ...(normalizedBudget ? { price: { $lte: normalizedBudget } } : {}),
+  };
+
+  const styleKeywordsMap = {
+    'Streetwear': ['oversize', 'baggy', 'hoodie', 'street', 'chunky', 'rộng', 'box', 'skate', 'cargo', 'jacket', 'thun', 'phông', 'cá tính', 'graphic'],
+    'Minimalist': ['basic', 'trơn', 'suông', 'tối giản', 'minimal', 'polo', 'classic', 'sơ mi'],
+    'Smart Casual': ['sơ mi', 'chinos', 'polo', 'tây', 'blazer', 'lịch sự', 'nhã nhặn', 'âu'],
+    'Vintage': ['denim', 'jeans', 'corduroy', 'nhung', 'retro', 'cổ điển', 'wash', 'khoác', 'y2k'],
+    'Sporty': ['thể thao', 'jogger', 'dry', 'cool', 'năng động', 'thoáng', 'gym', 'nỉ'],
+    'Korean Casual': ['cardigan', 'ống rộng', 'len', 'hàn', 'korean', 'rũ', 'mỏng'],
+    'Y2K': ['croptop', 'baby tee', 'cạp trễ', 'y2k', 'ống loe', 'ngắn', 'baby'],
+    'Elegant': ['lụa', 'blouse', 'midi', 'thanh lịch', 'sang trọng', 'đầm', 'váy', 'tây'],
+    'Workwear': ['utility', 'cargo', 'bụi', 'boots', 'túi hộp', 'khoác', 'kaki', 'jean']
+  };
+
+  const rawKeywords = [
+    ...(styleKeywordsMap[style] || []),
+    style,
+    gender,
+    season,
+    ...(Array.isArray(keyPieces) ? keyPieces.flatMap(p => p.split(/\s+/)) : [])
+  ];
+
+  const ignoreWords = ['áo', 'quần', 'giày', 'dép', 'phụ', 'kiện', 'màu', 'đen', 'trắng', 'của', 'và', 'hoặc', 'có', 'thể', 'cơ', 'bản'];
+  const searchTerms = [...new Set(rawKeywords
+    .filter(Boolean)
+    .map(k => String(k).trim().toLowerCase())
+    .filter(k => k.length > 2 && !ignoreWords.includes(k))
+  )];
+
+  if (searchTerms.length > 0) {
+    query.$or = [
+      { name: { $regex: searchTerms.join('|'), $options: 'i' } },
+      { description: { $regex: searchTerms.join('|'), $options: 'i' } },
+      { tags: { $in: searchTerms.map(term => new RegExp(term, 'i')) } },
+      { category: { $regex: searchTerms.join('|'), $options: 'i' } }
+    ];
+  }
+
+  let designs = await MarketplaceDesign.find(query)
+    .populate('productId')
+    .sort({ likesCount: -1, createdAt: -1 })
+    .limit(Number(limit))
+    .lean();
+
+  if (designs.length < Number(limit)) {
+    const excludeIds = designs.map(d => d._id);
+    const fallbackQuery = {
+      status: 'PUBLISHED',
+      ...(normalizedBudget ? { price: { $lte: normalizedBudget } } : {}),
+      ...(excludeIds.length ? { _id: { $nin: excludeIds } } : {}),
+    };
+
+    const fallbackDesigns = await MarketplaceDesign.find(fallbackQuery)
+      .populate('productId')
+      .sort({ likesCount: -1, createdAt: -1 })
+      .limit(Number(limit) - designs.length)
+      .lean();
+
+    designs = [...designs, ...fallbackDesigns];
+  }
+
+  // Normalize structure to match products for the prompt
+  return designs.map(d => ({
+    _id: d._id,
+    isDesign: true,
+    name: d.name,
+    category: d.category || 'T-Shirt',
+    price: d.price,
+    description: d.description || d.tags?.join(', '),
+    thumbnail: d.thumbnail,
+    imageUrl: (d.productId && Array.isArray(d.productId.images) && d.productId.images.length > 0) ? d.productId.images[0] : (d.productId?.imageUrl || d.thumbnail),
+    slug: d.slug
+  }));
+};
+
+module.exports = { getStylistProducts, getStylistMarketplaceDesigns };
