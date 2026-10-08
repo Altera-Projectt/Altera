@@ -233,7 +233,7 @@ exports.createDesign = async (req, res, next) => {
     const has3dDesign = Boolean(req.body.designUrl || draft.designUrl);
     const hasRequiredLayers = hasFront || hasBack || has3dDesign;
     
-    let finalThumbnail = draft.thumbnail || req.body.thumbnailUrl || draft.thumbnailUrl;
+    let finalThumbnail = req.body.thumbnailUrl || draft.thumbnail || draft.thumbnailUrl;
     try {
       if (req.body.thumbnailBase64) {
         const { uploadImage } = require('../utils/cloudinary');
