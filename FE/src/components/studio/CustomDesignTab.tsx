@@ -412,7 +412,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       const saved = id ? await DesignService.updateCustomDraft(id, payload) : await DesignService.createCustomDraft(payload)
       id = saved.data.data.draft._id; setDraftId(id)
       
-      let thumbnailBase64: string | undefined = undefined;
+      let thumbnailUrl: string | undefined = undefined;
       if (preview3D) {
         let canvas = document.getElementById('r3f-shirt-canvas') as HTMLCanvasElement | null;
         if (canvas && typeof canvas.toDataURL !== 'function') {
@@ -420,7 +420,12 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
            canvas = canvas.querySelector('canvas');
         }
         if (canvas && typeof canvas.toDataURL === 'function') {
-           thumbnailBase64 = canvas.toDataURL('image/jpeg', 0.8);
+           const thumbnailBase64 = canvas.toDataURL('image/jpeg', 0.8);
+           const res = await fetch(thumbnailBase64);
+           const blob = await res.blob();
+           const file = new File([blob], 'thumbnail.jpg', { type: blob.type });
+           const { data } = await DesignService.uploadCustomImage(file);
+           thumbnailUrl = data.data.image.url;
         } else {
            console.error("Failed to target WebGL canvas for snapshot.");
            setDraftError('Lỗi hệ thống: Không thể tạo ảnh xem trước 3D.');
@@ -439,7 +444,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         shirtColor: payload.shirtColor,
         designUrl: payload.designUrl,
         decalTransform: payload.decalTransform,
-        thumbnailBase64
+        thumbnailUrl
       };
       
       console.log("PAYLOAD SENDING:", publishPayload);
