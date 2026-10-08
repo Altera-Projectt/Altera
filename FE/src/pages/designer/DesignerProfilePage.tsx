@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '@/utils/axios'
 import { useAuthStore } from '@/store/authStore'
@@ -20,7 +20,7 @@ export function DesignerProfilePage(){
  const follow=async()=>{if(!data)return;setBusy(true);try{await api.request({method:data.isFollowing?'DELETE':'POST',url:'/designers/'+data.profile._id+'/follow'});await load()}finally{setBusy(false)}}
  const like=async(d:Design)=>{try{await api.request({method:d.isLiked?'DELETE':'POST',url:'/designers/'+d._id+'/like'});await load()}catch{setError('Đăng nhập để thích thiết kế.')}}
  const collectionAction=async(c?:Collection)=>{if(!c){const n=window.prompt('Tên collection mới')?.trim();if(n)await api.post('/designers/me/collections',{name:n})}else{const n=window.prompt('Tên mới hoặc DELETE để xóa: '+c.name);if(n?.toUpperCase()==='DELETE')await api.delete('/designers/me/collections/'+c._id);else if(n?.trim())await api.patch('/designers/me/collections/'+c._id,{name:n.trim()})}await load()}
- const publishDesign=async(d:Design)=>{await api.post('/designers/me/designs/'+d._id+'/publish');setStatus('PENDING_REVIEW');await load()}
+ const publishDesign=async(d:Design)=>{const r=await api.post<any>('/designers/me/designs/'+d._id+'/publish');setStatus(r.data.data.design.status);await load()}
  const designAction=async(d:Design)=>{if(d.status==='PUBLISHED'){await api.post('/designers/me/designs/'+d._id+'/duplicate');setStatus('DRAFT')}else{const n=window.prompt('Tên mới hoặc DELETE để xóa: '+d.name);if(n?.toUpperCase()==='DELETE')await api.delete('/designers/me/designs/'+d._id);else if(n?.trim())await api.patch('/designers/me/designs/'+d._id,{name:n.trim()})}await load()}
  if(error&&!data)return <div className="py-24 text-center">{error}</div>;if(!data)return <div className="py-24 text-center">Đang tải hồ sơ…</div>
  const p=data.profile
