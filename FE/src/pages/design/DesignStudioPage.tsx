@@ -709,15 +709,7 @@ function DesignCard({
             <Download className="h-3 w-3" />
             Tải về
           </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            className="flex-1 gap-1 text-xs"
-            onClick={() => onOrder(design)}
-          >
-            <ShoppingBag className="h-3 w-3" />
-            Đặt hàng
-          </Button>
+
           <Button
             variant="ghost"
             size="icon-sm"
@@ -1369,16 +1361,25 @@ export function DesignStudioPage() {
     }
   }
 
-  const handleReuseFromLibrary = (design: Design) => {
-    setReuseInitial({
-      prompt: design.prompt,
-      style: design.style,
-      shirtColor: design.shirtColor,
-    })
-    setViewState('form')
-    setCurrentDesign(null)
-    setGenerateError(null)
-    setActiveTab('create')
+  const handleReuseFromLibrary = async (design: Design) => {
+    const cached = libraryAssetByDesign[design._id]
+    const currentUrl = design.previewImage || design.customImage
+    let image = cached && (!currentUrl || cached.url === currentUrl) ? cached : null
+
+    if (!image) {
+      try {
+        const res = await DesignService.saveGeneratedToLibrary(design._id)
+        image = res.data.data.image
+        setLibraryAssetByDesign((prev) => ({ ...prev, [design._id]: image }))
+      } catch (err: any) {
+        showToast(err?.response?.data?.message || 'Không thể đưa ảnh vào Custom Design', 'error')
+        return
+      }
+    }
+    
+    setPendingAsset(image)
+    setActiveTab('custom')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const handleOrderFromLibrary = (design: Design) => {
