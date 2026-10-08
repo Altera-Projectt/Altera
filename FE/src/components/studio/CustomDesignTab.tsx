@@ -152,12 +152,66 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
 
   useEffect(() => {
     if (!isAuthenticated) return
-    DesignService.getCustomImages()
-      .then(({ data }) => setUploads(data.data.images || []))
-      .catch((e) => {
-        console.warn('Unable to load your image library.', e)
-        setUploads([])
-      })
+    let active = true
+
+    const fetchAllImages = async () => {
+      try {
+        // Fetch both explicitly uploaded images and all AI designs
+        const [uploadsRes, designsRes] = await Promise.allSettled([
+          DesignService.getCustomImages(),
+          DesignService.getMyDesigns(1, 100)
+        ])
+        
+        if (!active) return
+        
+        let fetchedImages: UploadedCustomImage[] = []
+        
+        if (uploadsRes.status === 'fulfilled') {
+          fetchedImages = uploadsRes.value.data.data.images || []
+        }
+        
+        if (designsRes.status === 'fulfilled') {
+          const aiDesigns = designsRes.value.data.data.designs || []
+          const aiImages: UploadedCustomImage[] = aiDesigns
+            .filter(d => d.previewImage || d.customImage)
+            .map(d => ({
+              _id: d._id,
+              url: d.previewImage || d.customImage || '',
+              thumbnailUrl: d.previewImage || d.customImage || '',
+              filename: `ai-design-${d._id}.png`,
+              mimeType: 'image/png',
+              size: 0,
+              source: 'AI',
+              prompt: d.prompt,
+              designId: d._id,
+              createdAt: d.createdAt || new Date().toISOString()
+            }))
+            
+          // Merge AI images avoiding duplicates
+          for (const aiImg of aiImages) {
+            if (!fetchedImages.some(img => img.url === aiImg.url)) {
+              fetchedImages.push(aiImg)
+            }
+          }
+        }
+        
+        // Safely merge with existing state (to preserve pendingAsset or inflight uploads)
+        setUploads(prev => {
+          const merged = [...prev];
+          for (const img of fetchedImages) {
+            if (!merged.some(m => m.url === img.url || m._id === img._id)) {
+              merged.push(img);
+            }
+          }
+          return merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        })
+      } catch (e) {
+        if (active) console.warn('Unable to load your image library.', e)
+      }
+    }
+    
+    void fetchAllImages()
+    return () => { active = false }
   }, [isAuthenticated])
 
   const colors = product?.colors ?? []

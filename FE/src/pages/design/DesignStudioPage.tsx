@@ -649,40 +649,19 @@ function DesignCard({
     <Card hoverable className="flex flex-col">
       <div
         className="w-full bg-[var(--color-muted)] overflow-hidden flex items-center justify-center relative group"
-        style={{ aspectRatio: '3/4', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0' }}
+        style={{ aspectRatio: '1/1', borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0', backgroundColor: '#f3f4f6' }}
       >
-        {/* Layer 1: Base Color (Bottom) */}
-        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 360 480" preserveAspectRatio="xMidYMid slice">
-          <path d="M112 45 145 30h70l33 15 67 43-39 67-38-22v288H122V133l-38 22-39-67z" fill={baseColor} />
-        </svg>
-
-        {/* Layer 2: Design Layer (Middle) */}
-        <div className="absolute inset-0 flex items-center justify-center transition-transform duration-500 group-hover:scale-105" style={{ paddingBottom: '30px' }}>
+        <div className="absolute inset-0 flex items-center justify-center transition-transform duration-500 group-hover:scale-105 p-4">
           {img ? (
             <img
               src={img}
               alt={design.prompt ?? 'Design'}
-              className="w-28 h-28 object-contain rounded-md shadow-sm"
-              style={{
-                 mixBlendMode: baseColor === '#ffffff' ? 'multiply' : 'normal'
-              }}
+              className="w-full h-full object-contain drop-shadow-md"
             />
           ) : (
             <Palette className="h-10 w-10 opacity-30" />
           )}
         </div>
-
-        {/* Layer 3: Texture/Wrinkle Mask (Top) */}
-        <svg className="absolute inset-0 h-full w-full pointer-events-none mix-blend-multiply opacity-60" viewBox="0 0 360 480" preserveAspectRatio="xMidYMid slice">
-          {/* Main Outline */}
-          <path d="M112 45 145 30h70l33 15 67 43-39 67-38-22v288H122V133l-38 22-39-67z" fill="none" stroke="rgba(0,0,0,.15)" strokeWidth="3"/>
-          {/* Collar */}
-          <path d="M145 30c2 32 17 49 35 49s33-17 35-49" fill="none" stroke="rgba(0,0,0,.25)" strokeWidth="4"/>
-          {/* Subtle Wrinkles Shading */}
-          <path d="M130 150 Q 150 200 140 250" fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="8" filter="blur(2px)"/>
-          <path d="M230 180 Q 210 230 220 280" fill="none" stroke="rgba(0,0,0,.08)" strokeWidth="12" filter="blur(3px)"/>
-          <path d="M170 300 Q 190 350 180 400" fill="none" stroke="rgba(0,0,0,.06)" strokeWidth="10" filter="blur(4px)"/>
-        </svg>
       </div>
 
       <CardContent className="flex flex-col gap-3 pt-4">
@@ -1396,21 +1375,24 @@ export function DesignStudioPage() {
   }
 
   const handleReuseFromLibrary = async (design: Design) => {
-    const cached = libraryAssetByDesign[design._id]
     const currentUrl = design.previewImage || design.customImage
-    let image = cached && (!currentUrl || cached.url === currentUrl) ? cached : null
-
-    if (!image) {
-      try {
-        const res = await DesignService.saveGeneratedToLibrary(design._id)
-        image = res.data.data.image
-        if (image) {
-          setLibraryAssetByDesign((prev) => ({ ...prev, [design._id]: image! }))
-        }
-      } catch (err: any) {
-        showToast(err?.response?.data?.message || 'Không thể đưa ảnh vào Custom Design', 'error')
-        return
-      }
+    
+    if (!currentUrl) {
+      showToast('Không tìm thấy ảnh gốc cho thiết kế này.', 'error')
+      return
+    }
+    
+    const image: UploadedCustomImage = {
+      _id: design._id,
+      url: currentUrl,
+      thumbnailUrl: currentUrl,
+      filename: `ai-design-${design._id}.png`,
+      mimeType: 'image/png',
+      size: 0,
+      source: 'AI',
+      prompt: design.prompt,
+      designId: design._id,
+      createdAt: new Date().toISOString()
     }
     
     setPendingAsset(image)
