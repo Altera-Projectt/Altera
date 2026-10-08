@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Bold, Copy, Eye, EyeOff, Italic, Lock, Plus, RotateCw, Trash2, Underline, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
 import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
@@ -374,6 +375,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     } catch (saveError: unknown) { setDraftError(errorMessage(saveError, 'Could not save this draft.')); setDraftStatus('failed') }
   }
   const publishDesign = async () => {
+    if (publishing) return
     if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return }
     const hasFront = design.frontDesign.layers.some((layer) => layer.visible)
     const hasBack = design.backDesign.layers.some((layer) => layer.visible)
@@ -432,10 +434,27 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       console.log("PAYLOAD SENDING:", publishPayload);
       const published = await DesignService.publishCustomDraft(publishPayload);
       const status = published.data.data.design?.status
-      setShowPublish(false); setDraftError(status === 'PUBLISHED' ? 'Published to your collection and the Design Market.' : 'Design submitted for review.'); await refreshDrafts()
+      
+      setShowPublish(false);
+      setDraftError('');
+      toast.success(status === 'PUBLISHED' ? 'Design published successfully!' : 'Design submitted for review.');
+      
+      // Reset form state
+      setPublishName('');
+      setPublishDescription('');
+      setPublishPrice('');
+      setPublishCategory('');
+      setPublishTags('');
+      setPublishCollectionId('');
+      
+      await refreshDrafts();
+      
+      // Redirect
+      navigate('/designer/me');
     } catch (err: any) { 
       console.error("PUBLISH ERROR:", err.response?.data || err.message);
-      setDraftError(errorMessage(err, 'Could not publish this design.')); 
+      setDraftError(errorMessage(err, 'Could not publish this design.'));
+      toast.error(errorMessage(err, 'Could not publish this design.'));
     } finally { 
       setPublishing(false) 
     }
