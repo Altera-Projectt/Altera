@@ -75,6 +75,27 @@ const createProduct = async (req, res, next) => {
   try {
     const productData = req.body;
 
+    if (!productData.sizes || productData.sizes.length === 0) {
+      productData.sizes = [
+        { label: 'S', stock: 10 },
+        { label: 'M', stock: 10 },
+        { label: 'L', stock: 10 },
+        { label: 'XL', stock: 10 },
+      ];
+    }
+
+    if (!productData.colors || productData.colors.length === 0) {
+      productData.colors = [
+        { name: 'White', hex: '#ffffff', stock: 10 },
+        { name: 'Black', hex: '#000000', stock: 10 },
+      ];
+    }
+
+    productData.stock = productData.sizes.reduce(
+      (total, size) => total + (Number(size.stock) || 0),
+      0
+    );
+
     if (req.file) {
       const uploaded = await uploadImage(req.file.path, 'products');
       productData.imageUrl = uploaded.url;
