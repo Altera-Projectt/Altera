@@ -47,11 +47,13 @@ function readDesign(storageKey: string): DesignState {
     if (value) {
       const parsed = JSON.parse(value) as DesignState
       const normalize = (value: DesignLayer[] | { layers?: DesignLayer[] } | undefined) => (Array.isArray(value) ? value : value?.layers ?? []).map((layer, index) => ({
-        ...layer, name: (layer as DesignLayer & { name?: string }).name || (layer.type === 'text' ? `Text ${index + 1}` : `Image ${index + 1}`),
+        ...layer, 
+        id: layer.id || crypto.randomUUID(),
+        name: (layer as DesignLayer & { name?: string }).name || (layer.type === 'text' ? `Text ${index + 1}` : `Image ${index + 1}`),
         visible: (layer as DesignLayer & { visible?: boolean }).visible ?? true,
         locked: (layer as DesignLayer & { locked?: boolean }).locked ?? false,
         zIndex: (layer as DesignLayer & { zIndex?: number }).zIndex ?? index,
-      })) as DesignLayer[]
+      })).filter(layer => layer.type === 'text' || (layer.type === 'image' && (layer as ImageLayer).src && !(layer as ImageLayer).src.startsWith('data:'))) as DesignLayer[]
       return { frontDesign: { layers: normalize(parsed.frontDesign as unknown as DesignLayer[] | { layers?: DesignLayer[] }) }, backDesign: { layers: normalize(parsed.backDesign as unknown as DesignLayer[] | { layers?: DesignLayer[] }) } }
     }
   } catch { /* Start with an empty design if saved data is unavailable. */ }
@@ -256,6 +258,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       let finalAsset = pendingAsset;
       if (pendingAsset.url.startsWith('data:image')) {
         try {
+          setUploading(true);
           const res = await fetch(pendingAsset.url);
           const blob = await res.blob();
           const file = new File([blob], 'ai-design.png', { type: blob.type });
@@ -263,6 +266,11 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
           finalAsset = { ...pendingAsset, url: data.data.image.url };
         } catch (e) {
           console.error('Failed to upload base64 AI image', e);
+          setError('Could not upload AI image to cloud. Please try again.');
+          setUploading(false);
+          return;
+        } finally {
+          setUploading(false);
         }
       }
       setUploads((items) => [finalAsset, ...items.filter((item) => item._id !== pendingAsset._id)])
@@ -280,7 +288,10 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     try { await DesignService.deleteCustomImage(image._id, inUse); setUploads((items) => items.filter((item) => item._id !== image._id)); setError('') }
     catch (deleteError: unknown) { setError(errorMessage(deleteError, 'Could not delete this image.')) }
   }
-  const removeText = () => { if (!selectedId || selected?.locked) return; commit({ ...design, [side]: { layers: design[side].layers.filter((layer) => layer.id !== selectedId) } }); setSelectedId(null) }
+  const removeLayer = (id: string) => { 
+    commit({ ...design, [side]: { layers: design[side].layers.filter((layer) => layer.id !== id) } }); 
+    if (selectedId === id) setSelectedId(null) 
+  }
   const changeLayer = (id: string, patch: Partial<DesignLayer>) => commit({ ...design, [side]: { layers: design[side].layers.map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) } })
   const reorder = (id: string, direction: 'front' | 'forward' | 'backward' | 'back') => {
     const layers = [...current]; const index = layers.findIndex((layer) => layer.id === id); if (index < 0) return
@@ -493,9 +504,10 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       setSize(saved.size)
       setPrintSide(saved.printSide)
       setTechnique(saved.printingTechnique)
+      const normalizeDraft = (layers: any[]) => layers.map(layer => ({...layer, id: layer.id || crypto.randomUUID()})).filter(layer => layer.type === 'text' || (layer.type === 'image' && layer.src && !layer.src.startsWith('data:'))) as DesignLayer[];
       setDesign({
-        frontDesign: { layers: (saved.frontDesign?.layers ?? []) as DesignLayer[] },
-        backDesign: { layers: (saved.backDesign?.layers ?? []) as DesignLayer[] },
+        frontDesign: { layers: normalizeDraft(saved.frontDesign?.layers ?? []) },
+        backDesign: { layers: normalizeDraft(saved.backDesign?.layers ?? []) },
       })
       setSelectedId(null)
       setUndoStack([]); setRedoStack([])
@@ -652,7 +664,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         {!current.length && <p className="text-sm text-gray-500">No layers yet.</p>}
         {[...current].reverse().map((layer) => <div key={layer.id} className={`rounded border p-1 ${selectedId === layer.id ? 'border-black bg-gray-50' : ''}`}>
           <div className="flex items-center gap-1"><button type="button" title={layer.visible ? 'Hide layer' : 'Show layer'} aria-label={layer.visible ? `Hide ${layer.name}` : `Show ${layer.name}`} onClick={() => toggleVisibility(layer)} className="rounded p-1">{layer.visible ? <Eye size={15}/> : <EyeOff size={15}/>}</button><button type="button" onClick={() => setSelectedId(layer.id)} className="min-w-0 flex-1 truncate text-left text-sm">{layer.name}</button><button type="button" title={layer.locked ? 'Unlock layer' : 'Lock layer'} aria-label={layer.locked ? `Unlock ${layer.name}` : `Lock ${layer.name}`} onClick={() => changeLayer(layer.id, { locked: !layer.locked })} className="rounded p-1">{layer.locked ? <Lock size={14}/> : <Unlock size={14}/>}</button></div>
-          {selectedId === layer.id && <><input aria-label="Rename layer" value={layer.name} onChange={(event) => changeLayer(layer.id, { name: event.target.value })} className="my-1 w-full rounded border px-2 py-1 text-xs"/><div className="flex flex-wrap gap-1"><button title="Bring to Front" onClick={() => reorder(layer.id, 'front')} className="rounded border p-1"><ArrowUp size={14}/></button><button title="Bring Forward" onClick={() => reorder(layer.id, 'forward')} className="rounded border p-1"><ArrowUp size={12}/></button><button title="Send Backward" onClick={() => reorder(layer.id, 'backward')} className="rounded border p-1"><ArrowDown size={12}/></button><button title="Send to Back" onClick={() => reorder(layer.id, 'back')} className="rounded border p-1"><ArrowDown size={14}/></button><button title="Duplicate layer" onClick={() => duplicate(layer)} className="rounded border p-1"><Copy size={14}/></button><button title="Delete layer" onClick={removeText} disabled={layer.locked} className="rounded border p-1 text-red-600 disabled:opacity-40"><Trash2 size={14}/></button></div></>}
+          {selectedId === layer.id && <><input aria-label="Rename layer" value={layer.name} onChange={(event) => changeLayer(layer.id, { name: event.target.value })} className="my-1 w-full rounded border px-2 py-1 text-xs"/><div className="flex flex-wrap gap-1"><button title="Bring to Front" onClick={() => reorder(layer.id, 'front')} className="rounded border p-1"><ArrowUp size={14}/></button><button title="Bring Forward" onClick={() => reorder(layer.id, 'forward')} className="rounded border p-1"><ArrowUp size={12}/></button><button title="Send Backward" onClick={() => reorder(layer.id, 'backward')} className="rounded border p-1"><ArrowDown size={12}/></button><button title="Send to Back" onClick={() => reorder(layer.id, 'back')} className="rounded border p-1"><ArrowDown size={14}/></button><button title="Duplicate layer" onClick={() => duplicate(layer)} className="rounded border p-1"><Copy size={14}/></button><button title="Delete layer" onClick={() => removeLayer(layer.id)} disabled={layer.locked} className="rounded border p-1 text-red-600 disabled:opacity-40"><Trash2 size={14}/></button></div></>}
         </div>)}
       </section>
     </aside>
@@ -703,7 +715,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         <label className="block text-sm">Rotate · {selected.rotation}°<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
         <label className="block text-sm">Resize · {selected.scaleX.toFixed(1)}×<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
       </> : <p className="text-sm text-gray-500">Select a layer or add text/image to edit its properties.</p>}
-      {selected && <button onClick={removeText} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Delete layer</button>}
+      {selected && <button onClick={() => removeLayer(selected.id)} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Delete layer</button>}
       <div className="flex items-center gap-2 border-t pt-3 text-xs text-gray-500"><RotateCw size={14}/>Drag on canvas to move · use controls to resize and rotate</div>
       {error && <p role="status" className={`text-sm ${error.startsWith('Added') ? 'text-green-700' : 'text-red-600'}`}>{error}</p>}
       <button disabled={submitting || loadingProducts || !product} onClick={() => void addToOrder(false)} className="w-full rounded-lg border border-black px-4 py-3 text-sm font-semibold disabled:opacity-50">{submitting ? 'Adding…' : 'Add to Cart'}</button>
