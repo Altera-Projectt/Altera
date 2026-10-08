@@ -60,22 +60,13 @@ exports.getMarketplace = async (req, res, next) => {
     }
     const sortOptions = { Newest: { createdAt: -1 }, Popular: { likesCount: -1, createdAt: -1 }, 'Best Selling': { salesCount: -1, createdAt: -1 }, 'Price Low → High': { price: 1, createdAt: -1 }, 'Price High → Low': { price: -1, createdAt: -1 } };
     const sort = sortOptions[req.query.sort] || { createdAt: -1 };
-    const counts = [
-      { $lookup: { from: 'designerlikes', localField: '_id', foreignField: 'designId', as: '_likes' } },
-      { $addFields: { likesCount: { $size: '$_likes' } } },
-      { $lookup: { from: 'orders', let: { designId: '$_id' }, pipeline: [
-        { $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' },
-        { $match: { $expr: { $eq: ['$items.marketplaceDesignId', '$$designId'] } } },
-        { $group: { _id: null, count: { $sum: '$items.quantity' } } },
-      ], as: '_sales' } },
-      { $addFields: { salesCount: { $ifNull: [{ $arrayElemAt: ['$_sales.count', 0] }, 0] } } },
-    ];
+    
     const pageStages = [{ $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit }];
     const pipeline = [
       { $match: match },
       { $lookup: { from: 'products', localField: 'productId', foreignField: '_id', as: '_baseProduct' } },
       { $match: { '_baseProduct.isActive': true } },
-      ...(['Popular', 'Best Selling'].includes(req.query.sort) ? [...counts, ...pageStages] : [...pageStages, ...counts]),
+      ...pageStages,
       { $lookup: { from: 'designerprofiles', localField: 'designerId', foreignField: '_id', as: 'designerId' } },
       { $unwind: '$designerId' },
       { $unwind: '$_baseProduct' },
@@ -190,17 +181,10 @@ exports.getProfile = async (req, res, next) => {
     if (req.query.minPrice || req.query.maxPrice) match.price = { ...(req.query.minPrice ? { $gte: Number(req.query.minPrice) } : {}), ...(req.query.maxPrice ? { $lte: Number(req.query.maxPrice) } : {}) };
     const page = Math.max(1, Number(req.query.page) || 1), limit = Math.min(40, Math.max(1, Number(req.query.limit) || 16));
     const sort = { Newest: { createdAt: -1 }, Popular: { likesCount: -1, createdAt: -1 }, 'Best Selling': { salesCount: -1, createdAt: -1 }, 'Price Low → High': { price: 1 }, 'Price High → Low': { price: -1 } }[req.query.sort] || { createdAt: -1 };
-    const counts = [
-      { $lookup: { from: 'designerlikes', localField: '_id', foreignField: 'designId', as: '_likes' } },
-      { $addFields: { likesCount: { $size: '$_likes' } } },
-      { $lookup: { from: 'orders', let: { designId: '$_id' }, pipeline: [ { $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { $expr: { $eq: ['$items.marketplaceDesignId', '$$designId'] } } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } } ], as: '_sales' } },
-      { $addFields: { salesCount: { $ifNull: [{ $arrayElemAt: ['$_sales.count', 0] }, 0] } } },
-    ];
-    const pageStages = [{ $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit }];
+    
     const pipeline = [
       { $match: match },
-      ...(['Popular', 'Best Selling'].includes(req.query.sort) ? [...counts, ...pageStages] : [...pageStages, ...counts]),
-      { $project: { _likes: 0, _sales: 0 } },
+      { $sort: sort }, { $skip: (page - 1) * limit }, { $limit: limit },
     ];
     const [designs, total, collections, followersCount, followingCount, isFollowing] = await Promise.all([
       MarketplaceDesign.aggregate(pipeline), MarketplaceDesign.countDocuments(match), DesignerCollection.find({ designerId: profile._id }).sort({ name: 1 }).lean(),
@@ -271,11 +255,24 @@ exports.deleteDesign = async (req, res, next) => {
   catch (error) { next(error); }
 };
 exports.likeDesign = async (req, res, next) => {
-  try { const design = await MarketplaceDesign.findOne({ _id: req.params.id, status: 'PUBLISHED' }); if (!design) throw fail(404, 'Design not found'); await DesignerLike.updateOne({ userId: req.user._id, designId: design._id }, { $setOnInsert: { userId: req.user._id, designId: design._id } }, { upsert: true }); res.json({ success: true, data: { likesCount: await DesignerLike.countDocuments({ designId: design._id }) } }); }
+  try { 
+    const design = await MarketplaceDesign.findOne({ _id: req.params.id, status: 'PUBLISHED' }); 
+    if (!design) throw fail(404, 'Design not found'); 
+    await DesignerLike.updateOne({ userId: req.user._id, designId: design._id }, { $setOnInsert: { userId: req.user._id, designId: design._id } }, { upsert: true }); 
+    const likesCount = await DesignerLike.countDocuments({ designId: design._id });
+    design.likesCount = likesCount;
+    await design.save();
+    res.json({ success: true, data: { likesCount } }); 
+  }
   catch (error) { next(error); }
 };
 exports.unlikeDesign = async (req, res, next) => {
-  try { await DesignerLike.deleteOne({ userId: req.user._id, designId: req.params.id }); res.json({ success: true }); }
+  try { 
+    await DesignerLike.deleteOne({ userId: req.user._id, designId: req.params.id }); 
+    const likesCount = await DesignerLike.countDocuments({ designId: req.params.id });
+    await MarketplaceDesign.updateOne({ _id: req.params.id }, { $set: { likesCount } });
+    res.json({ success: true }); 
+  }
   catch (error) { next(error); }
 };
 exports.follow = async (req, res, next) => {
