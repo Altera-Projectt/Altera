@@ -4,6 +4,9 @@ import type { ApiResponse } from '@/types/api.types'
 // ── Quiz ──────────────────────────────────────────────────────────────────
 
 export interface QuizPayload {
+  hobby?: string
+  artStyle?: string
+  shirtColor?: string
   favoriteItem?: string
   favoriteColor?: string
   personality?: string

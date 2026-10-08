@@ -81,10 +81,10 @@ export function OutfitPage() {
 
   // ── Quiz form ───────────────────────────────────────────────────────────
   const [quizData, setQuizData] = useState<QuizPayload>({
-    favoriteItem: '',
-    favoriteColor: '',
+    hobby: '',
+    artStyle: '',
+    shirtColor: '',
     personality: '',
-    occasion: '',
   })
 
   // ── Results ─────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ export function OutfitPage() {
     e.preventDefault()
     if (quizCooldown > 0) return
 
-    const hasAny = Object.values(quizData).some((v) => v?.trim())
+    const hasAny = Object.values(quizData).some((v) => v?.toString().trim())
     if (!hasAny) {
       setError('Vui lòng trả lời ít nhất 1 câu hỏi.')
       return
@@ -173,7 +173,8 @@ export function OutfitPage() {
           gender,
           season,
           budget,
-          occasion: quizData.occasion,
+          occasion: quizData.hobby, // Map hobby to occasion for backend compatibility
+          quizResult,
         }),
         fetchOutfitImage(quizResult.style),
       ])
@@ -193,7 +194,7 @@ export function OutfitPage() {
 
   const handleReset = () => {
     setStep('quiz')
-    setQuizData({ favoriteItem: '', favoriteColor: '', personality: '', occasion: '' })
+    setQuizData({ hobby: '', artStyle: '', shirtColor: '', personality: '' })
     setQuizResult(null)
     setRecommendResult(null)
     setOutfitImage(null)
@@ -338,16 +339,16 @@ export function OutfitPage() {
             {/* Q1 */}
             <div>
               <label className="block text-sm font-bold text-white uppercase tracking-widest mb-3">
-                Bạn thường mặc gì khi ra ngoài?
+                Sở thích, đam mê hoặc chủ đề bạn yêu thích nhất?
               </label>
               <p className="text-xs text-gray-400 mb-4 font-light">
-                Loại trang phục bạn hay chọn nhất trong tuần
+                Chủ đề graphic bạn muốn thấy trên áo (VD: Bóng đá, Anime, Xe cộ, Câu nói hay...)
               </p>
               <input
                 type="text"
-                placeholder="VD: áo phông, hoodie, váy, áo khoác..."
-                value={quizData.favoriteItem}
-                onChange={(e) => setQuizData((p) => ({ ...p, favoriteItem: e.target.value }))}
+                placeholder="VD: Bóng đá, Anime, Ban nhạc rock..."
+                value={quizData.hobby}
+                onChange={(e) => setQuizData((p) => ({ ...p, hobby: e.target.value }))}
                 disabled={loading}
                 className="w-full bg-white/10 border border-white/20 rounded-xl px-6 py-5 text-white placeholder-gray-500 outline-none focus:border-[#00C8FF] transition-colors"
               />
@@ -356,16 +357,16 @@ export function OutfitPage() {
             {/* Q2 */}
             <div>
               <label className="block text-sm font-bold text-white uppercase tracking-widest mb-3">
-                Màu sắc bạn hay chọn nhất?
+                Bạn thích kiểu hình in như thế nào?
               </label>
               <p className="text-xs text-gray-400 mb-4 font-light">
-                Tông màu bạn cảm thấy tự tin khi mặc
+                Gu thẩm mỹ đồ hoạ của bạn (VD: Hình to hầm hố, typo nghệ thuật, tối giản...)
               </p>
               <input
                 type="text"
-                placeholder="VD: đen trắng, pastel, màu đất, tone trung tính..."
-                value={quizData.favoriteColor}
-                onChange={(e) => setQuizData((p) => ({ ...p, favoriteColor: e.target.value }))}
+                placeholder="VD: Typo chữ nhỏ tinh tế, Graphic hầm hố sau lưng..."
+                value={quizData.artStyle}
+                onChange={(e) => setQuizData((p) => ({ ...p, artStyle: e.target.value }))}
                 disabled={loading}
                 className="w-full bg-white/10 border border-white/20 rounded-xl px-6 py-5 text-white placeholder-gray-500 outline-none focus:border-[#00C8FF] transition-colors"
               />
@@ -374,16 +375,16 @@ export function OutfitPage() {
             {/* Q3 */}
             <div>
               <label className="block text-sm font-bold text-white uppercase tracking-widest mb-3">
-                Bạn tự mô tả mình là người như thế nào?
+                Màu áo nền bạn thích nhất?
               </label>
               <p className="text-xs text-gray-400 mb-4 font-light">
-                Tính cách, lối sống hoặc cá tính của bạn
+                Màu áo giúp bạn tự tin khi mặc (VD: Đen, Trắng, Xám, Đỏ...)
               </p>
               <input
                 type="text"
-                placeholder="VD: năng động, bình thường, thích nổi bật, tối giản, cổ điển..."
-                value={quizData.personality}
-                onChange={(e) => setQuizData((p) => ({ ...p, personality: e.target.value }))}
+                placeholder="VD: Đen basic, Trắng, Pastel, Màu đất..."
+                value={quizData.shirtColor}
+                onChange={(e) => setQuizData((p) => ({ ...p, shirtColor: e.target.value }))}
                 disabled={loading}
                 className="w-full bg-white/10 border border-white/20 rounded-xl px-6 py-5 text-white placeholder-gray-500 outline-none focus:border-[#00C8FF] transition-colors"
               />
@@ -392,16 +393,16 @@ export function OutfitPage() {
             {/* Q4 */}
             <div>
               <label className="block text-sm font-bold text-white uppercase tracking-widest mb-3">
-                Bạn thường mặc đồ đi đâu chủ yếu?
+                Nếu dùng 3 từ để mô tả cá tính của bạn?
               </label>
               <p className="text-xs text-gray-400 mb-4 font-light">
-                Dịp hoặc môi trường bạn mặc nhiều nhất
+                Cá tính sẽ quyết định "vibe" của hình in (VD: Năng động, Tối giản, Nổi loạn...)
               </p>
               <input
                 type="text"
-                placeholder="VD: đi học, đi làm văn phòng, đi chơi, đi cafe cuối tuần..."
-                value={quizData.occasion}
-                onChange={(e) => setQuizData((p) => ({ ...p, occasion: e.target.value }))}
+                placeholder="VD: Hài hước, Năng động, Trầm tính..."
+                value={quizData.personality}
+                onChange={(e) => setQuizData((p) => ({ ...p, personality: e.target.value }))}
                 disabled={loading}
                 className="w-full bg-white/10 border border-white/20 rounded-xl px-6 py-5 text-white placeholder-gray-500 outline-none focus:border-[#00C8FF] transition-colors"
               />
