@@ -794,36 +794,28 @@ function RecommendedProductCard({
 
   return (
     <div 
-      className="flex flex-col overflow-hidden bg-white/5 border border-white/10 rounded-2xl hover:border-[#00C8FF] transition-colors cursor-pointer group"
+      className="flex flex-col bg-white/5 border border-white/10 rounded-2xl hover:border-[#00C8FF] transition-all cursor-pointer group hover:bg-white/10 p-5"
       onClick={onNavigate}
     >
-      {/* Image */}
-      <div className="aspect-[3/4] bg-white/5 relative overflow-hidden">
-        {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={product.name ?? 'Sản phẩm'}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-600">
-            <ShoppingBag className="w-10 h-10 opacity-30" />
-          </div>
-        )}
-      </div>
 
-      <div className="flex flex-col gap-2 p-5">
-        <p className="font-heading text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-[#00C8FF] transition-colors">
+      <div className="flex flex-col gap-2">
+        <p className="font-heading text-lg font-bold text-white line-clamp-2 leading-snug group-hover:text-[#00C8FF] transition-colors">
           {product.name ?? 'Sản phẩm không tên'}
         </p>
-        {product.price != null && (
-          <p className="text-sm font-bold text-[#00C8FF]">
-            {formatVND(product.price)}
-          </p>
-        )}
+        <div className="flex items-center gap-3">
+          {product.price != null && (
+            <span className="text-sm font-bold text-[#00C8FF]">
+              {formatVND(product.price)}
+            </span>
+          )}
+          {product.category && (
+            <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold bg-white/5 px-2 py-1 rounded-md border border-white/10">
+              {product.category}
+            </span>
+          )}
+        </div>
         {reason && (
-          <p className="text-xs text-gray-400 font-light leading-relaxed line-clamp-3 mt-1">
+          <p className="text-sm text-gray-400 font-light leading-relaxed mt-2">
             {reason}
           </p>
         )}
