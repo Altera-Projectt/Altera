@@ -192,6 +192,12 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     return (product.discountPrice ?? product.price) + selectedTechnique.price + (printSide === 'BOTH' ? selectedTechnique.additionalSidePrice : 0)
   }, [product, selectedTechnique, printSide])
 
+  useEffect(() => {
+    if (estimatedPrice > 0) {
+      setPublishPrice(estimatedPrice.toString())
+    }
+  }, [estimatedPrice])
+
   useEffect(() => { localStorage.setItem(storageKey, JSON.stringify(design)) }, [design, storageKey])
   useEffect(() => { if (product?._id) localStorage.setItem('altera-custom-selection-v1', JSON.stringify({ productId: product._id, colorName, size, printSide, technique, quantity })) }, [product?._id, colorName, size, printSide, technique, quantity])
   const update = (id: string, patch: Partial<TextLayer> | Partial<ImageLayer>) => { const next = { ...design, [side]: { layers: design[side].layers.map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) } }; commit(next) }
