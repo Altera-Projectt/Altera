@@ -8,7 +8,7 @@ import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import type { Product } from '@/types/product.types'
 import { formatVND } from '@/utils/format'
-
+import ShirtCanvas3D from './ShirtCanvas3D'
 type TextEffect = 'Straight' | 'Wave' | 'Pinch' | 'Tilt Right' | 'Tilt Left' | 'Curve Up' | 'Flag' | 'Inflate' | 'Curve Down'
 type TextLayer = {
   id: string; type: 'text'; name: string; visible: boolean; locked: boolean; zIndex: number; text: string; fontFamily: string; fontSize: number; fontWeight: number
@@ -143,6 +143,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+  const [preview3D, setPreview3D] = useState(false)
   const navigate = useNavigate()
   const fetchCart = useCartStore((state) => state.fetchCart)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -512,13 +513,27 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         </div>)}
       </section>
     </aside>
-    <div className="flex min-h-[520px] items-center justify-center rounded-xl border border-gray-200 bg-gray-100 p-8">
-      <div className="relative aspect-[3/4] w-full max-w-[360px] overflow-hidden rounded-[28px] border border-gray-300 shadow-xl" style={{ backgroundColor: selectedColor?.hex ?? '#ffffff' }} onPointerMove={onPointerMove} onPointerUp={() => { drag.current = null }} onPointerLeave={() => { drag.current = null }}>
-        {productPreview ? <img src={productPreview} alt={`${product?.name ?? 'T-shirt'} ${selectedColor?.name ?? ''} preview`} className="absolute inset-0 h-full w-full object-cover mix-blend-multiply" /> : <svg aria-label={`${product?.name ?? 'T-shirt'} preview`} className="absolute inset-0 h-full w-full" viewBox="0 0 360 480" role="img"><path d="M112 45 145 30h70l33 15 67 43-39 67-38-22v288H122V133l-38 22-39-67z" fill={selectedColor?.hex ?? '#fff'} stroke="rgba(0,0,0,.15)" strokeWidth="3"/><path d="M145 30c2 32 17 49 35 49s33-17 35-49" fill="none" stroke="rgba(0,0,0,.16)" strokeWidth="3"/></svg>}
-        <div className="absolute right-2 top-2 rounded bg-white/80 px-2 py-1 text-[10px] font-semibold">{side === 'frontDesign' ? 'FRONT' : 'BACK'}</div>
-        <div className="absolute left-1/2 top-0 h-10 w-24 -translate-x-1/2 rounded-b-full border-b border-gray-200" />
-        {current.filter((layer) => layer.visible).map((layer) => <div key={layer.id} onPointerDown={(event) => { setSelectedId(layer.id); if (layer.locked) return; event.currentTarget.setPointerCapture(event.pointerId); drag.current = { id: layer.id, x: event.clientX, y: event.clientY, left: layer.x, top: layer.y } }} onClick={() => setSelectedId(layer.id)} className={`absolute ${layer.locked ? 'cursor-default' : 'cursor-move'} ${selectedId === layer.id ? 'outline outline-1 outline-blue-500 outline-dashed' : ''}`} style={{ left: `${layer.x}%`, top: `${layer.y}%`, zIndex: layer.zIndex, transform: `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scaleX}, ${layer.scaleY}) ${layer.type === 'text' ? effectTransform(layer.effect) : ''}`, transformOrigin: 'center', opacity: layer.opacity, touchAction: 'none', ...(layer.type === 'text' ? { maxWidth: '90%', whiteSpace: 'pre-wrap' as const, overflowWrap: 'break-word' as const, paddingLeft: '0.5rem', paddingRight: '0.5rem', fontFamily: `"${layer.fontFamily}", sans-serif`, fontSize: `${layer.fontSize}px`, fontWeight: layer.fontWeight, fontStyle: layer.italic ? 'italic' : 'normal', textDecoration: layer.underline ? 'underline' : 'none', textTransform: layer.textTransform, textAlign: layer.align, color: layer.color, WebkitTextStroke: `${layer.strokeWidth}px ${layer.stroke}`, ...effectStyle(layer.effect) } : { width: '140px', height: '140px' }) }}>{layer.type === 'text' ? layer.text || ' ' : <img src={layer.src} alt="Custom design layer" draggable="false" className="h-full w-full object-contain"/>}</div>)}
+    <div className="flex min-h-[520px] flex-col items-center justify-center rounded-xl border border-gray-200 bg-gray-100 p-8 relative">
+      <div className="absolute top-4 right-4 z-10 flex bg-white rounded-lg shadow-sm overflow-hidden border">
+        <button onClick={() => setPreview3D(false)} className={`px-4 py-2 text-sm font-semibold transition-colors ${!preview3D ? 'bg-black text-white' : 'hover:bg-gray-50'}`}>2D Editor</button>
+        <button onClick={() => setPreview3D(true)} className={`px-4 py-2 text-sm font-semibold transition-colors ${preview3D ? 'bg-black text-white' : 'hover:bg-gray-50'}`}>3D Preview</button>
       </div>
+      
+      {preview3D ? (
+        <div className="w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden shadow-2xl border border-gray-300">
+           <ShirtCanvas3D 
+             shirtColor={selectedColor?.hex ?? '#ffffff'} 
+             designImage={current.find(l => l.type === 'image' && l.visible)?.src} 
+           />
+        </div>
+      ) : (
+        <div className="relative aspect-[3/4] w-full max-w-[360px] overflow-hidden rounded-[28px] border border-gray-300 shadow-xl mt-8" style={{ backgroundColor: selectedColor?.hex ?? '#ffffff' }} onPointerMove={onPointerMove} onPointerUp={() => { drag.current = null }} onPointerLeave={() => { drag.current = null }}>
+          {productPreview ? <img src={productPreview} alt={`${product?.name ?? 'T-shirt'} ${selectedColor?.name ?? ''} preview`} className="absolute inset-0 h-full w-full object-cover mix-blend-multiply" /> : <svg aria-label={`${product?.name ?? 'T-shirt'} preview`} className="absolute inset-0 h-full w-full" viewBox="0 0 360 480" role="img"><path d="M112 45 145 30h70l33 15 67 43-39 67-38-22v288H122V133l-38 22-39-67z" fill={selectedColor?.hex ?? '#fff'} stroke="rgba(0,0,0,.15)" strokeWidth="3"/><path d="M145 30c2 32 17 49 35 49s33-17 35-49" fill="none" stroke="rgba(0,0,0,.16)" strokeWidth="3"/></svg>}
+          <div className="absolute right-2 top-2 rounded bg-white/80 px-2 py-1 text-[10px] font-semibold">{side === 'frontDesign' ? 'FRONT' : 'BACK'}</div>
+          <div className="absolute left-1/2 top-0 h-10 w-24 -translate-x-1/2 rounded-b-full border-b border-gray-200" />
+          {current.filter((layer) => layer.visible).map((layer) => <div key={layer.id} onPointerDown={(event) => { setSelectedId(layer.id); if (layer.locked) return; event.currentTarget.setPointerCapture(event.pointerId); drag.current = { id: layer.id, x: event.clientX, y: event.clientY, left: layer.x, top: layer.y } }} onClick={() => setSelectedId(layer.id)} className={`absolute ${layer.locked ? 'cursor-default' : 'cursor-move'} ${selectedId === layer.id ? 'outline outline-1 outline-blue-500 outline-dashed' : ''}`} style={{ left: `${layer.x}%`, top: `${layer.y}%`, zIndex: layer.zIndex, transform: `translate(-50%, -50%) rotate(${layer.rotation}deg) scale(${layer.scaleX}, ${layer.scaleY}) ${layer.type === 'text' ? effectTransform(layer.effect) : ''}`, transformOrigin: 'center', opacity: layer.opacity, touchAction: 'none', ...(layer.type === 'text' ? { maxWidth: '90%', whiteSpace: 'pre-wrap' as const, overflowWrap: 'break-word' as const, paddingLeft: '0.5rem', paddingRight: '0.5rem', fontFamily: `"${layer.fontFamily}", sans-serif`, fontSize: `${layer.fontSize}px`, fontWeight: layer.fontWeight, fontStyle: layer.italic ? 'italic' : 'normal', textDecoration: layer.underline ? 'underline' : 'none', textTransform: layer.textTransform, textAlign: layer.align, color: layer.color, WebkitTextStroke: `${layer.strokeWidth}px ${layer.stroke}`, ...effectStyle(layer.effect) } : { width: '140px', height: '140px' }) }}>{layer.type === 'text' ? layer.text || ' ' : <img src={layer.src} alt="Custom design layer" draggable="false" className="h-full w-full object-contain"/>}</div>)}
+        </div>
+      )}
     </div>
     <aside className="max-h-[720px] space-y-4 overflow-auto rounded-xl border border-[var(--color-border)] bg-white p-4">
       {selected?.type === 'text' ? <>
