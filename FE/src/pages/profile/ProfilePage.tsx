@@ -9,6 +9,10 @@ import { cn } from '@/utils/cn'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
+import { formatVND, extractDesignLayers } from '@/utils/format'
+import { ShoppingBag } from 'lucide-react'
 
 type TabType = 'store' | 'overview' | 'measurements' | 'preferences'
 
@@ -37,6 +41,11 @@ export function ProfilePage() {
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
 
+  // Store tab state
+  const [storeDesigns, setStoreDesigns] = useState<MarketplaceDesign[]>([])
+  const [storeLoading, setStoreLoading] = useState(false)
+  const [storeSort, setStoreSort] = useState('Newest')
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -55,6 +64,27 @@ export function ProfilePage() {
     }
     fetchProfile()
   }, [])
+
+  useEffect(() => {
+    if (activeTab === 'store' && user) {
+      const fetchStore = async () => {
+        try {
+          setStoreLoading(true)
+          const res = await MarketplaceService.list({
+            designer: (user as any)._id || (user as any).username,
+            sort: storeSort,
+            limit: 12
+          })
+          setStoreDesigns(res.data.data.designs || [])
+        } catch (err) {
+          console.error(err)
+        } finally {
+          setStoreLoading(false)
+        }
+      }
+      fetchStore()
+    }
+  }, [activeTab, user, storeSort])
 
   // Sync forms when user changes
   useEffect(() => {
@@ -276,8 +306,19 @@ export function ProfilePage() {
           </div>
 
           {activeTab === 'store' && (
-            <div className="hidden sm:flex text-xs font-bold uppercase tracking-widest text-[var(--color-foreground)] items-center gap-2 pb-4 cursor-pointer">
-              FILTER ▾
+            <div className="hidden sm:flex text-xs font-bold uppercase tracking-widest text-[var(--color-foreground)] items-center gap-1 pb-4 relative">
+              <select
+                 value={storeSort}
+                 onChange={(e) => setStoreSort(e.target.value)}
+                 className="bg-transparent border-none outline-none cursor-pointer appearance-none uppercase text-xs font-bold text-[var(--color-foreground)]"
+               >
+                 <option value="Newest">Newest</option>
+                 <option value="Popular">Popular</option>
+                 <option value="Best Selling">Best Selling</option>
+                 <option value="Price Low → High">Price Low → High</option>
+                 <option value="Price High → Low">Price High → Low</option>
+               </select>
+               <span className="pointer-events-none">▾</span>
             </div>
           )}
         </div>
@@ -285,7 +326,7 @@ export function ProfilePage() {
         {/* Tab Content */}
         <div className="min-h-[400px]">
           <AnimatePresence mode="wait">
-            {/* CỬA HÀNG (BLANK) */}
+            {/* STORE */}
             {activeTab === 'store' && (
               <motion.div
                 key="store"
@@ -293,10 +334,82 @@ export function ProfilePage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.3 }}
+                className="mt-6"
               >
-                <div className="border border-dashed border-[var(--color-border)] rounded-[var(--radius-xl)] p-12 text-center bg-[var(--color-card)]/50 mt-4">
-                  <p className="text-[var(--color-muted-foreground)] text-sm font-medium">Bạn chưa đăng thiết kế nào.</p>
-                </div>
+                {storeLoading ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="aspect-[3/4] w-full bg-[var(--color-muted)] mb-4 rounded-sm" />
+                        <div className="h-4 w-3/4 bg-[var(--color-muted)] rounded-sm mb-2" />
+                        <div className="h-4 w-1/2 bg-[var(--color-muted)] rounded-sm" />
+                      </div>
+                    ))}
+                  </div>
+                ) : storeDesigns.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
+                    {storeDesigns.map((product) => (
+                      <motion.div
+                        key={product._id}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className="group relative flex flex-col"
+                      >
+                        <div className="relative aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)] mb-4 rounded-[var(--radius-md)]">
+                          <Link to={`/design/${product.slug}`}>
+                            {product.thumbnail ? (
+                              <>
+                                <img
+                                  src={product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail}
+                                  alt={product.name}
+                                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                                />
+                                {(product.productId?.imageUrl || (product.productId?.images && product.productId.images.length > 0)) && (
+                                  <img
+                                    src={extractDesignLayers(product.thumbnail)}
+                                    alt={`${product.name} overlay`}
+                                    className="absolute inset-0 h-full w-full object-contain mix-blend-multiply transition-transform duration-700 group-hover:scale-105"
+                                  />
+                                )}
+                              </>
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center">
+                                <ShoppingBag className="h-5 w-5 text-[var(--color-border)]" strokeWidth={1} />
+                              </div>
+                            )}
+                          </Link>
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none" />
+                        </div>
+                        <div className="flex flex-col px-1">
+                          <div className="flex items-start justify-between gap-4 mb-1">
+                            <Link
+                              to={`/design/${product.slug}`}
+                              className="text-xs font-bold text-[var(--color-foreground)] hover:underline line-clamp-1 uppercase tracking-wider"
+                            >
+                              {product.name}
+                            </Link>
+                            <span className="text-xs font-bold whitespace-nowrap text-[var(--color-muted-foreground)]">
+                              {formatVND(product.price)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                              {product.category || 'Custom Design'}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-[var(--color-border)] rounded-[var(--radius-xl)] p-12 text-center bg-[var(--color-card)]/50 mt-4">
+                    <p className="text-[var(--color-muted-foreground)] text-sm font-medium mb-4">Bạn chưa đăng thiết kế nào hoặc chưa có thiết kế nào phù hợp.</p>
+                    <Button asChild variant="outline" size="sm" className="uppercase text-[10px] font-bold tracking-widest">
+                      <Link to="/create">Tạo thiết kế mới</Link>
+                    </Button>
+                  </div>
+                )}
               </motion.div>
             )}
 

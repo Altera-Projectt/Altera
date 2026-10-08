@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
 import api from '@/utils/axios'
 import { formatVND, extractDesignLayers } from '@/utils/format'
-import { formatVND, extractDesignLayers } from '@/utils/format'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -124,7 +123,7 @@ export function WishlistPage() {
             </p>
           </div>
           <Button asChild variant="primary" size="lg" className="gap-2 uppercase font-bold tracking-widest mt-4">
-            <Link to="/products" className="flex items-center gap-2">
+            <Link to="/marketplace" className="flex items-center gap-2">
               Discover New Styles
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -245,7 +244,14 @@ export function WishlistPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)]">{product.category || 'Custom Design'}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                      {product.category || 'Custom Design'}
+                    </span>
+                    {product.designerId?.displayName && (
+                      <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] text-right">
+                        BY {product.designerId.displayName}
+                      </span>
+                    )}
                   </div>
                 </div>
               </motion.div>
