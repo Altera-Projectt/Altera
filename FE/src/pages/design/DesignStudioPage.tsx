@@ -628,23 +628,6 @@ function DesignCard({
 }) {
   const img = design.previewImage || design.customImage
   
-  // Helper to map basic color names to hex for the mockup
-  const getShirtHex = (colorName?: string) => {
-    if (!colorName) return '#ffffff'
-    const lower = colorName.toLowerCase()
-    if (lower.includes('black') || lower.includes('đen')) return '#1a1a1a'
-    if (lower.includes('navy')) return '#1e293b'
-    if (lower.includes('red') || lower.includes('đỏ')) return '#991b1b'
-    if (lower.includes('green') || lower.includes('xanh lá')) return '#166534'
-    if (lower.includes('blue') || lower.includes('xanh dương')) return '#1d4ed8'
-    if (lower.includes('gray') || lower.includes('grey') || lower.includes('xám')) return '#9ca3af'
-    if (lower.includes('pink') || lower.includes('hồng')) return '#fbcfe8'
-    if (lower.includes('yellow') || lower.includes('vàng')) return '#fef08a'
-    return '#ffffff'
-  }
-  
-  const baseColor = getShirtHex(design.shirtColor)
-
   return (
     <Card hoverable className="flex flex-col">
       <div
