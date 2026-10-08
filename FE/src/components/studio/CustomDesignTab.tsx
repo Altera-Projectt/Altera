@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Lock, Plus, RotateCw, Trash2, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Lock, RotateCw, Trash2, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
 import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
@@ -35,11 +35,11 @@ function readDesign(storageKey: string): DesignState {
       const normalize = (value: DesignLayer[] | { layers?: DesignLayer[] } | undefined) => (Array.isArray(value) ? value : value?.layers ?? []).map((layer, index) => ({
         ...layer, 
         id: layer.id || crypto.randomUUID(),
-        name: (layer as DesignLayer & { name?: string }).name || (layer.type === 'text' ? `Text ${index + 1}` : `Image ${index + 1}`),
+        name: (layer as DesignLayer & { name?: string }).name || `Image ${index + 1}`,
         visible: (layer as DesignLayer & { visible?: boolean }).visible ?? true,
         locked: (layer as DesignLayer & { locked?: boolean }).locked ?? false,
         zIndex: (layer as DesignLayer & { zIndex?: number }).zIndex ?? index,
-      })).filter(layer => layer.type === 'text' || (layer.type === 'image' && (layer as ImageLayer).src && !(layer as ImageLayer).src.startsWith('data:'))) as DesignLayer[]
+      })).filter(layer => layer.type === 'image' && (layer as ImageLayer).src && !(layer as ImageLayer).src.startsWith('data:')) as DesignLayer[]
       return { frontDesign: { layers: normalize(parsed.frontDesign as unknown as DesignLayer[] | { layers?: DesignLayer[] }) }, backDesign: { layers: normalize(parsed.backDesign as unknown as DesignLayer[] | { layers?: DesignLayer[] }) } }
     }
   } catch { /* Start with an empty design if saved data is unavailable. */ }
@@ -199,7 +199,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     }
   }, [design, storageKey])
   useEffect(() => { if (product?._id) localStorage.setItem('altera-custom-selection-v1', JSON.stringify({ productId: product._id, colorName, size, printSide, technique, quantity })) }, [product?._id, colorName, size, printSide, technique, quantity])
-  const update = (id: string, patch: Partial<TextLayer> | Partial<ImageLayer>) => { const next = { ...design, [side]: { layers: design[side].layers.map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) } }; commit(next) }
+  const update = (id: string, patch: Partial<ImageLayer>) => { const next = { ...design, [side]: { layers: design[side].layers.map((layer) => layer.id === id ? { ...layer, ...patch } as DesignLayer : layer) } }; commit(next) }
 
   const uploadFile = async (file?: File) => {
     if (!file) return
