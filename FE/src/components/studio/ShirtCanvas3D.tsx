@@ -228,8 +228,8 @@ export default function ShirtCanvas3D({
       <Canvas 
         id="r3f-shirt-canvas"
         shadows 
-        style={{ backgroundColor: '#f3f4f6' }}
-        gl={{ preserveDrawingBuffer: true }}
+        style={{ backgroundColor: 'transparent' }}
+        gl={{ preserveDrawingBuffer: true, alpha: true }}
       >
         <PerspectiveCamera makeDefault position={[0, 0, 5]} />
         {/* Lighting Setup */}
