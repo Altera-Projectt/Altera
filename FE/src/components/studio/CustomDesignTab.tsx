@@ -451,10 +451,10 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
          canvas = canvas.querySelector('canvas');
       }
       if (canvas && typeof canvas.toDataURL === 'function') {
-         const thumbnailBase64 = canvas.toDataURL('image/png');
+         const thumbnailBase64 = canvas.toDataURL('image/webp', 0.9);
          const res = await fetch(thumbnailBase64);
          const blob = await res.blob();
-         const file = new File([blob], 'thumbnail.png', { type: blob.type });
+         const file = new File([blob], 'thumbnail.webp', { type: blob.type });
          const { data } = await DesignService.uploadCustomImage(file);
          thumbnailUrl = data.data.image.url;
       } else {
