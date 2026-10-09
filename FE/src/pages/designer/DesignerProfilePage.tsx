@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import api from '@/utils/axios'
 import { useAuthStore } from '@/store/authStore'
 import { Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 type Profile={_id:string;username:string;displayName:string;bio?:string;avatar?:string;coverImage?:string}
 type Design={_id:string;slug:string;name:string;thumbnail:string;price:number;status:string;category:string;collectionId?:string|null;rejectionReason?:string;likesCount:number;isLiked:boolean}
 type Collection={_id:string;name:string}
@@ -24,7 +25,7 @@ export function DesignerProfilePage(){
  const publishDesign=async(d:Design)=>{const r=await api.post<any>('/designers/me/designs/'+d._id+'/publish');setStatus(r.data.data.design.status);await load()}
  const duplicateDesign=async(d:Design)=>{await api.post('/designers/me/designs/'+d._id+'/duplicate');setStatus('DRAFT');await load()}
  const editDesign=async(d:Design)=>{const n=window.prompt('Đổi tên thiết kế:',d.name);if(n?.trim()&&n!==d.name){await api.patch('/designers/me/designs/'+d._id,{name:n.trim()});await load()}}
- const deleteDesign=async(d:Design)=>{if(window.confirm('Bạn có chắc chắn muốn xóa thiết kế này?')){await api.delete('/designers/me/designs/'+d._id);await load()}}
+ const deleteDesign=async(d:Design)=>{if(window.confirm('Bạn có chắc chắn muốn xóa thiết kế này?')){try{await api.delete('/designers/me/designs/'+d._id);setData(prev=>prev?{...prev,designs:prev.designs.filter(x=>x._id!==d._id)}:null);toast.success('Đã xóa thiết kế thành công')}catch(e:any){toast.error(e?.response?.data?.message||'Không thể xóa thiết kế')}}}
  if(error&&!data)return <div className="py-24 text-center">{error}</div>;if(!data)return <div className="py-24 text-center">Đang tải hồ sơ…</div>
  const p=data.profile
  return <div className="mx-auto max-w-7xl px-5 pb-20">
