@@ -9,4 +9,9 @@ const MarketplaceDesignSchema = new mongoose.Schema({
 }, { timestamps: true });
 MarketplaceDesignSchema.index({ designerId: 1, status: 1, createdAt: -1 });
 MarketplaceDesignSchema.index({ name: 'text', tags: 'text', category: 'text' });
+MarketplaceDesignSchema.index({ status: 1, createdAt: -1 });
+MarketplaceDesignSchema.index({ status: 1, likesCount: -1, createdAt: -1 });
+MarketplaceDesignSchema.index({ status: 1, salesCount: -1, createdAt: -1 });
+MarketplaceDesignSchema.index({ status: 1, price: 1, createdAt: -1 });
+MarketplaceDesignSchema.index({ status: 1, price: -1, createdAt: -1 });
 module.exports = mongoose.model('MarketplaceDesign', MarketplaceDesignSchema);
