@@ -4,8 +4,9 @@ import { useAuthStore } from '@/store/authStore'
 import type { User, UpdateMeasurementsPayload, UpdatePreferencesPayload } from '@/types/user.types'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { User as UserIcon, Camera, Ruler, Scale, Shirt, Footprints, Edit2 } from 'lucide-react'
+import { User as UserIcon, Camera, Ruler, Scale, Shirt, Footprints, Edit2, Trash2 } from 'lucide-react'
 import { cn } from '@/utils/cn'
+import api from '@/utils/axios'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -86,6 +87,19 @@ export function ProfilePage() {
       fetchStore()
     }
   }, [activeTab, user, storeSort])
+
+  const handleDeleteDesign = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (window.confirm('Bạn có chắc chắn muốn xóa thiết kế này?')) {
+      try {
+        await api.delete('/designers/me/designs/' + id);
+        setStoreDesigns((prev) => prev.filter((d) => d._id !== id));
+        toast.success('Đã xóa thiết kế thành công');
+      } catch (err: any) {
+        toast.error(err?.response?.data?.message || 'Xóa thiết kế thất bại');
+      }
+    }
+  };
 
   // Sync forms when user changes
   useEffect(() => {
@@ -400,6 +414,14 @@ export function ProfilePage() {
                             <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)]">
                               {product.category || 'Custom Design'}
                             </span>
+                            <button
+                              onClick={(e) => handleDeleteDesign(product._id, e)}
+                              className="text-red-500 hover:text-red-700 p-1 transition-colors"
+                              aria-label="Xóa thiết kế"
+                              title="Xóa thiết kế"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </div>
                       </motion.div>
