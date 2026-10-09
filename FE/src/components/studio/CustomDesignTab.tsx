@@ -114,6 +114,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const [quantity, setQuantity] = useState(savedSelection.quantity ?? 1)
   const [error, setError] = useState('')
   const [loadingProducts, setLoadingProducts] = useState(true)
+  const productDetailsRequestRef = useRef(0)
   const [submitting, setSubmitting] = useState(false)
   const [uploads, setUploads] = useState<UploadedCustomImage[]>([])
   const [assetFilter, setAssetFilter] = useState<'ALL' | 'UPLOADED' | 'AI'>('ALL')
@@ -135,17 +136,23 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
 
   useEffect(() => {
     let active = true
-    ProductService.getProducts({ category: 'T-Shirt', limit: 100 }).then(({ data }) => {
+    ProductService.getProducts({ category: 'T-Shirt', limit: 100 }).then(async ({ data }) => {
       if (!active) return
       const available = data.data.products.filter((item) => item.isActive)
       setProducts(available)
       const initial = available.find((item) => item._id === savedSelection.productId) ?? available[0] ?? null
-      setProduct(initial)
       if (initial) {
-        setColorName(initial.colors?.some((item) => item.name === savedSelection.colorName) ? savedSelection.colorName! : initial.colors?.[0]?.name ?? '')
-        setSize(initial.sizes?.some((item) => item.label === savedSelection.size && item.stock > 0) ? savedSelection.size! : initial.sizes?.find((item) => item.stock > 0)?.label ?? '')
-        setTechnique(initial.printingTechniques?.some((item) => item.code === savedSelection.technique) ? savedSelection.technique! : initial.printingTechniques?.[0]?.code ?? '')
+        const requestId = ++productDetailsRequestRef.current
+        const { data: productResponse } = await ProductService.getProduct(initial._id)
+        if (!active || requestId !== productDetailsRequestRef.current) return
+        const detailedProduct = productResponse.data.product
+        setProduct(detailedProduct)
+        setColorName(detailedProduct.colors?.some((item) => item.name === savedSelection.colorName) ? savedSelection.colorName! : detailedProduct.colors?.find((item) => item.stock > 0)?.name ?? detailedProduct.colors?.[0]?.name ?? '')
+        setSize(detailedProduct.sizes?.some((item) => item.label === savedSelection.size && item.stock > 0) ? savedSelection.size! : detailedProduct.sizes?.find((item) => item.stock > 0)?.label ?? '')
+        setTechnique(detailedProduct.printingTechniques?.some((item) => item.code === savedSelection.technique) ? savedSelection.technique! : detailedProduct.printingTechniques?.[0]?.code ?? '')
         setQuantity(Math.max(1, savedSelection.quantity ?? 1))
+      } else {
+        setProduct(null)
       }
     }).catch(() => { if (active) setError('Unable to load products. Please try again.') }).finally(() => { if (active) setLoadingProducts(false) })
     return () => { active = false }
@@ -599,11 +606,24 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     return () => { window.clearTimeout(statusTimer); window.clearTimeout(timer) }
   }, [draftId, isAuthenticated, product, draftPayload])
   const selectProduct = (next: Product | null) => {
+    const requestId = ++productDetailsRequestRef.current
     setProduct(next)
     setColorName(next?.colors?.find((item) => item.stock > 0)?.name ?? next?.colors?.[0]?.name ?? '')
     setSize(next?.sizes?.find((item) => item.stock > 0)?.label ?? next?.sizes?.[0]?.label ?? '')
     setTechnique(next?.printingTechniques?.[0]?.code ?? '')
     setQuantity(1)
+    if (next) {
+      ProductService.getProduct(next._id).then(({ data }) => {
+        if (requestId !== productDetailsRequestRef.current) return
+        const detailedProduct = data.data.product
+        setProduct(detailedProduct)
+        setColorName(detailedProduct.colors?.find((item) => item.stock > 0)?.name ?? detailedProduct.colors?.[0]?.name ?? '')
+        setSize(detailedProduct.sizes?.find((item) => item.stock > 0)?.label ?? detailedProduct.sizes?.[0]?.label ?? '')
+        setTechnique(detailedProduct.printingTechniques?.[0]?.code ?? '')
+      }).catch(() => {
+        if (requestId === productDetailsRequestRef.current) setError('Unable to load product sizes. Please try again.')
+      })
+    }
   }
 
   const addToOrder = async (orderNow: boolean) => {
