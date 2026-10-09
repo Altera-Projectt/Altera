@@ -344,7 +344,17 @@ exports.follow = async (req, res, next) => {
 };
 exports.unfollow = async (req, res, next) => { try { await DesignerFollow.deleteOne({ followerId: req.user._id, designerId: req.params.id }); res.json({ success: true }); } catch (error) { next(error); } };
 exports.getDesign = async (req, res, next) => {
-  try { const design = await MarketplaceDesign.findOne({ slug: req.params.slug, status: 'PUBLISHED' }).populate('designerId', 'username displayName avatar').populate('productId', 'name imageUrl price discountPrice sizes colors printingTechniques isActive'); if (!design || !design.productId?.isActive) throw fail(404, 'Design not found'); const [likes, sales, isLiked] = await Promise.all([DesignerLike.countDocuments({ designId: design._id }), Order.aggregate([{ $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.marketplaceDesignId': design._id } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } }]), req.user ? DesignerLike.exists({ userId: req.user._id, designId: design._id }) : null]); res.json({ success: true, data: { design: design.toObject(), likesCount: likes, salesCount: sales[0]?.count || 0, isLiked: Boolean(isLiked) } }); }
+  try {
+    const design = await MarketplaceDesign.findOne({ slug: req.params.slug, status: 'PUBLISHED' })
+      .populate('designerId', 'username displayName avatar');
+    if (!design) throw fail(404, 'Design not found');
+    const product = await Product.findById(design.productId)
+      .select('name imageUrl price discountPrice sizes colors printingTechniques isActive');
+    if (!product?.isActive) throw fail(404, 'Design not found');
+    design.productId = product;
+    const [likes, sales, isLiked] = await Promise.all([DesignerLike.countDocuments({ designId: design._id }), Order.aggregate([{ $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.marketplaceDesignId': design._id } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } }]), req.user ? DesignerLike.exists({ userId: req.user._id, designId: design._id }) : null]);
+    res.json({ success: true, data: { design: design.toObject(), likesCount: likes, salesCount: sales[0]?.count || 0, isLiked: Boolean(isLiked) } });
+  }
   catch (error) { next(error); }
 };
 exports.moderate = async (req, res, next) => { try { const status = req.body.status; if (!['PUBLISHED', 'REJECTED', 'ARCHIVED'].includes(status)) throw fail(400, 'Invalid moderation status'); const design = await MarketplaceDesign.findByIdAndUpdate(req.params.id, { status, rejectionReason: status === 'REJECTED' ? String(req.body.rejectionReason || '').slice(0, 1000) : '' }, { new: true }); if (!design) throw fail(404, 'Design not found'); res.json({ success: true, data: { design } }); } catch (error) { next(error); } };
