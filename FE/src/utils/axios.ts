@@ -1,6 +1,7 @@
 import axios from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/store/authStore'
+import { toast } from 'sonner'
 
 /**
  * Singleton Axios instance for all ALTERA API calls.
@@ -32,6 +33,12 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
+    if (error.message === 'Network Error' && !error.response) {
+      toast.error('Máy chủ đang quá tải hoặc lỗi kết nối. Vui lòng đợi 1-2 phút rồi thử lại.');
+    }
+    if (error.response?.status === 429) {
+      toast.error('Bạn đã gửi quá nhiều yêu cầu. Vui lòng đợi 1-2 phút rồi thử lại.');
+    }
     if (error.response?.status === 401) {
       // Token expired or invalid → clear auth state
       useAuthStore.getState().logout()
