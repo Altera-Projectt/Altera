@@ -71,6 +71,7 @@ exports.getMarketplace = async (req, res, next) => {
 
     const [designs, total] = await Promise.all([
       MarketplaceDesign.find(match)
+        .allowDiskUse(true)
         .select('-frontDesign -backDesign')
         .sort(sort)
         .skip((page - 1) * limit)
@@ -188,6 +189,7 @@ exports.getProfile = async (req, res, next) => {
     
     const [designs, total, collections, followersCount, followingCount, isFollowing] = await Promise.all([
       MarketplaceDesign.find(match)
+        .allowDiskUse(true)
         .select('-frontDesign -backDesign')
         .sort(sort)
         .skip((page - 1) * limit)
