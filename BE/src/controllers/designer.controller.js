@@ -245,6 +245,9 @@ exports.createDesign = async (req, res, next) => {
       if (req.body.thumbnailBase64) {
         const uploadResult = await uploadImage(req.body.thumbnailBase64, 'marketplace_designs');
         finalThumbnail = uploadResult.url;
+      } else if (finalThumbnail && finalThumbnail.startsWith('data:image')) {
+        const uploadResult = await uploadImage(finalThumbnail, 'marketplace_designs');
+        finalThumbnail = uploadResult.url;
       }
     } catch (uploadError) {
       console.error("CLOUDINARY UPLOAD CRASH:", uploadError);
@@ -282,7 +285,21 @@ exports.updateDesign = async (req, res, next) => {
     const profile = await ownedProfile(req.user._id), design = await MarketplaceDesign.findOne({ _id: req.params.id, designerId: profile?._id });
     if (!design) throw fail(404, 'Design not found');
     if (design.status === 'PUBLISHED') throw fail(409, 'Duplicate a published design to make a new version');
-    for (const key of ['thumbnailUrl', 'shirtColor', 'designUrl']) if (req.body[key] !== undefined) design[key] = req.body[key];
+    for (const key of ['thumbnailUrl', 'shirtColor', 'designUrl']) {
+      if (req.body[key] !== undefined) {
+        if (key === 'thumbnailUrl' && typeof req.body[key] === 'string' && req.body[key].startsWith('data:image')) {
+          try {
+            const uploadResult = await uploadImage(req.body[key], 'marketplace_designs');
+            design[key] = uploadResult.url;
+          } catch (uploadError) {
+            console.error("CLOUDINARY UPLOAD CRASH:", uploadError);
+            throw fail(500, 'Failed to upload thumbnail image');
+          }
+        } else {
+          design[key] = req.body[key];
+        }
+      }
+    }
     if (req.body.decalTransform !== undefined) design.decalTransform = normalizeDecalTransform(req.body.decalTransform);
     for (const key of ['name', 'description', 'category']) if (req.body[key] !== undefined) design[key] = req.body[key];
     if (req.body.price !== undefined) { const price = Number(req.body.price); if (!Number.isFinite(price) || price <= 0) throw fail(400, 'Price must be greater than zero'); design.price = price; }
