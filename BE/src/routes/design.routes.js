@@ -17,6 +17,7 @@ const {
   getCustomImages,
   addGeneratedToLibrary,
   deleteCustomImage,
+  getDesignJobStatus,
 } = require('../controllers/design.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const customDraftController = require('../controllers/custom-design-draft.controller');
@@ -109,6 +110,27 @@ router.post(
  *         description: Cerebras API unavailable
  */
 router.post('/generate', generateDesign);
+
+/**
+ * @swagger
+ * /api/v1/designs/generate/status/{jobId}:
+ *   get:
+ *     summary: Poll the status of AI image generation
+ *     tags:
+ *       - Designs
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: jobId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Job status returned
+ */
+router.get('/generate/status/:jobId', getDesignJobStatus);
 
 /**
  * @swagger

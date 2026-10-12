@@ -9,6 +9,9 @@ const startServer = async () => {
   const membershipService = require('./services/membership.service');
   const expiryJob = setInterval(() => membershipService.expireMemberships().catch((error) => logger.error(`Membership expiry job failed: ${error.message}`)), 60 * 60 * 1000);
 
+  // Initialize Queues and Workers
+  require('./queues/aiQueue');
+
   // Keep-alive: ping server mỗi 10 phút để tránh Render Free cold start
   let keepAliveJob = null;
   if (process.env.NODE_ENV === 'production') {

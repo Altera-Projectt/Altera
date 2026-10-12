@@ -2,7 +2,7 @@ const User = require('../models/User');
 const Order = require('../models/Order');
 const Design = require('../models/Design');
 const OutfitRecommendation = require('../models/OutfitRecommendation');
-const { uploadImage } = require('../utils/cloudinary');
+const { uploadImage, ensureCloudinaryUrl } = require('../utils/cloudinary');
 
 const getProfile = async (req, res) => {
   res.status(200).json({
@@ -26,8 +26,10 @@ const updateProfile = async (req, res, next) => {
       const dataUri = req.file.buffer
         ? `data:${mimeType};base64,${req.file.buffer.toString('base64')}`
         : req.file.path;
-      const uploaded = await uploadImage(dataUri, 'altera/avatars');
+      const uploaded = await uploadImage(dataUri, 'altera/users/avatars');
       updates.avatar = uploaded.url;
+    } else if (req.body.avatar) {
+      updates.avatar = await ensureCloudinaryUrl(req.body.avatar, 'altera/users/avatars');
     }
 
     const user = await User.findByIdAndUpdate(req.user._id, updates, {
@@ -53,6 +55,13 @@ const updateBasic = async (req, res, next) => {
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) updates[field] = req.body[field];
     });
+
+    if (req.body.avatar !== undefined) {
+      updates.avatar = await ensureCloudinaryUrl(req.body.avatar, 'altera/users/avatars');
+    }
+    if (req.body.coverImage !== undefined) {
+      updates.coverImage = await ensureCloudinaryUrl(req.body.coverImage, 'altera/users/covers');
+    }
 
     const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
     res.status(200).json({ success: true, message: 'Basic profile updated successfully', data: { user } });
@@ -124,8 +133,8 @@ const uploadProfileImage = (field, folder, options = {}) => async (req, res, nex
   }
 };
 
-const uploadAvatar = uploadProfileImage('avatar', 'altera/avatars');
-const uploadCover = uploadProfileImage('coverImage', 'altera/covers', {
+const uploadAvatar = uploadProfileImage('avatar', 'altera/users/avatars');
+const uploadCover = uploadProfileImage('coverImage', 'altera/users/covers', {
   transformation: [{ width: 1500, height: 500, crop: 'fill', quality: 'auto', fetch_format: 'auto' }],
 });
 

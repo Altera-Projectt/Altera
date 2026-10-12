@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 const UploadedImage = require('../models/UploadedImage');
 const Design = require('../models/Design');
-const { uploadImage, deleteImage } = require('../utils/cloudinary');
+const { uploadImage, ensureCloudinaryUrl, deleteImage } = require('../utils/cloudinary');
 
-const toThumbnail = (url) => (url.includes('/upload/') ? url.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/') : url);
+const toThumbnail = (url) => (url && url.includes('/upload/') ? url.replace('/upload/', '/upload/w_320,h_320,c_fill,q_auto,f_auto/') : url);
 const LIST_FIELDS = 'url thumbnailUrl filename mimeType size source prompt designId createdAt';
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -33,7 +33,7 @@ const validateImageFile = (file) => {
 /** BE-3 (upload thủ công): user upload file lên thư viện với source=UPLOAD */
 const upload = async (userId, file) => {
   const { filename, mimeType } = validateImageFile(file);
-  const result = await uploadImage(`data:${mimeType};base64,${file.buffer.toString('base64')}`, 'altera/custom-design/uploads', {
+  const result = await uploadImage(`data:${mimeType};base64,${file.buffer.toString('base64')}`, 'altera/designs/uploads', {
     resource_type: 'image',
     public_id: `${userId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
     overwrite: false,
@@ -59,8 +59,9 @@ const addFromGenerated = async (userId, designId) => {
   if (!mongoose.Types.ObjectId.isValid(designId)) fail('Invalid design id.');
   const design = await Design.findOne({ _id: designId, userId }).select('previewImage customImage prompt').lean();
   if (!design) fail('Generated design not found.', 404);
-  const url = design.previewImage || design.customImage;
-  if (!url) fail('This design has no image yet.');
+  const rawUrl = design.previewImage || design.customImage;
+  if (!rawUrl) fail('This design has no image yet.');
+  const url = await ensureCloudinaryUrl(rawUrl, 'altera/designs/generated');
   const existing = await UploadedImage.findOne({ userId, designId: design._id, url }).select(LIST_FIELDS).lean();
   if (existing) return { image: existing, created: false };
   const image = await UploadedImage.create({ userId, url, thumbnailUrl: toThumbnail(url), filename: `ai-${Date.now()}.png`, mimeType: 'image/png', size: 0, source: 'AI', prompt: String(design.prompt || '').slice(0, 2000), designId: design._id });

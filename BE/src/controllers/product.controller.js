@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const { uploadImage } = require('../utils/cloudinary');
+const { uploadImage, ensureCloudinaryUrl } = require('../utils/cloudinary');
 
 const getProducts = async (req, res, next) => {
   try {
@@ -76,8 +76,14 @@ const createProduct = async (req, res, next) => {
     const productData = req.body;
 
     if (req.file) {
-      const uploaded = await uploadImage(req.file.path, 'products');
+      const uploaded = await uploadImage(req.file.path, 'altera/marketplace');
       productData.imageUrl = uploaded.url;
+    } else if (productData.imageUrl) {
+      productData.imageUrl = await ensureCloudinaryUrl(productData.imageUrl, 'altera/marketplace');
+    }
+
+    if (Array.isArray(productData.images)) {
+      productData.images = await Promise.all(productData.images.map(img => ensureCloudinaryUrl(img, 'altera/marketplace')));
     }
 
     const product = await Product.create(productData);
@@ -97,8 +103,14 @@ const updateProduct = async (req, res, next) => {
     const updates = req.body;
 
     if (req.file) {
-      const uploaded = await uploadImage(req.file.path, 'products');
+      const uploaded = await uploadImage(req.file.path, 'altera/marketplace');
       updates.imageUrl = uploaded.url;
+    } else if (updates.imageUrl) {
+      updates.imageUrl = await ensureCloudinaryUrl(updates.imageUrl, 'altera/marketplace');
+    }
+
+    if (Array.isArray(updates.images)) {
+      updates.images = await Promise.all(updates.images.map(img => ensureCloudinaryUrl(img, 'altera/marketplace')));
     }
 
     const product = await Product.findByIdAndUpdate(req.params.id, updates, {
