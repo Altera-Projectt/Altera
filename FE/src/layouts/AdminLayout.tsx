@@ -1,4 +1,5 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import {
   LayoutDashboard,
   Package,
@@ -8,6 +9,7 @@ import {
   LogOut,
   ChevronLeft,
   Menu,
+  Shirt,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui'
@@ -22,6 +24,7 @@ const ADMIN_LINKS = [
   { label: 'Membership Payments', href: '/admin/membership-payments', icon: CreditCard },
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Users', href: '/admin/users', icon: Users },
+  { label: 'Designs', href: '/admin/designs', icon: Shirt },
 ]
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -34,6 +37,7 @@ const ADMIN_LINKS = [
 export function AdminLayout() {
   const { logout, user } = useAuth()
   const navigate = useNavigate()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -57,17 +61,9 @@ export function AdminLayout() {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4" aria-label="Admin sidebar">
           {ADMIN_LINKS.map(({ label, href, icon: Icon }) => (
-            <Button
-              key={href}
-              variant="ghost"
-              className="w-full justify-start text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-              asChild
-            >
-              <Link to={href}>
-                <Icon className="mr-3 h-4 w-4" />
-                {label}
-              </Link>
-            </Button>
+            <NavLink key={href} to={href} end={href === '/admin/dashboard'} className={({ isActive }) => `flex w-full items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${isActive ? 'bg-[#171717] text-white' : 'text-[var(--color-muted-foreground)] hover:bg-neutral-100 hover:text-neutral-900'}`}>
+              <Icon className="mr-3 h-4 w-4" />{label}
+            </NavLink>
           ))}
         </nav>
 
@@ -103,13 +99,19 @@ export function AdminLayout() {
           >
             ALTERA ADMIN
           </Link>
-          <Button variant="ghost" size="icon" aria-label="Menu">
+          <Button variant="ghost" size="icon" aria-label="Toggle admin navigation" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)}>
             <Menu className="h-5 w-5" />
           </Button>
         </header>
+        {mobileMenuOpen && <nav className="border-b border-[var(--color-border)] bg-white p-3 md:hidden" aria-label="Admin navigation">{ADMIN_LINKS.map(({ label, href, icon: Icon }) => <NavLink key={href} to={href} onClick={() => setMobileMenuOpen(false)} className={({ isActive }) => `flex items-center rounded-lg px-3 py-2 text-sm ${isActive ? 'bg-[#171717] text-white' : 'text-neutral-700'}`}><Icon className="mr-3 h-4 w-4"/>{label}</NavLink>)}<p className="px-3 pt-3 text-xs text-neutral-500">Đăng nhập: {user?.fullName || user?.email || 'Admin'}</p></nav>}
+
+        <header className="hidden items-center justify-between border-b border-neutral-200 bg-white px-8 py-3 md:flex">
+          <div><p className="text-xs font-semibold uppercase tracking-widest text-neutral-400">Altera management</p><p className="text-sm font-semibold">{user?.fullName || user?.email || 'Admin'}</p></div>
+          <Button variant="ghost" className="text-neutral-600" onClick={handleLogout}><LogOut className="mr-2 h-4 w-4"/>Sign out</Button>
+        </header>
 
         {/* Scrollable Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto bg-[#f6f6f6] p-4 md:p-8">
           <Outlet />
         </main>
       </div>

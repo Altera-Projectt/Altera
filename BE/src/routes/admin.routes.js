@@ -28,7 +28,7 @@ router.get('/products', admin.listProducts);
 router.post('/products', upload.single('image'), createProductValidator, product.createProduct);
 router.put('/products/:id', upload.single('image'), updateProductValidator, product.updateProduct);
 router.delete('/products/:id', product.deleteProduct);
-router.get('/designs', (req, res, next) => require('../models/MarketplaceDesign').find({ status: 'PENDING_REVIEW' }).populate('designerId', 'username displayName').sort({createdAt:1}).lean().then(designs => res.json({success:true,data:{designs}})).catch(next));
+router.get('/designs', admin.listDesigns);
 router.patch('/designs/:id/moderate', designer.moderate);
 router.get('/templates', templates.adminList);
 router.post('/templates', templates.create);

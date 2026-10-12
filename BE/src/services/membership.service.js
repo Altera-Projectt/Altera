@@ -141,7 +141,25 @@ async function verifyBank(orderId, adminId, approved, reason) {
   if (order.expiresAt && order.expiresAt <= new Date()) throw fail('This bank transfer request has expired.', 409);
   if (approved) return settle(order, payment, adminId, order.transactionId);
   if (order.status !== 'PENDING' || !['PENDING','PROCESSING'].includes(payment.paymentStatus)) throw fail('Payment is no longer pending.', 409);
-  order.status = 'FAILED'; order.verifiedBy = adminId; order.verifiedAt = new Date(); order.rejectionReason = String(reason || 'Rejected by administrator').slice(0,300); await order.save(); payment.paymentStatus = 'FAILED'; payment.failureReason = order.rejectionReason; await payment.save(); return { order, payment };
+  const session = await mongoose.startSession();
+  try {
+    return await session.withTransaction(async () => {
+      const now = new Date(); const rejectionReason = String(reason).trim().slice(0, 300);
+      const updatedOrder = await MembershipOrder.findOneAndUpdate(
+        { _id: order._id, status: 'PENDING' },
+        { $set: { status: 'FAILED', verifiedBy: adminId, verifiedAt: now, rejectionReason } },
+        { new: true, session },
+      );
+      if (!updatedOrder) throw fail('Membership order was already processed.', 409);
+      const updatedPayment = await Payment.findOneAndUpdate(
+        { _id: payment._id, paymentStatus: { $in: ['PENDING', 'PROCESSING'] } },
+        { $set: { paymentStatus: 'FAILED', failureReason: rejectionReason } },
+        { new: true, session },
+      );
+      if (!updatedPayment) throw fail('Payment was already processed.', 409);
+      return { order: updatedOrder, payment: updatedPayment };
+    });
+  } finally { await session.endSession(); }
 }
 async function bankWebhook(data, payment) {
   const order = await MembershipOrder.findById(payment.membershipOrderId);

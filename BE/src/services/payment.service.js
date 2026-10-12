@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
+const User = require('../models/User');
 const env = require('../config/env');
 
 const newReference = () => `ALT${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
@@ -135,17 +136,41 @@ const retryBankPayment = async (orderId, userId) => {
   return transferDetails(attempt);
 };
 
-const listAdminPayments = async ({ status, method, page = 1, limit = 20 } = {}) => {
+const listAdminPayments = async ({ status, method, search, from, to, page = 1, limit = 20 } = {}) => {
   const query = {};
-  if (status && ['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(status)) query.paymentStatus = status;
-  if (method && ['COD', 'BANK_TRANSFER', 'MOMO'].includes(method)) query.paymentMethod = method;
+  const statuses = ['PENDING', 'PROCESSING', 'PAID', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED'];
+  const methods = ['COD', 'BANK_TRANSFER', 'MOMO', 'VNPAY'];
+  if (status && !statuses.includes(status)) throw paymentError('Invalid payment status filter.');
+  if (method && !methods.includes(method)) throw paymentError('Invalid payment method filter.');
+  if (status) query.paymentStatus = status;
+  if (method) query.paymentMethod = method;
+  if (from || to) {
+    const start = from ? new Date(from) : null;
+    const end = to ? new Date(`${to}T23:59:59.999Z`) : null;
+    if ((start && Number.isNaN(start.getTime())) || (end && Number.isNaN(end.getTime()))) throw paymentError('Invalid date filter.');
+    query.createdAt = { ...(start ? { $gte: start } : {}), ...(end ? { $lte: end } : {}) };
+  }
+  if (search) {
+    const escaped = String(search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const users = await User.find({ $or: [{ fullName: { $regex: escaped, $options: 'i' } }, { email: { $regex: escaped, $options: 'i' } }] }).select('_id').lean();
+    const orders = await Order.find({ $or: [
+      ...(mongoose.Types.ObjectId.isValid(search) ? [{ _id: search }] : []),
+      { userId: { $in: users.map((user) => user._id) } },
+    ] }).select('_id').lean();
+    query.$or = [
+      { paymentReference: { $regex: escaped, $options: 'i' } },
+      { transactionId: { $regex: escaped, $options: 'i' } },
+      { providerOrderId: { $regex: escaped, $options: 'i' } },
+      { orderId: { $in: orders.map((order) => order._id) } },
+    ];
+  }
   const pageNumber = Math.max(Number.parseInt(page, 10) || 1, 1);
   const pageLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 20, 1), 100);
   const [payments, total] = await Promise.all([
     Payment.find(query).sort({ createdAt: -1 }).skip((pageNumber - 1) * pageLimit).limit(pageLimit).lean(),
     Payment.countDocuments(query),
   ]);
-  const orders = await Order.find({ _id: { $in: payments.map((payment) => payment.orderId) } }).populate('userId', 'fullName email').lean();
+  const orders = await Order.find({ _id: { $in: payments.map((payment) => payment.orderId).filter(Boolean) } }).populate('userId', 'fullName email').lean();
   const orderById = new Map(orders.map((order) => [String(order._id), order]));
   return { payments: payments.map((payment) => ({ ...payment, order: orderById.get(String(payment.orderId)) || null })), pagination: { total, page: pageNumber, limit: pageLimit, totalPages: Math.ceil(total / pageLimit) } };
 };
@@ -169,7 +194,7 @@ const confirmPayment = async (orderId, adminId, transactionId) => {
   try {
     await session.withTransaction(async () => {
       const { order, payment } = await getPendingAdminPayment(orderId, 'BANK_TRANSFER', session);
-      const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', transactionId: transactionId || null, paidAt: new Date() } }, { new: true, session });
+      const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', transactionId, paidAt: new Date(), 'metadata.verifiedBy': adminId, 'metadata.verifiedAt': new Date() } }, { new: true, session });
       if (!updated) throw paymentError('Payment has already been processed.', 409);
       const orderUpdate = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: updated.paidAt, ...(order.status === 'PENDING' ? { status: 'CONFIRMED' } : {}) } }, { session });
       if (!orderUpdate.modifiedCount) throw paymentError('Order payment status changed. Refresh and try again.', 409);
@@ -186,7 +211,7 @@ const rejectPayment = async (orderId, adminId, reason) => {
     await session.withTransaction(async () => {
       const { order, payment } = await getPendingAdminPayment(orderId, 'BANK_TRANSFER', session);
       const failureReason = reason ? String(reason).trim().slice(0, 300) : 'Rejected by administrator';
-      const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'FAILED', failureReason } }, { new: true, session });
+      const updated = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'FAILED', failureReason, 'metadata.verifiedBy': adminId, 'metadata.verifiedAt': new Date(), 'metadata.rejectionReason': failureReason } }, { new: true, session });
       if (!updated) throw paymentError('Payment has already been processed.', 409);
       const orderUpdate = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'FAILED' } }, { session });
       if (!orderUpdate.modifiedCount) throw paymentError('Order payment status changed. Refresh and try again.', 409);

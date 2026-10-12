@@ -1,7 +1,9 @@
 import api from '@/utils/axios'
 
 export const AdminService = {
-  dashboard: () => api.get('/admin/dashboard'),
+  dashboard: (params?: Record<string, unknown>) => api.get('/admin/dashboard', { params }),
+  designs: (params?: Record<string, unknown>) => api.get('/admin/designs', { params }),
+  moderateDesign: (id: string, data: { status: 'PUBLISHED' | 'REJECTED' | 'ARCHIVED'; rejectionReason?: string }) => api.patch(`/admin/designs/${id}/moderate`, data),
   users: (params?: Record<string, unknown>) => api.get('/admin/users', { params }),
   user: (id: string) => api.get(`/admin/users/${id}`),
   updateUser: (id: string, data: Record<string, unknown>) => api.patch(`/admin/users/${id}`, data),

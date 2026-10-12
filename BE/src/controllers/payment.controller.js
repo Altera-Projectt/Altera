@@ -9,7 +9,7 @@ exports.adminList = async (req, res, next) => {
 
 exports.confirmPayment = async (req, res, next) => {
   try {
-    if (req.body.transactionId !== undefined && (typeof req.body.transactionId !== 'string' || req.body.transactionId.trim().length > 120)) return res.status(400).json({ success: false, message: 'Transaction ID must be a string of at most 120 characters.' });
+    if (typeof req.body.transactionId !== 'string' || !req.body.transactionId.trim() || req.body.transactionId.trim().length > 120) return res.status(400).json({ success: false, message: 'A transaction ID of at most 120 characters is required to confirm payment.' });
     const data = await paymentService.confirmPayment(req.params.orderId, req.user._id, req.body.transactionId?.trim());
     res.json({ success: true, message: 'Payment confirmed.', data });
   } catch (error) { next(error); }
@@ -17,7 +17,7 @@ exports.confirmPayment = async (req, res, next) => {
 
 exports.rejectPayment = async (req, res, next) => {
   try {
-    if (req.body.reason !== undefined && (typeof req.body.reason !== 'string' || req.body.reason.trim().length > 300)) return res.status(400).json({ success: false, message: 'Reason must be a string of at most 300 characters.' });
+    if (typeof req.body.reason !== 'string' || !req.body.reason.trim() || req.body.reason.trim().length > 300) return res.status(400).json({ success: false, message: 'A rejection reason of at most 300 characters is required.' });
     const data = await paymentService.rejectPayment(req.params.orderId, req.user._id, req.body.reason?.trim());
     res.json({ success: true, message: 'Payment rejected.', data });
   } catch (error) { next(error); }

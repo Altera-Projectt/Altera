@@ -357,5 +357,24 @@ exports.getDesign = async (req, res, next) => {
   }
   catch (error) { next(error); }
 };
-exports.moderate = async (req, res, next) => { try { const status = req.body.status; if (!['PUBLISHED', 'REJECTED', 'ARCHIVED'].includes(status)) throw fail(400, 'Invalid moderation status'); const design = await MarketplaceDesign.findByIdAndUpdate(req.params.id, { status, rejectionReason: status === 'REJECTED' ? String(req.body.rejectionReason || '').slice(0, 1000) : '' }, { new: true }); if (!design) throw fail(404, 'Design not found'); res.json({ success: true, data: { design } }); } catch (error) { next(error); } };
+exports.moderate = async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw fail(400, 'Invalid design ID');
+    const { status } = req.body;
+    const reason = typeof req.body.rejectionReason === 'string' ? req.body.rejectionReason.trim() : '';
+    if (!['PUBLISHED', 'REJECTED', 'ARCHIVED'].includes(status)) throw fail(400, 'Invalid moderation status');
+    if (status === 'REJECTED' && (!reason || reason.length > 1000)) throw fail(400, 'A rejection reason of at most 1000 characters is required.');
+    const design = await MarketplaceDesign.findById(req.params.id);
+    if (!design) throw fail(404, 'Design not found');
+    const allowed = design.status === 'PENDING_REVIEW'
+      ? ['PUBLISHED', 'REJECTED']
+      : design.status === 'PUBLISHED' ? ['ARCHIVED'] : [];
+    if (!allowed.includes(status)) throw fail(409, `Cannot change design from ${design.status} to ${status}.`);
+    design.status = status;
+    design.rejectionReason = status === 'REJECTED' ? reason : '';
+    design.moderationHistory.push({ status, reason: status === 'REJECTED' ? reason : '', moderatorId: req.user._id, changedAt: new Date() });
+    await design.save();
+    res.json({ success: true, data: { design } });
+  } catch (error) { next(error); }
+};
 
