@@ -130,7 +130,8 @@ function ShirtModel({
                   dispose={null}
                   onPointerDown={(e) => {
                     if (isMainBody && (designLayers.length || designImage)) {
-                      const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId);
+                      const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId)
+                        ?? [...designLayers].sort((a, b) => a.zIndex - b.zIndex).at(-1);
                       if (activeLayer?.locked || (designImage && decalLocked)) return;
                       e.stopPropagation();
                       if (activeLayer) onLayerSelect?.(activeLayer.id);
@@ -148,7 +149,8 @@ function ShirtModel({
                   }}
                   onPointerMove={(e) => {
                     if (isMainBody && (designLayers.length || designImage)) {
-                      if (decalLocked) {
+                      const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId);
+                      if (activeLayer?.locked || (designImage && decalLocked)) {
                         document.body.style.cursor = 'not-allowed';
                       } else {
                         document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
@@ -158,7 +160,7 @@ function ShirtModel({
                         e.stopPropagation();
                         
                         // Convert world point to local space of the mesh
-                        const localPoint = e.object.worldToLocal(e.point.clone());
+                        const localPoint = e.eventObject.worldToLocal(e.point.clone());
                         
                         // e.face.normal is usually in local space
                         const localNormal = e.face?.normal?.clone() || new THREE.Vector3(0, 0, 1);
@@ -169,7 +171,6 @@ function ShirtModel({
                         // Look at the normal direction to project flush against the surface
                         dummy.lookAt(localPoint.clone().add(localNormal));
                         
-                        const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId);
                         if (activeLayer && onLayerPositionChange) {
                           const x = Math.max(5, Math.min(95, ((localPoint.x + 0.3) / 0.6) * 100));
                           const y = Math.max(5, Math.min(95, 50 - ((localPoint.y - 0.1) / 0.6) * 100));
