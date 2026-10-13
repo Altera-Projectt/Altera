@@ -25,7 +25,13 @@ const profileForUser = async (userId) => {
 const ownedProfile = (userId) => DesignerProfile.findOne({ userId });
 const hasAvailableBaseVariant = async (design) => {
   if (!mongoose.Types.ObjectId.isValid(design.productId)) return false;
-  return Boolean(await Product.exists({ _id: design.productId, isActive: true }));
+  const product = await Product.findOne({ _id: design.productId, isActive: true }).select('colors sizes printingTechniques').lean();
+  if (!product) return false;
+  const colorName = typeof design.color === 'string' ? design.color : design.color?.name;
+  const color = product.colors?.find((item) => item.name === colorName && item.stock > 0);
+  const size = product.sizes?.find((item) => item.label === design.size && item.stock > 0);
+  const technique = product.printingTechniques?.some((item) => item.code === design.printingTechnique);
+  return Boolean(color && size && technique);
 };
 
 exports.getMarketplace = async (req, res, next) => {
@@ -236,6 +242,10 @@ exports.createDesign = async (req, res, next) => {
     
     const profile = await profileForUser(req.user._id), draft = await CustomDesignDraft.findOne({ _id: req.body.draftId, userId: req.user._id });
     if (!draft) throw fail(404, 'Owned design draft not found');
+    const existing = await MarketplaceDesign.findOne({ draftId: draft._id, userId: req.user._id }).sort({ updatedAt: -1 });
+    if (existing?.status === 'PUBLISHED') {
+      return res.status(200).json({ success: true, data: { design: existing } });
+    }
     const name = String(req.body.name || '').trim(), price = Number(req.body.price), hasFront = Boolean(draft.frontDesign?.layers?.some((layer) => layer && layer.visible !== false)), hasBack = Boolean(draft.backDesign?.layers?.some((layer) => layer && layer.visible !== false));
     const has3dDesign = Boolean(req.body.designUrl || draft.designUrl);
     const hasRequiredLayers = hasFront || hasBack || has3dDesign;
@@ -254,21 +264,27 @@ exports.createDesign = async (req, res, next) => {
       throw fail(500, 'Failed to upload thumbnail image');
     }
 
-    if (!name || !draft.productId || !hasRequiredLayers || !finalThumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, product, design layer, preview, and valid price are required');
+    if (!name || name.length > 120 || String(req.body.description || '').length > 3000 || !draft.productId || !hasRequiredLayers || !finalThumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, description, product, design layer, preview, and valid price are required');
     if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
     
     const decalTransform = normalizeDecalTransform(req.body.decalTransform ?? draft.decalTransform);
     let design;
     try {
-      design = await MarketplaceDesign.create({ 
+      const designData = {
         designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, 
         description: req.body.description || '', thumbnail: finalThumbnail, thumbnailUrl: finalThumbnail, productId: draft.productId, color: draft.color, size: draft.size, 
         printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, 
         price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], 
         collectionId: req.body.collectionId || null, status: submissionStatus(),
         shirtColor: req.body.shirtColor ?? draft.shirtColor, designUrl: req.body.designUrl ?? draft.designUrl, decalTransform
-      });
+      };
+      if (existing) {
+        Object.assign(existing, designData);
+        design = await existing.save();
+      } else {
+        design = await MarketplaceDesign.create(designData);
+      }
     } catch (dbError) {
       console.error("MONGODB SAVE CRASH:", dbError);
       throw fail(500, 'Failed to save design to database');

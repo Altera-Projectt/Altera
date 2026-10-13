@@ -93,6 +93,7 @@ export interface CustomDesignDraft {
   frontDesign: { layers: Record<string, unknown>[]; background?: unknown }
   backDesign: { layers: Record<string, unknown>[]; background?: unknown }
   thumbnail: string
+  thumbnailUrl?: string
   createdAt: string
   updatedAt: string
 }

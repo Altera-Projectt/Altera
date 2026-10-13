@@ -1,7 +1,19 @@
-import { Suspense, useState } from 'react';
+import { Component, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useGLTF, useTexture, Decal, OrbitControls, Center, Bounds, PerspectiveCamera } from '@react-three/drei';
+import { useGLTF, useTexture, Decal, OrbitControls, Center, Bounds, PerspectiveCamera, Html } from '@react-three/drei';
 import * as THREE from 'three';
+
+type CanvasDesignLayer = { id: string; src: string; x: number; y: number; rotation: number; scaleX: number; scaleY: number; opacity: number; locked: boolean; zIndex: number };
+
+class ModelErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    return this.state.failed
+      ? <Html center><div role="alert" className="rounded bg-white px-3 py-2 text-sm text-red-700 shadow">Could not load the 3D shirt model. Please refresh and try again.</div></Html>
+      : this.props.children;
+  }
+}
 
 // ----------------------------------------------------------------------
 // 1. Decal Component for the Design
@@ -56,6 +68,11 @@ function DesignDecal({
 interface ShirtModelProps {
   colorHex: string;
   designImage?: string | null;
+  designLayers?: CanvasDesignLayer[];
+  selectedLayerId?: string | null;
+  onLayerPositionChange?: (id: string, x: number, y: number) => void;
+  onLayerSelect?: (id: string) => void;
+  onReady?: () => void;
   decalPosition?: [number, number, number];
   decalRotation?: [number, number, number];
   decalScale?: [number, number, number];
@@ -73,6 +90,11 @@ interface ShirtModelProps {
 function ShirtModel({ 
   colorHex, 
   designImage, 
+  designLayers = [],
+  selectedLayerId,
+  onLayerPositionChange,
+  onLayerSelect,
+  onReady,
   decalPosition = [0, 0.1, 0.15], 
   decalRotation = [Math.PI / 2, 0, 0], 
   decalScale = [0.25, 0.25, 0.25],
@@ -88,6 +110,7 @@ function ShirtModel({
 }: ShirtModelProps) {
   // Load the GLTF model. Make sure you place `shirt.glb` in public/models/
   const { nodes } = useGLTF('/models/shirt.glb') as any;
+  useEffect(() => { onReady?.() }, [onReady]);
   
   return (
     <group dispose={null} rotation={[-Math.PI / 2, 0, printSide === 'BACK' ? Math.PI : 0]}>
@@ -106,14 +129,16 @@ function ShirtModel({
                   geometry={node.geometry}
                   dispose={null}
                   onPointerDown={(e) => {
-                    if (isMainBody && designImage) {
-                      if (decalLocked) return; // Do not start dragging if the layer is locked
+                    if (isMainBody && (designLayers.length || designImage)) {
+                      const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId);
+                      if (activeLayer?.locked || (designImage && decalLocked)) return;
                       e.stopPropagation();
+                      if (activeLayer) onLayerSelect?.(activeLayer.id);
                       onDragStart();
                     }
                   }}
                   onPointerUp={(e) => {
-                    if (isMainBody && designImage) {
+                    if (isMainBody && (designLayers.length || designImage)) {
                       e.stopPropagation();
                       onDragEnd();
                     }
@@ -122,7 +147,7 @@ function ShirtModel({
                     if (isDragging) onDragEnd();
                   }}
                   onPointerMove={(e) => {
-                    if (isMainBody && designImage) {
+                    if (isMainBody && (designLayers.length || designImage)) {
                       if (decalLocked) {
                         document.body.style.cursor = 'not-allowed';
                       } else {
@@ -144,10 +169,14 @@ function ShirtModel({
                         // Look at the normal direction to project flush against the surface
                         dummy.lookAt(localPoint.clone().add(localNormal));
                         
-                        onDragMove(
-                          [localPoint.x, localPoint.y, localPoint.z], 
-                          [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]
-                        );
+                        const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId);
+                        if (activeLayer && onLayerPositionChange) {
+                          const x = Math.max(5, Math.min(95, ((localPoint.x + 0.3) / 0.6) * 100));
+                          const y = Math.max(5, Math.min(95, 50 - ((localPoint.y - 0.1) / 0.6) * 100));
+                          onLayerPositionChange(activeLayer.id, x, y);
+                        } else {
+                          onDragMove([localPoint.x, localPoint.y, localPoint.z], [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]);
+                        }
                       }
                     }
                   }}
@@ -165,7 +194,16 @@ function ShirtModel({
                   />
                   
                   {/* Projecting the Design ONLY on the main body */}
-                  {isMainBody && designImage && (
+                  {isMainBody && designLayers.length > 0 ? designLayers.map((layer) => (
+                    <DesignDecal
+                      key={layer.id}
+                      image={layer.src}
+                      position={[(layer.x / 100) * 0.6 - 0.3, 0.1 + ((50 - layer.y) / 100) * 0.6, 0.16]}
+                      rotation={[Math.PI / 2, 0, (layer.rotation * Math.PI) / 180]}
+                      scale={[0.25 * layer.scaleX, 0.25 * layer.scaleY, 0.25]}
+                      opacity={layer.opacity}
+                    />
+                  )) : isMainBody && designImage && (
                     <DesignDecal 
                       image={designImage}
                       position={decalPosition}
@@ -199,6 +237,10 @@ function ShirtModel({
 export interface ShirtCanvas3DProps {
   shirtColor?: string;
   designImage?: string | null;
+  designLayers?: CanvasDesignLayer[];
+  selectedLayerId?: string | null;
+  onLayerPositionChange?: (id: string, x: number, y: number) => void;
+  onLayerSelect?: (id: string) => void;
   decalPosition?: [number, number, number];
   decalScale?: [number, number, number];
   decalOpacity?: number;
@@ -211,6 +253,10 @@ export interface ShirtCanvas3DProps {
 export default function ShirtCanvas3D({ 
   shirtColor = '#111111', 
   designImage, 
+  designLayers,
+  selectedLayerId,
+  onLayerPositionChange,
+  onLayerSelect,
   decalPosition, 
   decalScale,
   decalOpacity = 1,
@@ -222,11 +268,12 @@ export default function ShirtCanvas3D({
   const [isDragging, setIsDragging] = useState(false);
   const [pos, setPos] = useState<[number, number, number]>(decalPosition || [0, 0.1, 0.15]);
   const [rot, setRot] = useState<[number, number, number]>([Math.PI / 2, 0, 0]);
+  const [modelReady, setModelReady] = useState(false);
+  const handleModelReady = useCallback(() => setModelReady(true), []);
 
   return (
-    <div className="w-full h-full relative min-h-[400px] rounded-xl overflow-hidden shadow-inner border border-gray-300">
+    <div id="r3f-shirt-canvas" data-model-ready={modelReady} className="w-full h-full relative min-h-[400px] rounded-xl overflow-hidden shadow-inner border border-gray-300">
       <Canvas 
-        id="r3f-shirt-canvas"
         shadows 
         style={{ backgroundColor: 'transparent' }}
         gl={{ preserveDrawingBuffer: true, alpha: true }}
@@ -258,10 +305,16 @@ export default function ShirtCanvas3D({
         />
         {/* Realistic reflections without fetching external HDR files */}
         {/* 3D Content */}
-        <Suspense fallback={null}>
-          <ShirtModel 
+        <ModelErrorBoundary>
+          <Suspense fallback={<Html center><div className="rounded bg-white/90 px-3 py-2 text-sm text-gray-700 shadow">Loading shirt model…</div></Html>}>
+            <ShirtModel
             colorHex={shirtColor} 
             designImage={designImage}
+            designLayers={designLayers}
+            selectedLayerId={selectedLayerId}
+            onLayerPositionChange={onLayerPositionChange}
+            onLayerSelect={onLayerSelect}
+            onReady={handleModelReady}
             decalPosition={pos}
             decalRotation={rot}
             decalScale={decalScale || [0.25, 0.25, 0.25]}
@@ -277,14 +330,15 @@ export default function ShirtCanvas3D({
               setPos(newPos);
               setRot(newRot);
             }}
-          />
-        </Suspense>
+            />
+          </Suspense>
+        </ModelErrorBoundary>
 
         {/* Camera Controls */}
         <OrbitControls 
           makeDefault
           enabled={!isDragging}
-          enableZoom={false}
+          enableZoom={true}
           enablePan={false}
           enableRotate={true}
         />

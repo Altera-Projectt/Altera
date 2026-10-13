@@ -15,17 +15,6 @@ type DesignLayer = ImageLayer
 type DesignState = { frontDesign: { layers: DesignLayer[] }; backDesign: { layers: DesignLayer[] } }
 const isAIAsset = (image: UploadedCustomImage) => image.imageType === 'AI' || image.source === 'AI'
 
-const escapeXml = (value: string) => value.replace(/[<>&"']/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]!)
-function makeDraftThumbnail(color: string, layers: DesignLayer[]) {
-  const items = layers.filter((layer) => layer.visible).map((layer) => {
-    const transform = `translate(${layer.x * 2.4} ${layer.y * 3.2}) rotate(${layer.rotation}) scale(${layer.scaleX} ${layer.scaleY})`
-    return `<image href="${escapeXml(layer.src)}" x="-28" y="-28" width="56" height="56" opacity="${layer.opacity}" preserveAspectRatio="xMidYMid meet" transform="${transform}"/>`
-  }).join('')
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><path d="M72 38 96 28h48l24 10 48 32-27 48-27-16v190H78V102l-27 16-27-48z" fill="${escapeXml(color)}" stroke="#d1d5db" stroke-width="3"/>${items}</svg>`
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
-
-
 const makeImage = (src: string): ImageLayer => ({ id: crypto.randomUUID(), type: 'image', name: 'Image', visible: true, locked: false, zIndex: Date.now(), src, x: 50, y: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 })
 
 function readDesign(storageKey: string): DesignState {
@@ -55,6 +44,17 @@ const errorMessage = (error: unknown, fallback: string) => {
   return fallback
 }
 
+async function uploadCanvasThumbnail() {
+  const canvasRoot = document.getElementById('r3f-shirt-canvas')
+  if (canvasRoot?.dataset.modelReady !== 'true') throw new Error('The 3D shirt preview is still loading. Please wait and try again.')
+  const canvas = canvasRoot instanceof HTMLCanvasElement ? canvasRoot : canvasRoot?.querySelector('canvas')
+  if (!canvas) throw new Error('The 3D preview is not ready. Please wait for it to load and try again.')
+  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not capture the 3D preview.')), 'image/webp', 0.9))
+  const image = new File([blob], 'design-preview.webp', { type: blob.type || 'image/webp' })
+  const response = await DesignService.uploadCustomImage(image)
+  return response.data.data.image.url
+}
+
 function readSelection() {
   try { return JSON.parse(localStorage.getItem('altera-custom-selection-v1') ?? '{}') as { productId?: string; colorName?: string; size?: string; printSide?: 'FRONT' | 'BACK' | 'BOTH'; technique?: string; quantity?: number } }
   catch { return {} }
@@ -81,6 +81,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const requestedDraftRef = useRef('')
   const [draftId, setDraftId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
+  const [previewThumbnail, setPreviewThumbnail] = useState('')
   const [draftNameInput, setDraftNameInput] = useState('')
   const [showDraftName, setShowDraftName] = useState(false)
   const [showDraftGallery, setShowDraftGallery] = useState(false)
@@ -128,7 +129,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const authenticatedUserId = useAuthStore((state) => state.user?._id)
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
-  const activeImageLayer = current.find(l => l.type === 'image' && l.visible) as ImageLayer | undefined;
+  const visibleImageLayers = current.filter((layer) => layer.type === 'image' && layer.visible) as ImageLayer[]
   const selected = current.find((layer) => layer.id === selectedId) ?? null
   const commit = (next: DesignState) => { setUndoStack((stack) => [...stack.slice(-49), design]); setRedoStack([]); setDesign(next) }
   const undo = () => { const previous = undoStack.at(-1); if (!previous) return; setRedoStack((stack) => [...stack, design]); setUndoStack((stack) => stack.slice(0, -1)); setDesign(previous) }
@@ -147,7 +148,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         if (!active || requestId !== productDetailsRequestRef.current) return
         const detailedProduct = productResponse.data.product
         setProduct(detailedProduct)
-        setColorName(detailedProduct.colors?.some((item) => item.name === savedSelection.colorName) ? savedSelection.colorName! : detailedProduct.colors?.find((item) => item.stock > 0)?.name ?? detailedProduct.colors?.[0]?.name ?? '')
+        setColorName(detailedProduct.colors?.some((item) => item.name === savedSelection.colorName && item.stock > 0) ? savedSelection.colorName! : detailedProduct.colors?.find((item) => item.stock > 0)?.name ?? '')
         setSize(detailedProduct.sizes?.some((item) => item.label === savedSelection.size && item.stock > 0) ? savedSelection.size! : detailedProduct.sizes?.find((item) => item.stock > 0)?.label ?? '')
         setTechnique(detailedProduct.printingTechniques?.some((item) => item.code === savedSelection.technique) ? savedSelection.technique! : detailedProduct.printingTechniques?.[0]?.code ?? '')
         setQuantity(Math.max(1, savedSelection.quantity ?? 1))
@@ -231,7 +232,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const selectedTechnique = techniques.find((item) => item.code === technique) ?? null
   const estimatedPrice = useMemo(() => {
     if (!product || !selectedTechnique) return 0
-    return (product.discountPrice ?? product.price) + selectedTechnique.price + (printSide === 'BOTH' ? selectedTechnique.additionalSidePrice : 0)
+    return (product.discountPrice ?? product.price) + selectedTechnique.price + (printSide === 'BOTH' ? selectedTechnique.additionalSidePrice : 0) + (selectedTechnique.customizationPrice ?? 0)
   }, [product, selectedTechnique, printSide])
 
   useEffect(() => {
@@ -382,7 +383,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       size, printSide, printingTechnique: technique,
       frontDesign: { layers: design.frontDesign.layers, background: null },
       backDesign: { layers: design.backDesign.layers, background: null },
-      thumbnail: makeDraftThumbnail(selectedColor?.hex ?? '#ffffff', design[side].layers),
+      thumbnail: previewThumbnail,
+      thumbnailUrl: previewThumbnail || undefined,
       shirtColor: selectedColor?.hex ?? '#ffffff',
       designUrl: finalDesignUrl,
       decalTransform: activeImageLayer ? {
@@ -393,7 +395,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         opacity: activeImageLayer.opacity ?? 1
       } : undefined,
     }
-  }, [draftName, product?._id, selectedColor, size, printSide, technique, design, side])
+  }, [draftName, product?._id, selectedColor, size, printSide, technique, design, side, previewThumbnail])
   const refreshDrafts = useCallback(async () => {
     if (!isAuthenticated) { setDrafts([]); return }
     try { const response = await DesignService.listCustomDrafts(); setDrafts(response.data.data.drafts) }
@@ -405,17 +407,23 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return }
     setDraftError('')
     try {
-      let urlOverride: string | undefined;
-      const activeImageLayer = design[side].layers.find(l => l.type === 'image' && l.visible) as ImageLayer | undefined;
-      if (activeImageLayer?.src?.startsWith('data:')) {
-        const res = await fetch(activeImageLayer.src);
-        const blob = await res.blob();
-        const file = new File([blob], 'design.png', { type: blob.type });
-        const { data } = await DesignService.uploadCustomImage(file);
-        urlOverride = data.data.image.url;
-        changeLayer(activeImageLayer.id, { src: urlOverride });
-      }
-      const payload = draftPayload(name, urlOverride)
+      const persistLayerUrls = async (layers: DesignLayer[]) => Promise.all(layers.map(async (layer) => {
+        if (layer.type !== 'image' || !layer.src.startsWith('data:')) return { ...layer }
+        const response = await fetch(layer.src)
+        const blob = await response.blob()
+        const file = new File([blob], `${layer.name || 'design'}.png`, { type: blob.type || 'image/png' })
+        const uploaded = await DesignService.uploadCustomImage(file)
+        return { ...layer, src: uploaded.data.data.image.url }
+      }))
+      const [frontLayers, backLayers] = await Promise.all([
+        persistLayerUrls(design.frontDesign.layers),
+        persistLayerUrls(design.backDesign.layers),
+      ])
+      const persistedDesign = { frontDesign: { ...design.frontDesign, layers: frontLayers }, backDesign: { ...design.backDesign, layers: backLayers } }
+      const thumbnail = await uploadCanvasThumbnail()
+      setPreviewThumbnail(thumbnail)
+      const payload = { ...draftPayload(name), ...persistedDesign, thumbnail, thumbnailUrl: thumbnail }
+      setDesign(persistedDesign)
       const response = draftId
         ? await DesignService.updateCustomDraft(draftId, payload)
         : await DesignService.createCustomDraft(payload)
@@ -437,23 +445,28 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     if (!product || !hasValidLayers) { setDraftError('Vui lòng chọn mẫu áo và thêm ít nhất một lớp thiết kế.'); return }
     setPublishing(true); setDraftError('')
     try {
-      let urlOverride: string | undefined;
-      const activeImageLayer = design[side].layers.find(l => l.type === 'image' && l.visible) as ImageLayer | undefined;
-      if (activeImageLayer?.src?.startsWith('data:')) {
-        const res = await fetch(activeImageLayer.src);
-        const blob = await res.blob();
-        const file = new File([blob], 'design.png', { type: blob.type });
-        const { data } = await DesignService.uploadCustomImage(file);
-        urlOverride = data.data.image.url;
-        changeLayer(activeImageLayer.id, { src: urlOverride });
-      }
+      const persistLayerUrls = async (layers: DesignLayer[]) => Promise.all(layers.map(async (layer) => {
+        if (layer.type !== 'image' || !layer.src.startsWith('data:')) return { ...layer }
+        const response = await fetch(layer.src)
+        const blob = await response.blob()
+        const file = new File([blob], `${layer.name || 'design'}.png`, { type: blob.type || 'image/png' })
+        const uploaded = await DesignService.uploadCustomImage(file)
+        return { ...layer, src: uploaded.data.data.image.url }
+      }))
+      const [frontLayers, backLayers] = await Promise.all([
+        persistLayerUrls(design.frontDesign.layers),
+        persistLayerUrls(design.backDesign.layers),
+      ])
+      const persistedDesign = { frontDesign: { ...design.frontDesign, layers: frontLayers }, backDesign: { ...design.backDesign, layers: backLayers } }
+      let thumbnailUrl: string | undefined = await uploadCanvasThumbnail()
+      setPreviewThumbnail(thumbnailUrl)
 
       let id = draftId
-      const payload = draftPayload(draftName || publishName, urlOverride)
+      const payload = { ...draftPayload(draftName || publishName), ...persistedDesign, thumbnail: thumbnailUrl, thumbnailUrl }
       const saved = id ? await DesignService.updateCustomDraft(id, payload) : await DesignService.createCustomDraft(payload)
       id = saved.data.data.draft._id; setDraftId(id)
       
-      let thumbnailUrl: string | undefined = undefined;
+      thumbnailUrl = thumbnailUrl || undefined;
       let canvas = document.getElementById('r3f-shirt-canvas') as HTMLCanvasElement | null;
       if (canvas && typeof canvas.toDataURL !== 'function') {
          canvas = canvas.querySelector('canvas');
@@ -485,7 +498,6 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         thumbnailUrl
       };
       
-      console.log("PAYLOAD SENDING:", publishPayload);
       const published = await DesignService.publishCustomDraft(publishPayload);
       const status = published.data.data.design?.status
       
@@ -543,7 +555,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       const productId = typeof saved.productId === 'string' ? saved.productId : saved.productId?._id
       const nextProduct = products.find((item) => item._id === productId) ?? null
       setProduct(nextProduct)
-      setColorName(saved.color?.name ?? nextProduct?.colors?.[0]?.name ?? '')
+      setColorName(saved.color?.name && nextProduct?.colors?.some((item) => item.name === saved.color?.name && item.stock > 0) ? saved.color.name : nextProduct?.colors?.find((item) => item.stock > 0)?.name ?? '')
       setSize(saved.size)
       setPrintSide(saved.printSide)
       setTechnique(saved.printingTechnique)
@@ -554,6 +566,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       })
       setSelectedId(null)
       setUndoStack([]); setRedoStack([])
+      setPreviewThumbnail(saved.thumbnailUrl || saved.thumbnail || '')
       setDraftId(saved._id); setDraftName(saved.name); setDraftStatus('saved')
       setShowDraftGallery(false); setDraftError('')
     } catch (openError: unknown) { setDraftError(errorMessage(openError, 'Could not open this draft.')) }
@@ -608,7 +621,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const selectProduct = (next: Product | null) => {
     const requestId = ++productDetailsRequestRef.current
     setProduct(next)
-    setColorName(next?.colors?.find((item) => item.stock > 0)?.name ?? next?.colors?.[0]?.name ?? '')
+    setColorName(next?.colors?.find((item) => item.stock > 0)?.name ?? '')
     setSize(next?.sizes?.find((item) => item.stock > 0)?.label ?? next?.sizes?.[0]?.label ?? '')
     setTechnique(next?.printingTechniques?.[0]?.code ?? '')
     setQuantity(1)
@@ -617,7 +630,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         if (requestId !== productDetailsRequestRef.current) return
         const detailedProduct = data.data.product
         setProduct(detailedProduct)
-        setColorName(detailedProduct.colors?.find((item) => item.stock > 0)?.name ?? detailedProduct.colors?.[0]?.name ?? '')
+        setColorName(detailedProduct.colors?.find((item) => item.stock > 0)?.name ?? '')
         setSize(detailedProduct.sizes?.find((item) => item.stock > 0)?.label ?? detailedProduct.sizes?.[0]?.label ?? '')
         setTechnique(detailedProduct.printingTechniques?.[0]?.code ?? '')
       }).catch(() => {
@@ -627,7 +640,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   }
 
   const addToOrder = async (orderNow: boolean) => {
-    if (!product || !colorName || !size || !printSide || !selectedTechnique) {
+    if (!product || !selectedColor || !selectedSize || !printSide || !selectedTechnique) {
       setError('Choose a product, color, size, print side, and printing technique.')
       return
     }
@@ -686,8 +699,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       {loadingProducts ? <p className="text-sm text-gray-500">Loading products…</p> : products.length === 0 ? <p className="text-sm text-gray-500">No active T-shirt products are available.</p> : <select aria-label="Product" value={product?._id ?? ''} onChange={(e) => selectProduct(products.find((item) => item._id === e.target.value) ?? null)} className="w-full rounded border p-2 text-sm">{products.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>}
       {product && <>
         <p className="text-sm font-semibold">{formatVND(product.discountPrice ?? product.price)} <span className="font-normal text-gray-500">· Stock {stock}</span></p>
-        <div><p className="mb-2 text-xs font-medium">Color</p><div className="flex flex-wrap gap-2">{colors.map((item) => <button key={item.name} title={item.stock <= 0 ? `${item.name} · Out of Stock` : item.name} aria-label={item.name} onClick={() => setColorName(item.name)} className={`h-8 w-8 rounded-full border-2 ${item.stock <= 0 ? 'opacity-40' : ''} ${colorName === item.name ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}`} style={{ backgroundColor: item.hex }} />)}{colors.length === 0 && <span className="text-xs text-gray-500">No colors configured</span>}</div>{selectedColor && <p className="mt-1 text-xs text-gray-500">{selectedColor.name} · {selectedColor.stock} in stock</p>}</div>
-        <label className="block text-sm">Size<select aria-label="Size" className="mt-1 w-full rounded border p-2" value={size} onChange={(e) => setSize(e.target.value)}><option value="">Select size</option>{sizes.map((option) => <option key={option.label} value={option.label}>{option.label}{option.stock <= 0 ? ' · Out of Stock' : ` · ${option.stock} left`}</option>)}</select></label>
+        <div><p className="mb-2 text-xs font-medium">Color</p><div className="flex flex-wrap gap-2">{colors.map((item) => <button key={item.name} disabled={item.stock <= 0} title={item.stock <= 0 ? `${item.name} · Out of Stock` : item.name} aria-label={item.name} onClick={() => setColorName(item.name)} className={`h-8 w-8 rounded-full border-2 disabled:cursor-not-allowed ${item.stock <= 0 ? 'opacity-40' : ''} ${colorName === item.name ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}`} style={{ backgroundColor: item.hex }} />)}{colors.length === 0 && <span className="text-xs text-gray-500">No colors configured</span>}</div>{selectedColor && <p className="mt-1 text-xs text-gray-500">{selectedColor.name} · {selectedColor.stock} in stock</p>}</div>
+        <label className="block text-sm">Size<select aria-label="Size" className="mt-1 w-full rounded border p-2" value={size} onChange={(e) => setSize(e.target.value)}><option value="">Select size</option>{sizes.map((option) => <option key={option.label} value={option.label} disabled={option.stock <= 0}>{option.label}{option.stock <= 0 ? ' · Out of Stock' : ` · ${option.stock} left`}</option>)}</select></label>
         <div><p className="mb-2 text-xs font-medium">Print side</p><div className="grid grid-cols-3 gap-1">{([['FRONT', 'Front'], ['BACK', 'Back'], ['BOTH', 'Both Sides']] as const).map(([value, label]) => <button key={value} onClick={() => { setPrintSide(value); if (value === 'FRONT') setSide('frontDesign'); if (value === 'BACK') setSide('backDesign'); }} className={`rounded border px-1 py-2 text-xs ${printSide === value ? 'bg-black text-white' : ''}`}>{label}</button>)}</div></div>
         <label className="block text-sm">Printing technique<select className="mt-1 w-full rounded border p-2" value={technique} onChange={(e) => setTechnique(e.target.value)}><option value="">Select technique</option>{techniques.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
         <div><p className="mb-2 text-xs font-medium">Quantity</p><div className="flex items-center gap-3"><button aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="rounded border px-3 py-1 disabled:opacity-40">−</button><span>{quantity}</span><button aria-label="Increase quantity" disabled={quantity >= stock} onClick={() => setQuantity((value) => Math.min(stock, value + 1))} className="rounded border px-3 py-1 disabled:opacity-40">+</button><span className="text-xs text-gray-500">Max {stock}</span></div></div>
@@ -721,11 +734,10 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       <div className="w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden shadow-2xl border border-gray-300">
          <ShirtCanvas3D 
            shirtColor={selectedColor?.hex ?? '#ffffff'} 
-           designImage={activeImageLayer?.src}
-           decalOpacity={activeImageLayer?.opacity ?? 1}
-           decalRotationDegrees={activeImageLayer?.rotation ?? 0}
-           decalScaleMultiplier={activeImageLayer?.scaleX ?? 1}
-           decalLocked={activeImageLayer?.locked ?? false}
+           designLayers={visibleImageLayers}
+           selectedLayerId={selectedId}
+           onLayerPositionChange={(id, x, y) => update(id, { x, y })}
+           onLayerSelect={setSelectedId}
            printSide={printSide === 'BOTH' ? (side === 'frontDesign' ? 'FRONT' : 'BACK') : printSide}
          />
       </div>
@@ -740,8 +752,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       {selected && <button onClick={() => removeLayer(selected.id)} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Delete layer</button>}
       <div className="flex items-center gap-2 border-t pt-3 text-xs text-gray-500"><RotateCw size={14}/>Drag on canvas to move · use controls to resize and rotate</div>
       {error && <p role="status" className={`text-sm ${error.startsWith('Added') ? 'text-green-700' : 'text-red-600'}`}>{error}</p>}
-      <button disabled={submitting || loadingProducts || !product} onClick={() => void addToOrder(false)} className="w-full rounded-lg border border-black px-4 py-3 text-sm font-semibold disabled:opacity-50">{submitting ? 'Adding…' : 'Add to Cart'}</button>
-      <button disabled={submitting || loadingProducts || !product} onClick={() => void addToOrder(true)} className="w-full rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Order Now</button>
+      <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(false)} className="w-full rounded-lg border border-black px-4 py-3 text-sm font-semibold disabled:opacity-50">{submitting ? 'Adding…' : 'Add to Cart'}</button>
+      <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(true)} className="w-full rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Order Now</button>
     </aside>
   </div>
 }
