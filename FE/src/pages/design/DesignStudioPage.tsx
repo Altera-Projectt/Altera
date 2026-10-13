@@ -37,6 +37,8 @@ import {
 } from '@/services/design.api'
 import { cn } from '@/utils/cn'
 import { CustomDesignTab } from '@/components/studio/CustomDesignTab'
+import { useAiPolling } from '@/hooks/useAiPolling'
+import { useAuthStore } from '@/store/authStore'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -452,7 +454,7 @@ function GenerateForm({
       >
         {!generating && <Wand2 className="h-4 w-4" />}
         {generating
-          ? 'AI đang tạo...'
+          ? 'Đang xử lý ngầm (Polling)...'
           : cooldown > 0
           ? `Chờ ${cooldown}s`
           : 'Tạo với AI'}
@@ -1185,76 +1187,59 @@ export function DesignStudioPage() {
     }
   }, [])
 
+  const token = useAuthStore((state) => state.token)
+  
+  const { generateDesign } = useAiPolling({
+    onSuccess: (result) => {
+      const mockDesign: GenerateDesignResponse = {
+        imageUrl: result.imageUrl || result.preview,
+        preview: result.preview || result.imageUrl,
+        prompt: result.prompt || '',
+        designId: result.designId || '',
+        design: {
+          _id: result.designId || '',
+          prompt: result.prompt || '',
+          style: '',
+          printSide: result.printSide || 'Front',
+          shirtColor: '',
+          previewImage: result.preview || result.imageUrl,
+          status: 'DRAFT',
+          createdAt: new Date().toISOString()
+        } as Design
+      };
+      setCurrentDesign(mockDesign)
+      setViewState('result')
+      setIsSaved(false)
+      startCooldown()
+      setGenerating(false)
+    },
+    onError: (err) => {
+      setGenerateError(err)
+      setGenerating(false)
+      startCooldown()
+    }
+  })
+
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const handleGenerate = async (vals: FormValues) => {
     if (cooldown > 0) return
+    if (!token) {
+      setGenerateError('Bạn cần đăng nhập để tạo thiết kế.')
+      return
+    }
     try {
       setGenerating(true)
       setGenerateError(null)
       const payload = {
-        idea: vals.prompt.trim(),
+        prompt: vals.prompt.trim(),
         style: vals.style || 'Graphic Art',
-        globalShirtColor: getShirtHex(vals.shirtColor || 'white'),
-        printSide: 'Front' as const,
+        shirtColor: getShirtHex(vals.shirtColor || 'white'),
+        printSide: 'Front',
       }
-      const res = await DesignService.generateDesign(payload)
-      setCurrentDesign(res.data.data)
-      setViewState('result')
-      setIsSaved(false)
-      startCooldown()
+      await generateDesign(payload, token)
     } catch (err: any) {
-      const status = err.response?.status
-      const isTimeout = err.code === 'ECONNABORTED' || err.code === 'ERR_CANCELED' || err.message?.includes('timeout')
-
-      if (status === 429) {
-        setGenerateError('Vui lòng chờ trước khi tạo thiết kế mới.')
-        startCooldown()
-      } else if (status === 503) {
-        setGenerateError('Dịch vụ đang bận, vui lòng thử lại sau ít phút.')
-      } else if (status === 400) {
-        setGenerateError('Vui lòng mô tả hình muốn in.')
-      } else if (isTimeout || (!status && !err.response)) {
-        // ── Timeout recovery: The AI may have finished generating but the
-        //    HTTP request expired. Poll the library for the latest DRAFT
-        //    design created in the last 3 minutes and show it if found.
-        try {
-          const libRes = await DesignService.getMyDesigns(1, 5)
-          const designs = libRes.data.data.designs
-          const cutoff = Date.now() - 3 * 60 * 1000 // 3 minutes ago
-          const latestDraft = designs.find(
-            (d) =>
-              d.status === 'DRAFT' &&
-              d.prompt?.toLowerCase().includes(vals.prompt.trim().toLowerCase().slice(0, 20)) &&
-              new Date(d.createdAt).getTime() > cutoff
-          ) ?? designs.find(
-            (d) => d.status === 'DRAFT' && new Date(d.createdAt).getTime() > cutoff
-          )
-
-          if (latestDraft && (latestDraft.previewImage || latestDraft.customImage)) {
-            // Found! Show the newly generated design.
-            const syntheticResponse = {
-              imageUrl: latestDraft.previewImage || latestDraft.customImage || '',
-              preview: latestDraft.previewImage || latestDraft.customImage || '',
-              prompt: latestDraft.prompt || '',
-              designId: latestDraft._id,
-              design: latestDraft,
-            }
-            setCurrentDesign(syntheticResponse)
-            setViewState('result')
-            setIsSaved(false)
-            startCooldown()
-            showToast('Thiết kế đã được tạo!')
-          } else {
-            setGenerateError('Yêu cầu mất quá lâu. Ảnh có thể đã được tạo — hãy kiểm tra Thư viện.')
-          }
-        } catch {
-          setGenerateError('Yêu cầu mất quá lâu. Hãy kiểm tra Thư viện để xem ảnh đã được tạo chưa.')
-        }
-      } else {
-        setGenerateError('Đã có lỗi xảy ra, vui lòng thử lại.')
-      }
-    } finally {
+      setGenerateError('Có lỗi xảy ra khi gọi API.')
       setGenerating(false)
     }
   }

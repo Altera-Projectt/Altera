@@ -1,4 +1,5 @@
 const DesignTemplate = require('../models/DesignTemplate');
+const { ensureCloudinaryUrl, sanitizeDesignLayers } = require('../utils/cloudinary');
 const builtInTemplates = require('../seeds/design-templates.seed');
 
 let builtInsReady;
@@ -32,12 +33,18 @@ const adminList = async () => { await ensureBuiltIns(); return DesignTemplate.fi
 const create = async (data) => {
   const allowed = ['name', 'slug', 'thumbnail', 'category', 'style', 'tags', 'description', 'frontDesign', 'backDesign'];
   const values = Object.fromEntries(allowed.filter((field) => data[field] !== undefined).map((field) => [field, data[field]]));
+  if (values.thumbnail) values.thumbnail = await ensureCloudinaryUrl(values.thumbnail, 'altera/designs/drafts');
+  if (values.frontDesign) values.frontDesign = await sanitizeDesignLayers(values.frontDesign, 'altera/designs/drafts');
+  if (values.backDesign) values.backDesign = await sanitizeDesignLayers(values.backDesign, 'altera/designs/drafts');
   values.slug = values.slug || String(values.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return DesignTemplate.create({ ...values, isActive: true, isBuiltIn: false });
 };
 const update = async (id, data) => {
   const allowed = ['name', 'slug', 'thumbnail', 'category', 'style', 'tags', 'description', 'frontDesign', 'backDesign', 'isActive'];
   const changes = Object.fromEntries(allowed.filter((field) => data[field] !== undefined).map((field) => [field, data[field]]));
+  if (changes.thumbnail) changes.thumbnail = await ensureCloudinaryUrl(changes.thumbnail, 'altera/designs/drafts');
+  if (changes.frontDesign) changes.frontDesign = await sanitizeDesignLayers(changes.frontDesign, 'altera/designs/drafts');
+  if (changes.backDesign) changes.backDesign = await sanitizeDesignLayers(changes.backDesign, 'altera/designs/drafts');
   const template = await DesignTemplate.findByIdAndUpdate(id, changes, { new: true, runValidators: true });
   if (!template) { const error = new Error('Template not found.'); error.statusCode = 404; throw error; }
   return template;

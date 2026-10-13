@@ -1,5 +1,5 @@
 const Design = require('../models/Design');
-const { uploadImage } = require('../utils/cloudinary');
+const { uploadImage, ensureCloudinaryUrl } = require('../utils/cloudinary');
 const logger = require('../utils/logger');
 
 const buildDataUri = (file) => {
@@ -22,14 +22,18 @@ const createDesign = async (userId, designData, files = {}) => {
 
   // Upload custom image if provided
   if (files.customImage) {
-    const uploaded = await uploadImage(buildDataUri(files.customImage[0]), 'altera/designs/custom');
+    const uploaded = await uploadImage(buildDataUri(files.customImage[0]), 'altera/designs/drafts');
     customImage = uploaded.url;
+  } else if (designData.customImage) {
+    customImage = await ensureCloudinaryUrl(designData.customImage, 'altera/designs/drafts');
   }
 
   // Upload preview image if provided
   if (files.previewImage) {
-    const uploaded = await uploadImage(buildDataUri(files.previewImage[0]), 'altera/designs/previews');
+    const uploaded = await uploadImage(buildDataUri(files.previewImage[0]), 'altera/designs/drafts');
     previewImage = uploaded.url;
+  } else if (designData.previewImage) {
+    previewImage = await ensureCloudinaryUrl(designData.previewImage, 'altera/designs/drafts');
   }
 
   const design = await Design.create({
@@ -112,14 +116,18 @@ const updateDesign = async (designId, userId, role, updateData, files = {}) => {
 
   // Update custom image if provided
   if (files.customImage) {
-    const uploaded = await uploadImage(buildDataUri(files.customImage[0]), 'altera/designs/custom');
+    const uploaded = await uploadImage(buildDataUri(files.customImage[0]), 'altera/designs/drafts');
     design.customImage = uploaded.url;
+  } else if (updateData.customImage) {
+    design.customImage = await ensureCloudinaryUrl(updateData.customImage, 'altera/designs/drafts');
   }
 
   // Update preview image if provided
   if (files.previewImage) {
-    const uploaded = await uploadImage(buildDataUri(files.previewImage[0]), 'altera/designs/previews');
+    const uploaded = await uploadImage(buildDataUri(files.previewImage[0]), 'altera/designs/drafts');
     design.previewImage = uploaded.url;
+  } else if (updateData.previewImage) {
+    design.previewImage = await ensureCloudinaryUrl(updateData.previewImage, 'altera/designs/drafts');
   }
 
   await design.save();

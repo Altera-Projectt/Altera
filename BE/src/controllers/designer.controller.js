@@ -9,7 +9,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const normalizeDecalTransform = require('../utils/decal-transform');
-const { uploadImage } = require('../utils/cloudinary');
+const { uploadImage, ensureCloudinaryUrl, sanitizeDesignLayers } = require('../utils/cloudinary');
 const slugify = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const fail = (status, message) => Object.assign(new Error(message), { statusCode: status });
 // No admin moderation yet: designs go live immediately. Set MARKETPLACE_REQUIRE_REVIEW=true to require review.
@@ -217,7 +217,9 @@ exports.getProfile = async (req, res, next) => {
 exports.updateProfile = async (req, res, next) => {
   try {
     const profile = await profileForUser(req.user._id);
-    for (const key of ['displayName', 'bio', 'avatar', 'coverImage']) if (req.body[key] !== undefined) profile[key] = req.body[key];
+    for (const key of ['displayName', 'bio']) if (req.body[key] !== undefined) profile[key] = req.body[key];
+    if (req.body.avatar !== undefined) profile.avatar = await ensureCloudinaryUrl(req.body.avatar, 'altera/users/avatars');
+    if (req.body.coverImage !== undefined) profile.coverImage = await ensureCloudinaryUrl(req.body.coverImage, 'altera/users/covers');
     if (req.body.username !== undefined) { const username = slugify(String(req.body.username)); if (!username || username.length > 40) throw fail(400, 'Username must contain 1 to 40 letters, numbers, or hyphens'); profile.username = username; }
     await profile.save(); res.json({ success: true, data: { profile } });
   } catch (error) { next(error); }
@@ -253,11 +255,9 @@ exports.createDesign = async (req, res, next) => {
     let finalThumbnail = req.body.thumbnailUrl || draft.thumbnail || draft.thumbnailUrl;
     try {
       if (req.body.thumbnailBase64) {
-        const uploadResult = await uploadImage(req.body.thumbnailBase64, 'marketplace_designs');
-        finalThumbnail = uploadResult.url;
-      } else if (finalThumbnail && finalThumbnail.startsWith('data:image')) {
-        const uploadResult = await uploadImage(finalThumbnail, 'marketplace_designs');
-        finalThumbnail = uploadResult.url;
+        finalThumbnail = await ensureCloudinaryUrl(req.body.thumbnailBase64, 'altera/marketplace');
+      } else if (finalThumbnail) {
+        finalThumbnail = await ensureCloudinaryUrl(finalThumbnail, 'altera/marketplace');
       }
     } catch (uploadError) {
       console.error("CLOUDINARY UPLOAD CRASH:", uploadError);
@@ -268,16 +268,23 @@ exports.createDesign = async (req, res, next) => {
     if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product or printing technique is unavailable.');
     if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
     
+    let designUrl = req.body.designUrl ?? draft.designUrl;
+    if (designUrl) designUrl = await ensureCloudinaryUrl(designUrl, 'altera/marketplace');
+    let frontDesign = draft.frontDesign;
+    let backDesign = draft.backDesign;
+    if (frontDesign) frontDesign = await sanitizeDesignLayers(frontDesign, 'altera/marketplace');
+    if (backDesign) backDesign = await sanitizeDesignLayers(backDesign, 'altera/marketplace');
+
     const decalTransform = normalizeDecalTransform(req.body.decalTransform ?? draft.decalTransform);
     let design;
     try {
       const designData = {
         designerId: profile._id, userId: req.user._id, draftId: draft._id, name, slug: `${slugify(name) || 'design'}-${Date.now().toString(36)}`, 
         description: req.body.description || '', thumbnail: finalThumbnail, thumbnailUrl: finalThumbnail, productId: draft.productId, color: draft.color, size: draft.size, 
-        printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign: draft.frontDesign, backDesign: draft.backDesign, 
+        printSide: draft.printSide, printingTechnique: draft.printingTechnique, frontDesign, backDesign, 
         price, category: req.body.category || '', tags: Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [], 
         collectionId: req.body.collectionId || null, status: submissionStatus(),
-        shirtColor: req.body.shirtColor ?? draft.shirtColor, designUrl: req.body.designUrl ?? draft.designUrl, decalTransform
+        shirtColor: req.body.shirtColor ?? draft.shirtColor, designUrl, decalTransform
       };
       if (existing) {
         Object.assign(existing, designData);
@@ -303,14 +310,12 @@ exports.updateDesign = async (req, res, next) => {
     if (design.status === 'PUBLISHED') throw fail(409, 'Duplicate a published design to make a new version');
     for (const key of ['thumbnailUrl', 'shirtColor', 'designUrl']) {
       if (req.body[key] !== undefined) {
-        if (key === 'thumbnailUrl' && typeof req.body[key] === 'string' && req.body[key].startsWith('data:image')) {
-          try {
-            const uploadResult = await uploadImage(req.body[key], 'marketplace_designs');
-            design[key] = uploadResult.url;
-          } catch (uploadError) {
-            console.error("CLOUDINARY UPLOAD CRASH:", uploadError);
-            throw fail(500, 'Failed to upload thumbnail image');
-          }
+        if (key === 'thumbnailUrl') {
+          const uploadedUrl = await ensureCloudinaryUrl(req.body[key], 'altera/marketplace');
+          design.thumbnailUrl = uploadedUrl;
+          design.thumbnail = uploadedUrl;
+        } else if (key === 'designUrl') {
+          design.designUrl = await ensureCloudinaryUrl(req.body[key], 'altera/marketplace');
         } else {
           design[key] = req.body[key];
         }

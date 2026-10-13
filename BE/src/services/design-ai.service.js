@@ -181,14 +181,42 @@ const generateDesign = async (userId, payload) => {
     createdAt: new Date().toISOString(),
   });
 
+  let finalImageUrl = imageUrl;
+
+  // Bắt điều kiện: Nếu finalImageUrl là string VÀ có độ dài lớn hơn 1000 ký tự (chắc chắn là Base64)
+  if (typeof finalImageUrl === 'string' && finalImageUrl.length > 1000) {
+    // Nếu chuỗi chưa có tiền tố data:image, tự động nối thêm vào trước chuỗi đó
+    if (!finalImageUrl.startsWith('data:image/')) {
+      finalImageUrl = `data:image/png;base64,${finalImageUrl}`;
+    }
+
+    try {
+      logger.info(`[AI Service] Bắt đầu upload chuỗi Base64 lên Cloudinary...`);
+      const uploaded = await uploadImage(finalImageUrl, 'altera/designs/generated');
+      finalImageUrl = uploaded.url;
+
+      // Không in chuỗi Base64 ra terminal nếu URL trả về vẫn là Base64
+      const isBase64 = typeof finalImageUrl === 'string' && finalImageUrl.startsWith('data:image/');
+      if (isBase64) {
+        logger.info(`[AI Service] Upload Cloudinary thành công: [Base64 Image]`);
+      } else {
+        logger.info(`[AI Service] Upload Cloudinary thành công: ${finalImageUrl}`);
+      }
+    } catch (error) {
+      console.error("❌ Lỗi upload Cloudinary:", error.message || error);
+    }
+  }
+
+  // Tối ưu object return (Tránh tràn Redis)
   return {
-    imageUrl,
-    preview: imageUrl,
+    imageUrl: finalImageUrl, // Đã là link HTTP (hoặc Base64 nếu Cloudinary lỗi)
+    preview: finalImageUrl,
     printSide,
     prompt,
     designId: design._id,
-    design,
-    history,
+    // TUYỆT ĐỐI KHÔNG return object design và history
+    // design,
+    // history,
   };
 };
 

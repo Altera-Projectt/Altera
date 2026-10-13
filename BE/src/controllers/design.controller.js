@@ -90,8 +90,49 @@ const uploadDesign = async (req, res, next) => {
 
 const generateDesign = async (req, res, next) => {
   try {
-    const result = await designAiService.generateDesign(req.user._id, req.body);
-    res.status(201).json({ success: true, message: 'Design generated successfully', data: result });
+    // Thay vì gọi trực tiếp service gây nghẽn, ta đưa vào hàng đợi BullMQ
+    const { aiQueue } = require('../queues/aiQueue');
+    const job = await aiQueue.add('generate-design', {
+      userId: req.user._id,
+      payload: req.body
+    });
+
+    res.status(202).json({
+      success: true,
+      message: 'Yêu cầu đang được xử lý ngầm',
+      data: {
+        jobId: job.id
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getDesignJobStatus = async (req, res, next) => {
+  try {
+    const { aiQueue } = require('../queues/aiQueue');
+    const job = await aiQueue.getJob(req.params.jobId);
+
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy Job' });
+    }
+
+    const state = await job.getState();
+    const progress = job.progress;
+    const failedReason = job.failedReason;
+    const result = job.returnvalue;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: job.id,
+        state, // 'waiting', 'active', 'completed', 'failed', 'delayed'
+        progress,
+        failedReason,
+        result, // Khi state === 'completed', kết quả sinh ảnh (URL) sẽ nằm ở đây
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -150,6 +191,7 @@ module.exports = {
   deleteDesign,
   uploadDesign,
   generateDesign,
+  getDesignJobStatus,
   clearGeneratedHistory,
   getGeneratedHistory,
   refineDesign,
