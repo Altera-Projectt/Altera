@@ -159,8 +159,13 @@ function ShirtModel({
                       if (isDragging) {
                         e.stopPropagation();
                         
-                        // Convert world point to local space of the mesh
-                        const localPoint = e.eventObject.worldToLocal(e.point.clone());
+                        // Project the pointer onto the decal's local plane so both axes
+                        // follow the pointer consistently across the shirt surface.
+                        const inverseWorld = e.eventObject.matrixWorld.clone().invert();
+                        const localRay = e.ray.clone().applyMatrix4(inverseWorld);
+                        const decalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.16);
+                        const localPoint = localRay.intersectPlane(decalPlane, new THREE.Vector3())
+                          ?? e.eventObject.worldToLocal(e.point.clone());
                         
                         // e.face.normal is usually in local space
                         const localNormal = e.face?.normal?.clone() || new THREE.Vector3(0, 0, 1);
