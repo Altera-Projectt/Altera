@@ -1,5 +1,5 @@
 import { Component, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { useGLTF, useTexture, Decal, OrbitControls, Center, Bounds, PerspectiveCamera, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -63,7 +63,98 @@ function DesignDecal({
 }
 
 // ----------------------------------------------------------------------
-// 2. The 3D Shirt Model
+// 2. Layer Overlay – hiển thị vùng bounding box của sticker đang chọn
+// ----------------------------------------------------------------------
+function LayerBoundsOverlay({
+  layer,
+  isDragging,
+}: {
+  layer: CanvasDesignLayer;
+  isDragging: boolean;
+}) {
+  const { camera, size } = useThree();
+
+  // Chuyển vị trí 3D của decal thành tọa độ màn hình
+  const worldX = (layer.x / 100) * 0.6 - 0.3;
+  const worldY = 0.1 + ((50 - layer.y) / 100) * 0.6;
+  // Decal nằm ở z ~0.16 local của mesh, mesh group xoay -PI/2 quanh X
+  // Nên trong world space: localX→worldX, localY→worldZ (lên), localZ→worldY (ra trước)
+  const worldPos = new THREE.Vector3(worldX, worldY, 0.16);
+  // Mesh group rotation: [-PI/2, 0, 0] – áp dụng để tính world
+  worldPos.applyEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+
+  // Project lên NDC
+  const projected = worldPos.clone().project(camera);
+  const screenX = ((projected.x + 1) / 2) * size.width;
+  const screenY = ((-projected.y + 1) / 2) * size.height;
+
+  // Kích thước box theo scale (tương đối với canvas)
+  const baseSize = 0.25;
+  const boxWorld = new THREE.Vector3(baseSize * layer.scaleX, baseSize * layer.scaleY, 0);
+  // Estimate pixel size: chiếu 1 unit 3D ≈ bao nhiêu px
+  const edgeWorld = new THREE.Vector3(worldPos.x + baseSize * layer.scaleX, worldPos.y, worldPos.z)
+    .project(camera);
+  const pxPerUnit = Math.abs(edgeWorld.x - projected.x) * size.width * 0.5;
+  const boxW = Math.max(30, pxPerUnit * layer.scaleX * 2);
+  const boxH = Math.max(30, pxPerUnit * layer.scaleY * 2);
+  void boxWorld;
+
+  return (
+    <Html
+      style={{
+        pointerEvents: 'none',
+        position: 'absolute',
+        left: screenX - boxW / 2,
+        top: screenY - boxH / 2,
+        width: boxW,
+        height: boxH,
+        border: `2px dashed ${isDragging ? '#f97316' : '#3b82f6'}`,
+        borderRadius: 4,
+        boxShadow: isDragging ? '0 0 0 1px rgba(249,115,22,0.3)' : '0 0 0 1px rgba(59,130,246,0.2)',
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+        transform: `rotate(${layer.rotation}deg)`,
+      }}
+    >
+      {/* Corner handles */}
+      {[[-1,-1],[1,-1],[1,1],[-1,1]].map(([cx, cy], i) => (
+        <div
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 8, height: 8,
+            borderRadius: 2,
+            background: isDragging ? '#f97316' : '#3b82f6',
+            left: cx === -1 ? -4 : 'auto',
+            right: cx === 1 ? -4 : 'auto',
+            top: cy === -1 ? -4 : 'auto',
+            bottom: cy === 1 ? -4 : 'auto',
+          }}
+        />
+      ))}
+      {/* Label */}
+      <div style={{
+        position: 'absolute',
+        top: -20,
+        left: 0,
+        background: isDragging ? '#f97316' : '#3b82f6',
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: 600,
+        padding: '1px 5px',
+        borderRadius: 3,
+        whiteSpace: 'nowrap',
+        maxWidth: 120,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+      }}>
+        {layer.locked ? '🔒 ' : ''}{isDragging ? 'Moving…' : 'Selected'}
+      </div>
+    </Html>
+  );
+}
+
+// ----------------------------------------------------------------------
+// 3. The 3D Shirt Model
 // ----------------------------------------------------------------------
 interface ShirtModelProps {
   colorHex: string;
@@ -158,30 +249,36 @@ function ShirtModel({
                       
                       if (isDragging) {
                         e.stopPropagation();
-                        
-                        // Project the pointer onto the decal's local plane so both axes
-                        // follow the pointer consistently across the shirt surface.
-                        const inverseWorld = e.eventObject.matrixWorld.clone().invert();
-                        const localRay = e.ray.clone().applyMatrix4(inverseWorld);
-                        const decalPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -0.16);
-                        const localPoint = localRay.intersectPlane(decalPlane, new THREE.Vector3())
-                          ?? e.eventObject.worldToLocal(e.point.clone());
-                        
-                        // e.face.normal is usually in local space
-                        const localNormal = e.face?.normal?.clone() || new THREE.Vector3(0, 0, 1);
-                        
+
+                        // ---- Sửa: dùng điểm giao nhau thực tế trên mesh (e.point) ----
+                        // e.point là world-space intersection point trên mesh surface
+                        // Chuyển về local space của mesh object (đã xoay -PI/2 quanh X)
+                        const localPoint = e.eventObject.worldToLocal(e.point.clone());
+
+                        // Trong local space của mesh sau group rotation [-PI/2,0,0]:
+                        // localPoint.x → chiều ngang (U)
+                        // localPoint.y → chiều dọc (V) – tăng lên phía trên
+                        // localPoint.z → độ sâu (vuông góc với mặt áo)
+
+                        // e.face.normal is in local space of the mesh
+                        const localNormal = e.face?.normal?.clone() ?? new THREE.Vector3(0, 0, 1);
+
                         // Create a dummy object to calculate the correct rotation
                         const dummy = new THREE.Object3D();
                         dummy.position.copy(localPoint);
-                        // Look at the normal direction to project flush against the surface
                         dummy.lookAt(localPoint.clone().add(localNormal));
-                        
+
                         if (activeLayer && onLayerPositionChange) {
+                          // Map localPoint.x [-0.3, 0.3] → x [0, 100]
+                          // Map localPoint.y [−0.2, 0.4] → y [0, 100] (inverted: top=0)
                           const x = Math.max(5, Math.min(95, ((localPoint.x + 0.3) / 0.6) * 100));
                           const y = Math.max(5, Math.min(95, 50 - ((localPoint.y - 0.1) / 0.6) * 100));
                           onLayerPositionChange(activeLayer.id, x, y);
                         } else {
-                          onDragMove([localPoint.x, localPoint.y, localPoint.z], [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]);
+                          onDragMove(
+                            [localPoint.x, localPoint.y, localPoint.z],
+                            [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]
+                          );
                         }
                       }
                     }
@@ -226,6 +323,19 @@ function ShirtModel({
                       opacity={decalOpacity}
                     />
                   )}
+
+                  {/* Layer bounds overlay – only on main body */}
+                  {isMainBody && designLayers.length > 0 &&
+                    designLayers
+                      .filter((layer) => layer.id === selectedLayerId)
+                      .map((layer) => (
+                        <LayerBoundsOverlay
+                          key={`overlay-${layer.id}`}
+                          layer={layer}
+                          isDragging={isDragging}
+                        />
+                      ))
+                  }
                 </mesh>
               );
             }
