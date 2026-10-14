@@ -1,9 +1,20 @@
 import { Component, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { useGLTF, useTexture, Decal, OrbitControls, Center, Bounds, PerspectiveCamera, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-type CanvasDesignLayer = { id: string; src: string; x: number; y: number; rotation: number; scaleX: number; scaleY: number; opacity: number; locked: boolean; zIndex: number };
+type CanvasDesignLayer = {
+  id: string;
+  src: string;
+  x?: number;
+  y?: number;
+  rotation?: number;
+  scaleX?: number;
+  scaleY?: number;
+  opacity?: number;
+  locked?: boolean;
+  zIndex?: number;
+};
 
 class ModelErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -39,7 +50,7 @@ function DesignDecal({
     
   const texture = useTexture(optimizedImage);
   
-  // Optional: Ensure texture looks correct (transparency, color space)
+  // Ensure texture looks correct (transparency, color space)
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 16;
 
@@ -63,98 +74,7 @@ function DesignDecal({
 }
 
 // ----------------------------------------------------------------------
-// 2. Layer Overlay – hiển thị vùng bounding box của sticker đang chọn
-// ----------------------------------------------------------------------
-function LayerBoundsOverlay({
-  layer,
-  isDragging,
-}: {
-  layer: CanvasDesignLayer;
-  isDragging: boolean;
-}) {
-  const { camera, size } = useThree();
-
-  // Chuyển vị trí 3D của decal thành tọa độ màn hình
-  const worldX = (layer.x / 100) * 0.6 - 0.3;
-  const worldY = 0.1 + ((50 - layer.y) / 100) * 0.6;
-  // Decal nằm ở z ~0.16 local của mesh, mesh group xoay -PI/2 quanh X
-  // Nên trong world space: localX→worldX, localY→worldZ (lên), localZ→worldY (ra trước)
-  const worldPos = new THREE.Vector3(worldX, worldY, 0.16);
-  // Mesh group rotation: [-PI/2, 0, 0] – áp dụng để tính world
-  worldPos.applyEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
-
-  // Project lên NDC
-  const projected = worldPos.clone().project(camera);
-  const screenX = ((projected.x + 1) / 2) * size.width;
-  const screenY = ((-projected.y + 1) / 2) * size.height;
-
-  // Kích thước box theo scale (tương đối với canvas)
-  const baseSize = 0.25;
-  const boxWorld = new THREE.Vector3(baseSize * layer.scaleX, baseSize * layer.scaleY, 0);
-  // Estimate pixel size: chiếu 1 unit 3D ≈ bao nhiêu px
-  const edgeWorld = new THREE.Vector3(worldPos.x + baseSize * layer.scaleX, worldPos.y, worldPos.z)
-    .project(camera);
-  const pxPerUnit = Math.abs(edgeWorld.x - projected.x) * size.width * 0.5;
-  const boxW = Math.max(30, pxPerUnit * layer.scaleX * 2);
-  const boxH = Math.max(30, pxPerUnit * layer.scaleY * 2);
-  void boxWorld;
-
-  return (
-    <Html
-      style={{
-        pointerEvents: 'none',
-        position: 'absolute',
-        left: screenX - boxW / 2,
-        top: screenY - boxH / 2,
-        width: boxW,
-        height: boxH,
-        border: `2px dashed ${isDragging ? '#f97316' : '#3b82f6'}`,
-        borderRadius: 4,
-        boxShadow: isDragging ? '0 0 0 1px rgba(249,115,22,0.3)' : '0 0 0 1px rgba(59,130,246,0.2)',
-        transition: 'border-color 0.15s, box-shadow 0.15s',
-        transform: `rotate(${layer.rotation}deg)`,
-      }}
-    >
-      {/* Corner handles */}
-      {[[-1,-1],[1,-1],[1,1],[-1,1]].map(([cx, cy], i) => (
-        <div
-          key={i}
-          style={{
-            position: 'absolute',
-            width: 8, height: 8,
-            borderRadius: 2,
-            background: isDragging ? '#f97316' : '#3b82f6',
-            left: cx === -1 ? -4 : 'auto',
-            right: cx === 1 ? -4 : 'auto',
-            top: cy === -1 ? -4 : 'auto',
-            bottom: cy === 1 ? -4 : 'auto',
-          }}
-        />
-      ))}
-      {/* Label */}
-      <div style={{
-        position: 'absolute',
-        top: -20,
-        left: 0,
-        background: isDragging ? '#f97316' : '#3b82f6',
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: 600,
-        padding: '1px 5px',
-        borderRadius: 3,
-        whiteSpace: 'nowrap',
-        maxWidth: 120,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>
-        {layer.locked ? '🔒 ' : ''}{isDragging ? 'Moving…' : 'Selected'}
-      </div>
-    </Html>
-  );
-}
-
-// ----------------------------------------------------------------------
-// 3. The 3D Shirt Model
+// 2. The 3D Shirt Model
 // ----------------------------------------------------------------------
 interface ShirtModelProps {
   colorHex: string;
@@ -163,7 +83,6 @@ interface ShirtModelProps {
   selectedLayerId?: string | null;
   onLayerPositionChange?: (id: string, x: number, y: number) => void;
   onLayerSelect?: (id: string) => void;
-  onReady?: () => void;
   decalPosition?: [number, number, number];
   decalRotation?: [number, number, number];
   decalScale?: [number, number, number];
@@ -176,6 +95,7 @@ interface ShirtModelProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragMove: (pos: [number, number, number], rot: [number, number, number]) => void;
+  onReady?: () => void;
 }
 
 function ShirtModel({ 
@@ -183,9 +103,8 @@ function ShirtModel({
   designImage, 
   designLayers = [],
   selectedLayerId,
-  onLayerPositionChange,
+  onLayerPositionChange: _onLayerPositionChange,
   onLayerSelect,
-  onReady,
   decalPosition = [0, 0.1, 0.15], 
   decalRotation = [Math.PI / 2, 0, 0], 
   decalScale = [0.25, 0.25, 0.25],
@@ -197,11 +116,20 @@ function ShirtModel({
   isDragging,
   onDragStart,
   onDragEnd,
-  onDragMove
+  onDragMove,
+  onReady
 }: ShirtModelProps) {
   // Load the GLTF model. Make sure you place `shirt.glb` in public/models/
   const { nodes } = useGLTF('/models/shirt.glb') as any;
   useEffect(() => { onReady?.() }, [onReady]);
+
+  // Support both designImage and designLayers:
+  const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId) ?? designLayers[0];
+  const activeImage = designImage || activeLayer?.src;
+  const activeOpacity = decalOpacity ?? activeLayer?.opacity ?? 1;
+  const activeRotation = decalRotationDegrees ?? activeLayer?.rotation ?? 0;
+  const activeScaleMultiplier = decalScaleMultiplier ?? activeLayer?.scaleX ?? 1;
+  const activeLocked = decalLocked ?? activeLayer?.locked ?? false;
   
   return (
     <group dispose={null} rotation={[-Math.PI / 2, 0, printSide === 'BACK' ? Math.PI : 0]}>
@@ -220,17 +148,15 @@ function ShirtModel({
                   geometry={node.geometry}
                   dispose={null}
                   onPointerDown={(e) => {
-                    if (isMainBody && (designLayers.length || designImage)) {
-                      const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId)
-                        ?? [...designLayers].sort((a, b) => a.zIndex - b.zIndex).at(-1);
-                      if (activeLayer?.locked || (designImage && decalLocked)) return;
+                    if (isMainBody && activeImage) {
+                      if (activeLocked) return; // Do not start dragging if the layer is locked
                       e.stopPropagation();
-                      if (activeLayer) onLayerSelect?.(activeLayer.id);
+                      if (activeLayer && onLayerSelect) onLayerSelect(activeLayer.id);
                       onDragStart();
                     }
                   }}
                   onPointerUp={(e) => {
-                    if (isMainBody && (designLayers.length || designImage)) {
+                    if (isMainBody && activeImage) {
                       e.stopPropagation();
                       onDragEnd();
                     }
@@ -239,9 +165,8 @@ function ShirtModel({
                     if (isDragging) onDragEnd();
                   }}
                   onPointerMove={(e) => {
-                    if (isMainBody && (designLayers.length || designImage)) {
-                      const activeLayer = designLayers.find((layer) => layer.id === selectedLayerId);
-                      if (activeLayer?.locked || (designImage && decalLocked)) {
+                    if (isMainBody && activeImage) {
+                      if (activeLocked) {
                         document.body.style.cursor = 'not-allowed';
                       } else {
                         document.body.style.cursor = isDragging ? 'grabbing' : 'grab';
@@ -249,37 +174,23 @@ function ShirtModel({
                       
                       if (isDragging) {
                         e.stopPropagation();
-
-                        // ---- Sửa: dùng điểm giao nhau thực tế trên mesh (e.point) ----
-                        // e.point là world-space intersection point trên mesh surface
-                        // Chuyển về local space của mesh object (đã xoay -PI/2 quanh X)
-                        const localPoint = e.eventObject.worldToLocal(e.point.clone());
-
-                        // Trong local space của mesh sau group rotation [-PI/2,0,0]:
-                        // localPoint.x → chiều ngang (U)
-                        // localPoint.y → chiều dọc (V) – tăng lên phía trên
-                        // localPoint.z → độ sâu (vuông góc với mặt áo)
-
-                        // e.face.normal is in local space of the mesh
-                        const localNormal = e.face?.normal?.clone() ?? new THREE.Vector3(0, 0, 1);
-
+                        
+                        // Convert world point to local space of the mesh
+                        const localPoint = e.object.worldToLocal(e.point.clone());
+                        
+                        // e.face.normal is usually in local space
+                        const localNormal = e.face?.normal?.clone() || new THREE.Vector3(0, 0, 1);
+                        
                         // Create a dummy object to calculate the correct rotation
                         const dummy = new THREE.Object3D();
                         dummy.position.copy(localPoint);
+                        // Look at the normal direction to project flush against the surface
                         dummy.lookAt(localPoint.clone().add(localNormal));
-
-                        if (activeLayer && onLayerPositionChange) {
-                          // Map localPoint.x [-0.3, 0.3] → x [0, 100]
-                          // Map localPoint.y [−0.2, 0.4] → y [0, 100] (inverted: top=0)
-                          const x = Math.max(5, Math.min(95, ((localPoint.x + 0.3) / 0.6) * 100));
-                          const y = Math.max(5, Math.min(95, 50 - ((localPoint.y - 0.1) / 0.6) * 100));
-                          onLayerPositionChange(activeLayer.id, x, y);
-                        } else {
-                          onDragMove(
-                            [localPoint.x, localPoint.y, localPoint.z],
-                            [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]
-                          );
-                        }
+                        
+                        onDragMove(
+                          [localPoint.x, localPoint.y, localPoint.z], 
+                          [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]
+                        );
                       }
                     }
                   }}
@@ -296,46 +207,24 @@ function ShirtModel({
                     metalness={0.1}
                   />
                   
-                  {/* Projecting the Design ONLY on the main body */}
-                  {isMainBody && designLayers.length > 0 ? designLayers.map((layer) => (
-                    <DesignDecal
-                      key={layer.id}
-                      image={layer.src}
-                      position={[(layer.x / 100) * 0.6 - 0.3, 0.1 + ((50 - layer.y) / 100) * 0.6, 0.16]}
-                      rotation={[Math.PI / 2, 0, (layer.rotation * Math.PI) / 180]}
-                      scale={[0.25 * layer.scaleX, 0.25 * layer.scaleY, 0.25]}
-                      opacity={layer.opacity}
-                    />
-                  )) : isMainBody && designImage && (
+                  {/* Projecting the Design ONLY on the main body - free 3D surface dragging */}
+                  {isMainBody && activeImage && (
                     <DesignDecal 
-                      image={designImage}
+                      image={activeImage}
                       position={decalPosition}
                       rotation={[
                         decalRotation[0], 
                         decalRotation[1], 
-                        decalRotation[2] + (decalRotationDegrees * Math.PI) / 180
+                        decalRotation[2] + (activeRotation * Math.PI) / 180
                       ]}
                       scale={[
-                        decalScale[0] * decalScaleMultiplier,
-                        decalScale[1] * decalScaleMultiplier,
+                        decalScale[0] * activeScaleMultiplier,
+                        decalScale[1] * activeScaleMultiplier,
                         decalScale[2]
                       ]}
-                      opacity={decalOpacity}
+                      opacity={activeOpacity}
                     />
                   )}
-
-                  {/* Layer bounds overlay – only on main body */}
-                  {isMainBody && designLayers.length > 0 &&
-                    designLayers
-                      .filter((layer) => layer.id === selectedLayerId)
-                      .map((layer) => (
-                        <LayerBoundsOverlay
-                          key={`overlay-${layer.id}`}
-                          layer={layer}
-                          isDragging={isDragging}
-                        />
-                      ))
-                  }
                 </mesh>
               );
             }
@@ -423,29 +312,29 @@ export default function ShirtCanvas3D({
         {/* 3D Content */}
         <ModelErrorBoundary>
           <Suspense fallback={<Html center><div className="rounded bg-white/90 px-3 py-2 text-sm text-gray-700 shadow">Loading shirt model…</div></Html>}>
-            <ShirtModel
-            colorHex={shirtColor} 
-            designImage={designImage}
-            designLayers={designLayers}
-            selectedLayerId={selectedLayerId}
-            onLayerPositionChange={onLayerPositionChange}
-            onLayerSelect={onLayerSelect}
-            onReady={handleModelReady}
-            decalPosition={pos}
-            decalRotation={rot}
-            decalScale={decalScale || [0.25, 0.25, 0.25]}
-            decalOpacity={decalOpacity}
-            decalRotationDegrees={decalRotationDegrees}
-            decalScaleMultiplier={decalScaleMultiplier}
-            decalLocked={decalLocked}
-            printSide={printSide}
-            isDragging={isDragging}
-            onDragStart={() => setIsDragging(true)}
-            onDragEnd={() => setIsDragging(false)}
-            onDragMove={(newPos, newRot) => {
-              setPos(newPos);
-              setRot(newRot);
-            }}
+            <ShirtModel 
+              colorHex={shirtColor} 
+              designImage={designImage}
+              designLayers={designLayers}
+              selectedLayerId={selectedLayerId}
+              onLayerPositionChange={onLayerPositionChange}
+              onLayerSelect={onLayerSelect}
+              decalPosition={pos}
+              decalRotation={rot}
+              decalScale={decalScale || [0.25, 0.25, 0.25]}
+              decalOpacity={decalOpacity}
+              decalRotationDegrees={decalRotationDegrees}
+              decalScaleMultiplier={decalScaleMultiplier}
+              decalLocked={decalLocked}
+              printSide={printSide}
+              isDragging={isDragging}
+              onDragStart={() => setIsDragging(true)}
+              onDragEnd={() => setIsDragging(false)}
+              onDragMove={(newPos, newRot) => {
+                setPos(newPos);
+                setRot(newRot);
+              }}
+              onReady={handleModelReady}
             />
           </Suspense>
         </ModelErrorBoundary>
@@ -454,7 +343,7 @@ export default function ShirtCanvas3D({
         <OrbitControls 
           makeDefault
           enabled={!isDragging}
-          enableZoom={true}
+          enableZoom={false}
           enablePan={false}
           enableRotate={true}
         />
