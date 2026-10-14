@@ -1,6 +1,6 @@
 import { Component, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useGLTF, useTexture, Decal, OrbitControls, Center, Bounds, PerspectiveCamera, Html } from '@react-three/drei';
+import { useGLTF, useTexture, Decal, OrbitControls, Center, Bounds, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
 type CanvasDesignLayer = {
@@ -21,7 +21,13 @@ class ModelErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
   static getDerivedStateFromError() { return { failed: true }; }
   render() {
     return this.state.failed
-      ? <Html center><div role="alert" className="rounded bg-white px-3 py-2 text-sm text-red-700 shadow">Could not load the 3D shirt model. Please refresh and try again.</div></Html>
+      ? (
+        <div className="w-full h-full min-h-[400px] flex items-center justify-center rounded-xl bg-gray-50 border border-red-200 p-4">
+          <div role="alert" className="rounded bg-white px-4 py-3 text-sm text-red-700 shadow border border-red-100 text-center">
+            Could not load the 3D shirt model. Please refresh and try again.
+          </div>
+        </div>
+      )
       : this.props.children;
   }
 }
@@ -277,41 +283,54 @@ export default function ShirtCanvas3D({
   const handleModelReady = useCallback(() => setModelReady(true), []);
 
   return (
-    <div id="r3f-shirt-canvas" data-model-ready={modelReady} className="w-full h-full relative min-h-[400px] rounded-xl overflow-hidden shadow-inner border border-gray-300">
-      <Canvas 
-        shadows 
-        style={{ backgroundColor: 'transparent' }}
-        gl={{ preserveDrawingBuffer: true, alpha: true }}
-      >
-        <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-        {/* Lighting Setup */}
-        <ambientLight intensity={0.6} />
-        {/* Main Key Light (Front Right) */}
-        <directionalLight 
-          position={[2, 2, 5]} 
-          intensity={1.2}  
-          castShadow 
-          shadow-mapSize={1024}
-        />
-        {/* Fill Light (Front Left) */}
-        <directionalLight 
-          position={[-3, 0, 4]} 
-          intensity={0.8}  
-        />
-        {/* Back Light (Rim Light) */}
-        <directionalLight 
-          position={[0, 2, -5]} 
-          intensity={1.5}  
-        />
-        {/* Top Light */}
-        <directionalLight 
-          position={[0, 5, 0]} 
-          intensity={0.5}  
-        />
-        {/* Realistic reflections without fetching external HDR files */}
-        {/* 3D Content */}
-        <ModelErrorBoundary>
-          <Suspense fallback={<Html center><div className="rounded bg-white/90 px-3 py-2 text-sm text-gray-700 shadow">Loading shirt model…</div></Html>}>
+    <ModelErrorBoundary>
+      <div id="r3f-shirt-canvas" data-model-ready={modelReady} className="w-full h-full relative min-h-[400px] rounded-xl overflow-hidden shadow-inner border border-gray-300">
+        {/* HTML Loading Overlay nằm BÊN NGOÀI Canvas */}
+        {!modelReady && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/70 backdrop-blur-[1px] pointer-events-none transition-opacity duration-300">
+            <div className="rounded-lg bg-white/95 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-md border border-gray-200 flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>Loading shirt model…</span>
+            </div>
+          </div>
+        )}
+
+        <Canvas 
+          shadows 
+          style={{ backgroundColor: 'transparent' }}
+          gl={{ preserveDrawingBuffer: true, alpha: true }}
+        >
+          <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+          {/* Lighting Setup */}
+          <ambientLight intensity={0.6} />
+          {/* Main Key Light (Front Right) */}
+          <directionalLight 
+            position={[2, 2, 5]} 
+            intensity={1.2}  
+            castShadow 
+            shadow-mapSize={1024}
+          />
+          {/* Fill Light (Front Left) */}
+          <directionalLight 
+            position={[-3, 0, 4]} 
+            intensity={0.8}  
+          />
+          {/* Back Light (Rim Light) */}
+          <directionalLight 
+            position={[0, 2, -5]} 
+            intensity={1.5}  
+          />
+          {/* Top Light */}
+          <directionalLight 
+            position={[0, 5, 0]} 
+            intensity={0.5}  
+          />
+          {/* Realistic reflections without fetching external HDR files */}
+          {/* 3D Content - Suspense fallback={null} để không can thiệp DOM bên trong Canvas */}
+          <Suspense fallback={null}>
             <ShirtModel 
               colorHex={shirtColor} 
               designImage={designImage}
@@ -337,18 +356,18 @@ export default function ShirtCanvas3D({
               onReady={handleModelReady}
             />
           </Suspense>
-        </ModelErrorBoundary>
 
-        {/* Camera Controls */}
-        <OrbitControls 
-          makeDefault
-          enabled={!isDragging}
-          enableZoom={false}
-          enablePan={false}
-          enableRotate={true}
-        />
-      </Canvas>
-    </div>
+          {/* Camera Controls */}
+          <OrbitControls 
+            makeDefault
+            enabled={!isDragging}
+            enableZoom={false}
+            enablePan={false}
+            enableRotate={true}
+          />
+        </Canvas>
+      </div>
+    </ModelErrorBoundary>
   );
 }
 
