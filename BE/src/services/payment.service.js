@@ -266,16 +266,24 @@ const momoNotification = async (body) => {
 
 const bankNotification = async (req) => {
   if (!env.PAYMENT_WEBHOOK_TOKEN) throw paymentError('Bank transaction webhook is not configured.', 503);
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const authorization = String(req.headers.authorization || '');
+  const match = authorization.match(/^(?:Bearer|Apikey)\s+(.+)$/i);
+  const token = match?.[1]?.trim() || '';
   if (!token || !equalSignature(Buffer.from(token).toString('hex'), Buffer.from(env.PAYMENT_WEBHOOK_TOKEN).toString('hex'))) throw paymentError('Invalid bank callback authorization', 401);
   const data = req.body || {};
   const content = String(data.content || '').toUpperCase();
-  const ref = String(data.orderId || content.match(/ALT-?[A-F0-9]{10,16}/)?.[0] || '').trim().toUpperCase();
-  if (String(data.transType).toUpperCase() !== 'C' || String(data.bankaccount) !== String(env.BANK_ACCOUNT_NUMBER)) throw paymentError('Bank transaction does not match payment account or transaction type.');
-  const transactionId = String(data.transactionid || data.referencenumber || '');
+  const suppliedCode = String(data.code || '').toUpperCase();
+  const referenceMatch = `${suppliedCode} ${content}`.match(/ALT-?[A-F0-9]{10,16}/);
+  const ref = String(data.orderId || referenceMatch?.[0] || '').trim().toUpperCase();
+  const transferType = String(data.transferType ?? data.transType ?? '').toUpperCase();
+  const accountNumber = String(data.accountNumber ?? data.bankaccount ?? '');
+  const amount = Number(data.transferAmount ?? data.amount);
+  if (!['IN', 'C'].includes(transferType) || accountNumber !== String(env.BANK_ACCOUNT_NUMBER)) throw paymentError('Bank transaction does not match payment account or transaction type.');
+  const transactionId = String(data.id ?? data.transactionid ?? data.referenceCode ?? data.referencenumber ?? '');
   if (!transactionId) throw paymentError('Transaction ID is required.');
+  const normalizedData = { ...data, content, amount, transactionid: transactionId, referencenumber: transactionId, transactiontime: data.transactionDate ?? data.transactiontime };
   const membershipPayment = await Payment.findOne({ provider: 'VIETQR', paymentReference: ref });
-  if (membershipPayment?.membershipOrderId) return require('./membership.service').bankWebhook(data, membershipPayment);
+  if (membershipPayment?.membershipOrderId) return require('./membership.service').bankWebhook(normalizedData, membershipPayment);
   const session = await mongoose.startSession();
   try {
     return await session.withTransaction(async () => {
@@ -283,7 +291,7 @@ const bankNotification = async (req) => {
       if (!payment) throw paymentError('Payment reference not found', 404);
       if (payment.paymentStatus !== 'PENDING') return { duplicate: true };
       if (payment.expiresAt && payment.expiresAt <= new Date()) { await expireAttempt(payment, session); return { expired: true }; }
-      if (Number(data.amount) !== payment.amount) throw paymentError('Bank transaction amount does not match payment.');
+      if (amount !== payment.amount) throw paymentError('Bank transaction amount does not match payment.');
       if (!content.includes(payment.paymentReference.toUpperCase())) throw paymentError('Bank transfer content does not match payment reference.');
       const order = await Order.findById(payment.orderId).session(session);
       if (!order || order.status === 'CANCELLED' || order.paymentStatus !== 'PENDING' || order.paymentReference !== payment.paymentReference) return { stale: true };
