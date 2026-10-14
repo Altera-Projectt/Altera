@@ -4,6 +4,7 @@ const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const env = require('../config/env');
+const { incrementPaidOrderDesignSales } = require('./marketplace-sales.service');
 
 const newReference = () => `ALT${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
 const sign = (value, secret) => crypto.createHmac('sha256', secret).update(value).digest('hex');
@@ -198,6 +199,7 @@ const confirmPayment = async (orderId, adminId, transactionId) => {
       if (!updated) throw paymentError('Payment has already been processed.', 409);
       const orderUpdate = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: updated.paidAt, ...(order.status === 'PENDING' ? { status: 'CONFIRMED' } : {}) } }, { session });
       if (!orderUpdate.modifiedCount) throw paymentError('Order payment status changed. Refresh and try again.', 409);
+      await incrementPaidOrderDesignSales(order, session);
       result = { order: await Order.findById(order._id).session(session), payment: updated };
     });
     return result;
@@ -253,6 +255,7 @@ const momoNotification = async (body) => {
         if (!updated) return { duplicate: true };
         const changed = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } }, { session });
         if (!changed.modifiedCount) throw paymentError('Order payment status changed while processing MoMo notification.', 409);
+        await incrementPaidOrderDesignSales(order, session);
       } else {
         const failed = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'FAILED', failureReason: String(body.message || 'MoMo payment failed').slice(0, 300) } }, { new: true, session });
         if (!failed) return { duplicate: true };
@@ -299,6 +302,7 @@ const bankNotification = async (req) => {
       if (!updated) return { duplicate: true };
       const changed = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } }, { session });
       if (!changed.modifiedCount) throw paymentError('Order payment status changed while processing bank notification.', 409);
+      await incrementPaidOrderDesignSales(order, session);
       return { duplicate: false };
     });
   } finally { await session.endSession(); }
