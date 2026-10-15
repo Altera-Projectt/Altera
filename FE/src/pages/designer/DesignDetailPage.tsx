@@ -4,6 +4,7 @@ import api from '@/utils/axios'
 import { CartService } from '@/services/cart.api'
 import { optimizeImage, getLqipImage } from '@/utils/format'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
+import { CheckCircle2, X } from 'lucide-react'
 type Layer={id?:string;type:'text'|'image';text?:string;src?:string;x?:number;y?:number;zIndex?:number;rotation?:number;scaleX?:number;scaleY?:number;fontSize?:number;fontFamily?:string;fontWeight?:number;color?:string;visible?:boolean}
 type Side={layers:Layer[]}
 type Detail={_id:string;name:string;description:string;thumbnail:string;price:number;color:{name?:string;hex?:string};size:string;printSide:'FRONT'|'BACK'|'BOTH';printingTechnique:string;category:string;frontDesign:Side;backDesign:Side;designerId:{username:string;displayName:string;avatar?:string};productId:{_id:string;name:string;colors:{name:string;hex:string;stock:number}[];sizes:{label:string;stock:number}[];printingTechniques:{code:string}[];isActive:boolean}}
@@ -12,6 +13,7 @@ export function DesignDetailPage(){
  const {slug=''}=useParams();const [data,setData]=useState<Result|null>(null);const [side,setSide]=useState<'FRONT'|'BACK'>('FRONT');const [error,setError]=useState('');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false)
  const [selectedColor, setSelectedColor] = useState<{name:string;hex:string}|null>(null)
  const [selectedSize, setSelectedSize] = useState('')
+ const [showCartSuccess, setShowCartSuccess] = useState(false)
  const load=()=>api.get<{data:Result}>('/designers/design/'+slug).then(r=>{
    setData(r.data.data)
    const p = r.data.data.design.productId
@@ -36,7 +38,7 @@ export function DesignDetailPage(){
          backDesign: { layers: data.design.backDesign?.layers || [], background: null }
        }
      });
-     if(buyNow)window.location.assign('/checkout');else setMessage('Đã thêm vào giỏ hàng.')
+     if(buyNow)window.location.assign('/checkout');else { setMessage(''); setShowCartSuccess(true); }
    }catch{setMessage('Không thể thêm thiết kế vào giỏ hàng.')}finally{setBusy(false)}
  }
  const like=async()=>{if(!data)return;try{await api.request({method:data.isLiked?'DELETE':'POST',url:'/designers/'+data.design._id+'/like'});await load()}catch{setMessage('Đăng nhập để thích thiết kế.')}}
@@ -48,5 +50,80 @@ export function DesignDetailPage(){
   <div><p className="text-sm text-neutral-500 mb-2">Color: <span className="font-medium text-black">{selectedColor?.name}</span></p><div className="flex flex-wrap gap-2">{d.productId?.colors?.map(c => <button key={c.hex} disabled={c.stock < 1} onClick={() => setSelectedColor(c)} className={`h-8 w-8 rounded-full border-2 ${selectedColor?.hex === c.hex ? 'border-black' : 'border-transparent shadow-sm'} ${c.stock < 1 ? 'opacity-20 cursor-not-allowed' : ''}`} style={{backgroundColor: c.hex}} title={c.name}></button>)}</div></div>
   <div><p className="text-sm text-neutral-500 mb-2">Size: <span className="font-medium text-black">{selectedSize}</span></p><div className="flex flex-wrap gap-2">{d.productId?.sizes?.map(s => <button key={s.label} disabled={s.stock < 1} onClick={() => setSelectedSize(s.label)} className={`min-w-[3rem] px-3 py-1.5 rounded border text-sm font-medium ${selectedSize === s.label ? 'border-black bg-black text-white' : 'border-neutral-200'} ${s.stock < 1 ? 'opacity-30 cursor-not-allowed' : 'hover:border-black'}`}>{s.label}</button>)}</div></div>
  </div>
- <Link className="mt-7 inline-flex items-center gap-3" to={'/designer/'+d.designerId.username}><img src={d.designerId.avatar||'/favicon.svg'} alt="" className="h-10 w-10 rounded-full object-cover"/><span>View designer · {d.designerId.displayName}</span></Link><div className="mt-7 flex gap-3"><button onClick={()=>void like()} className="border px-4 py-2">{data.isLiked?'♥ Liked':'♡ Like'} · {data.likesCount}</button><button onClick={()=>void share()} className="border px-4 py-2">Share</button><span className="px-2 py-2 text-sm text-neutral-500">{data.salesCount} sales</span></div><button disabled={busy} onClick={()=>void add()} className="mt-4 w-full bg-neutral-900 px-6 py-3 text-sm font-medium text-white disabled:opacity-50">{busy?'Đang thêm…':'Add to Cart'}</button><button disabled={busy} onClick={()=>void add(true)} className="mt-3 w-full border border-neutral-900 px-6 py-3 text-sm font-medium disabled:opacity-50">Buy Now</button>{message&&<p role="status" className={`mt-3 text-sm ${message.includes('Vui lòng') || message.includes('Không thể') ? 'text-red-600' : 'text-neutral-600'}`}>{message}</p>}</section></main>
+ <Link className="mt-7 inline-flex items-center gap-3" to={'/designer/'+d.designerId.username}><img src={d.designerId.avatar||'/favicon.svg'} alt="" className="h-10 w-10 rounded-full object-cover"/><span>View designer · {d.designerId.displayName}</span></Link><div className="mt-7 flex gap-3"><button onClick={()=>void like()} className="border px-4 py-2">{data.isLiked?'♥ Liked':'♡ Like'} · {data.likesCount}</button><button onClick={()=>void share()} className="border px-4 py-2">Share</button><span className="px-2 py-2 text-sm text-neutral-500">{data.salesCount} sales</span></div><button disabled={busy} onClick={()=>void add()} className="mt-4 w-full bg-neutral-900 px-6 py-3 text-sm font-medium text-white disabled:opacity-50">{busy?'Đang thêm…':'Add to Cart'}</button><button disabled={busy} onClick={()=>void add(true)} className="mt-3 w-full border border-neutral-900 px-6 py-3 text-sm font-medium disabled:opacity-50">Buy Now</button>{message&&<p role="status" className={`mt-3 text-sm ${message.includes('Vui lòng') || message.includes('Không thể') ? 'text-red-600' : 'text-neutral-600'}`}>{message}</p>}</section>{showCartSuccess && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cart-success-title"
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+    onClick={() => setShowCartSuccess(false)}
+  >
+    <div
+      className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={() => setShowCartSuccess(false)}
+        className="absolute right-4 top-4 rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition"
+        aria-label="Đóng popup"
+      >
+        <X size={18} />
+      </button>
+
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <CheckCircle2 size={24} className="stroke-[2.5]" />
+        </div>
+        <div>
+          <h3 id="cart-success-title" className="text-base font-bold text-neutral-900">
+            Đã thêm vào giỏ hàng thành công!
+          </h3>
+          <p className="text-xs text-neutral-500">Sản phẩm đã sẵn sàng trong giỏ hàng</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex gap-4 rounded-xl border border-neutral-100 bg-neutral-50 p-3.5">
+        {d.thumbnail ? (
+          <img
+            src={d.thumbnail}
+            alt={d.name}
+            className="h-20 w-20 shrink-0 rounded-lg border border-neutral-200 bg-white object-contain"
+          />
+        ) : (
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-neutral-200 text-xs text-neutral-400">
+            No image
+          </div>
+        )}
+        <div className="flex min-w-0 flex-1 flex-col justify-center">
+          <h4 className="truncate text-sm font-semibold text-neutral-900">{d.name}</h4>
+          <p className="mt-1 text-xs text-neutral-500">
+            Màu: <span className="font-medium text-neutral-800">{selectedColor?.name || 'Mặc định'}</span>
+            {' · '}
+            Size: <span className="font-medium text-neutral-800">{selectedSize || 'Tiêu chuẩn'}</span>
+          </p>
+          <p className="mt-1.5 text-sm font-bold text-neutral-900">
+            {d.price.toLocaleString('vi-VN')} ₫
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => setShowCartSuccess(false)}
+          className="w-full rounded-xl border border-neutral-300 py-2.5 text-center text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition"
+        >
+          Tiếp tục mua sắm
+        </button>
+        <Link
+          to="/cart"
+          className="flex w-full items-center justify-center rounded-xl bg-neutral-900 py-2.5 text-center text-sm font-semibold text-white hover:bg-neutral-800 transition"
+        >
+          Xem giỏ hàng
+        </Link>
+      </div>
+    </div>
+  </div>
+)}</main>
 }

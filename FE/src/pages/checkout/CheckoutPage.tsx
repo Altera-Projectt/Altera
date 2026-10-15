@@ -76,9 +76,9 @@ export function CheckoutPage() {
           ...(item._id && { cartItemId: item._id }),
         })),
         shippingAddress: {
-          fullName: values.fullName,
-          phone: values.phone,
-          street: values.address,
+          fullName: values.fullName.trim(),
+          phone: values.phone.trim(),
+          street: values.address.trim(),
           city: '',
           province: '',
           country: 'Vietnam',

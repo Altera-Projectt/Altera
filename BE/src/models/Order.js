@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 
 const ORDER_STATUSES = ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'];
 const PAYMENT_METHODS = ['COD', 'BANK_TRANSFER', 'MOMO'];
@@ -58,8 +58,8 @@ const ShippingAddressSchema = new mongoose.Schema(
     fullName: { type: String, required: true },
     phone: { type: String, required: true },
     street: { type: String, required: true },
-    city: { type: String, required: true },
-    province: { type: String, required: true },
+    city: { type: String, default: '' },
+    province: { type: String, default: '' },
     country: { type: String, default: 'Vietnam' },
     postalCode: { type: String },
   },

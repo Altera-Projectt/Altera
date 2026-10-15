@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Lock, RotateCw, Trash2, Unlock, Upload, X, Save, FolderOpen, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Lock, RotateCw, Trash2, Unlock, Upload, X, Save, FolderOpen, Search, CheckCircle2 } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
 import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
@@ -120,6 +120,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const [draftId, setDraftId] = useState<string | null>(null)
   const [draftName, setDraftName] = useState('')
   const [previewThumbnail, setPreviewThumbnail] = useState('')
+  const [showCartSuccess, setShowCartSuccess] = useState(false)
   const [draftNameInput, setDraftNameInput] = useState('')
   const [showDraftName, setShowDraftName] = useState(false)
   const [showDraftGallery, setShowDraftGallery] = useState(false)
@@ -695,7 +696,10 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       } })
       await fetchCart()
       if (orderNow) navigate('/checkout')
-      else setError('Added to cart successfully.')
+      else {
+        setError('')
+        setShowCartSuccess(true)
+      }
     } catch (requestError: unknown) {
       setError(errorMessage(requestError, 'Could not add this design to cart.'))
     } finally { setSubmitting(false) }
@@ -791,5 +795,84 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(false)} className="w-full rounded-lg border border-black px-4 py-3 text-sm font-semibold disabled:opacity-50">{submitting ? 'Adding…' : 'Add to Cart'}</button>
       <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(true)} className="w-full rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Order Now</button>
     </aside>
+    {showCartSuccess && product && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="custom-cart-success-title"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        onClick={() => setShowCartSuccess(false)}
+      >
+        <div
+          className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-all"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={() => setShowCartSuccess(false)}
+            className="absolute right-4 top-4 rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700 transition"
+            aria-label="Đóng popup"
+          >
+            <X size={18} />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+              <CheckCircle2 size={24} className="stroke-[2.5]" />
+            </div>
+            <div>
+              <h3 id="custom-cart-success-title" className="text-base font-bold text-neutral-900">
+                Đã thêm vào giỏ hàng thành công!
+              </h3>
+              <p className="text-xs text-neutral-500">Sản phẩm tùy chỉnh đã sẵn sàng trong giỏ hàng</p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex gap-4 rounded-xl border border-neutral-100 bg-neutral-50 p-3.5">
+            {activeImageLayer?.src || product.imageUrl ? (
+              <img
+                src={activeImageLayer?.src || product.imageUrl}
+                alt={product.name}
+                className="h-20 w-20 shrink-0 rounded-lg border border-neutral-200 bg-white object-contain"
+              />
+            ) : (
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-neutral-200 text-xs text-neutral-400">
+                No image
+              </div>
+            )}
+            <div className="flex min-w-0 flex-1 flex-col justify-center">
+              <h4 className="truncate text-sm font-semibold text-neutral-900">{product.name}</h4>
+              <p className="mt-1 text-xs text-neutral-500">
+                Màu: <span className="font-medium text-neutral-800">{selectedColor?.name || colorName}</span>
+                {' · '}
+                Size: <span className="font-medium text-neutral-800">{size}</span>
+                {' · '}
+                SL: <span className="font-medium text-neutral-800">{quantity}</span>
+              </p>
+              <p className="mt-1.5 text-sm font-bold text-neutral-900">
+                {formatVND(estimatedPrice * quantity)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setShowCartSuccess(false)}
+              className="w-full rounded-xl border border-neutral-300 py-2.5 text-center text-sm font-semibold text-neutral-700 hover:bg-neutral-50 transition"
+            >
+              Tiếp tục thiết kế
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/cart')}
+              className="flex w-full items-center justify-center rounded-xl bg-neutral-900 py-2.5 text-center text-sm font-semibold text-white hover:bg-neutral-800 transition"
+            >
+              Xem giỏ hàng
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
 }

@@ -29,10 +29,10 @@ const createOrderValidator = [
     .trim().notEmpty().withMessage('Street address is required'),
 
   body('shippingAddress.city')
-    .trim().notEmpty().withMessage('City is required'),
+    .optional({ checkFalsy: true }).trim(),
 
   body('shippingAddress.province')
-    .trim().notEmpty().withMessage('Province is required'),
+    .optional({ checkFalsy: true }).trim(),
 
   handleValidationErrors,
 ];
