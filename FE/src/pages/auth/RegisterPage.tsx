@@ -16,13 +16,13 @@ import AuthLayout from '@/components/layout/AuthLayout'
 // ── Schema ─────────────────────────────────────────────────────────────────
 const registerSchema = z
   .object({
-    fullName: z.string().min(2, 'Name must be at least 2 characters'),
-    email: z.string().min(1, 'Email is required').email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters').regex(/\d/, 'Password must contain at least one number'),
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
+    fullName: z.string().min(2, 'Họ và tên phải có ít nhất 2 ký tự'),
+    email: z.string().min(1, 'Vui lòng nhập email').email('Email không đúng định dạng'),
+    password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự').regex(/\d/, 'Mật khẩu phải chứa ít nhất một chữ số'),
+    confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu'),
   })
   .refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
+    message: 'Mật khẩu xác nhận không khớp',
     path: ['confirmPassword'],
   })
 
@@ -52,11 +52,11 @@ export function RegisterPage() {
     setIsLoading(true)
     try {
       const response = await AuthService.register(data)
-      toast.success(response.data.message || 'Registration successful! Please log in.')
+      toast.success(response.data.message || 'Đăng ký thành công! Vui lòng đăng nhập.')
       navigate('/auth/login')
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>
-      const errorMessage = axiosError.response?.data?.message || 'Registration failed. Please try again.'
+      const errorMessage = axiosError.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.'
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)
@@ -71,16 +71,16 @@ export function RegisterPage() {
         const { user, token } = response.data.data
 
         storeLogin(user, token)
-        toast.success(response.data.message || 'Successfully signed in with Google.')
+        toast.success(response.data.message || 'Đăng nhập bằng Google thành công.')
         navigate('/')
       } catch (error) {
-        toast.error('Google authentication failed. Please try again.')
+        toast.error('Xác thực Google thất bại. Vui lòng thử lại.')
       } finally {
         setIsLoading(false)
       }
     },
     onError: () => {
-      toast.error('Google authentication was canceled or failed.')
+      toast.error('Đăng nhập Google đã bị hủy hoặc thất bại.')
     },
   })
 
@@ -94,7 +94,7 @@ export function RegisterPage() {
           </Link>
         </div>
 
-        <h2 className="text-[2.75rem] font-bold text-[#0011FF] mb-12 mt-12 md:mt-8 font-heading tracking-tight leading-none uppercase">Sign up</h2>
+        <h2 className="text-[2.75rem] font-bold text-[#0011FF] mb-12 mt-12 md:mt-8 font-heading tracking-tight leading-none uppercase">Đăng ký</h2>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col lg:flex-row gap-10 lg:gap-16 w-full" noValidate>
 
@@ -103,7 +103,7 @@ export function RegisterPage() {
             <div>
               <input
                 type="text"
-                placeholder="Full name"
+                placeholder="Họ và tên"
                 {...register('fullName')}
                 className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
               />
@@ -113,7 +113,7 @@ export function RegisterPage() {
             <div>
               <input
                 type="email"
-                placeholder="Email address"
+                placeholder="Địa chỉ Email"
                 {...register('email')}
                 className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
               />
@@ -123,7 +123,7 @@ export function RegisterPage() {
             <div>
               <input
                 type="password"
-                placeholder="Password"
+                placeholder="Mật khẩu"
                 {...register('password')}
                 className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
               />
@@ -133,7 +133,7 @@ export function RegisterPage() {
             <div>
               <input
                 type="password"
-                placeholder="Confirm Password"
+                placeholder="Xác nhận mật khẩu"
                 {...register('confirmPassword')}
                 className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
               />
@@ -145,16 +145,16 @@ export function RegisterPage() {
           <div className="flex-1 flex flex-col justify-center lg:pl-6 border-t lg:border-t-0 lg:border-l border-[#0011FF]/10 pt-8 lg:pt-0">
 
             <button type="submit" disabled={isLoading} className="w-full bg-[#0011FF] text-white text-[14px] font-bold tracking-widest py-4 rounded-[4px] hover:opacity-90 transition-opacity mb-4">
-              {isLoading ? 'SIGNING UP...' : 'SIGN UP'}
+              {isLoading ? 'ĐANG ĐĂNG KÝ...' : 'ĐĂNG KÝ'}
             </button>
 
             <div className="flex justify-between items-center text-[12px] font-medium mb-12">
-              <span className="text-[#0011FF]/60 font-bold">Already have an account?</span>
-              <Link to="/auth/login" className="text-[#0011FF] font-black hover:underline tracking-wide">Log in</Link>
+              <span className="text-[#0011FF]/60 font-bold">Đã có tài khoản?</span>
+              <Link to="/auth/login" className="text-[#0011FF] font-black hover:underline tracking-wide">Đăng nhập ngay</Link>
             </div>
 
             <div className="relative flex justify-center mb-8">
-              <span className="bg-[#F0F8FF] px-4 text-xs font-bold text-[#0011FF]/60 relative z-10">Or</span>
+              <span className="bg-[#F0F8FF] px-4 text-xs font-bold text-[#0011FF]/60 relative z-10">Hoặc</span>
               <div className="absolute inset-0 flex items-center z-0">
                 <span className="w-full border-t border-[#0011FF]/20" />
               </div>
@@ -167,14 +167,15 @@ export function RegisterPage() {
                 onClick={() => handleGoogleLogin()}
                 className="w-full border-[1.5px] border-[#0011FF]/30 text-[#0011FF] text-xs font-bold py-3.5 rounded-[4px] hover:bg-[#0011FF]/5 transition-colors flex items-center justify-center gap-2 tracking-wide"
               >
-                Sign up with Google
+                Đăng ký bằng Google
               </button>
               <button
                 type="button"
                 disabled={isLoading}
+                onClick={() => {}}
                 className="w-full border-[1.5px] border-[#0011FF]/30 text-[#0011FF] text-xs font-bold py-3.5 rounded-[4px] hover:bg-[#0011FF]/5 transition-colors flex items-center justify-center gap-2 tracking-wide"
               >
-                Sign up with Facebook
+                Đăng ký bằng Facebook
               </button>
             </div>
 

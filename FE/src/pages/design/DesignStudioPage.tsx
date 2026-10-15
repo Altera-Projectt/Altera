@@ -874,7 +874,7 @@ function CreateTab({
           <div className="flex items-center gap-2">
             <Wand2 className="h-4 w-4 text-[var(--color-accent)]" />
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-              Creator Tools
+              Công cụ sáng tạo
             </p>
           </div>
           {viewState === 'result' && currentDesign && (
@@ -1301,7 +1301,7 @@ export function DesignStudioPage() {
 
   const handleSaveToLibrary = async () => {
     const image = await saveCurrentToLibrary()
-    if (image) showToast('Đã lưu vào thư viện ảnh — dùng ngay trong Custom Design!')
+    if (image) showToast('Đã lưu vào thư viện ảnh — dùng ngay trong Studio 3D!')
   }
 
   const handleDesignShirt = async () => {
@@ -1409,7 +1409,7 @@ export function DesignStudioPage() {
       {/* ── Header ── */}
       <div className="mb-8">
         <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
-          ALTERA — Design Studio
+          ALTERA — Xưởng thiết kế
         </p>
         <h1 className="heading-brand text-4xl md:text-5xl">
           Phòng Thiết Kế
@@ -1437,7 +1437,7 @@ export function DesignStudioPage() {
             {tab === 'create' ? (
               <><Wand2 className="h-3.5 w-3.5" /> Phác thảo mới</>
             ) : tab === 'custom' ? (
-              <>Custom Design</>
+              <>Studio 3D Tự Chỉnh</>
             ) : (
               <><BookOpen className="h-3.5 w-3.5" /> Thư viện</>
             )}

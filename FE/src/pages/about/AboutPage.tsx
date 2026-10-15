@@ -14,7 +14,7 @@ export function AboutPage() {
       <section className="relative min-h-[90vh] flex flex-col justify-center px-6 md:px-12 pt-24 overflow-hidden bg-white">
         <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto flex justify-between items-center mb-12 font-bold uppercase tracking-widest z-20 relative">
           <img src={logoSvg} alt="ALTERA Logo" className="h-6 md:h-10 w-auto object-contain" />
-          <span className="text-electric-blue text-[10px]">ABOUT US</span>
+          <span className="text-electric-blue text-[10px]">VỀ CHÚNG TÔI</span>
         </div>
 
         <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto relative z-10 flex flex-col lg:flex-row justify-between items-center mt-12 md:mt-24">
@@ -25,8 +25,8 @@ export function AboutPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 1 }}
             >
-              <span className="text-transparent" style={{ WebkitTextStroke: '2px #0011FF' }}>WHO</span> <br />
-              WE ARE?
+              <span className="text-transparent" style={{ WebkitTextStroke: '2px #0011FF' }}>CHÚNG TÔI</span> <br />
+              LÀ AI?
             </motion.h1>
             <motion.p
               className="mt-16 text-sm md:text-base font-medium leading-relaxed max-w-sm text-black tracking-tight ml-2"
@@ -34,7 +34,7 @@ export function AboutPage() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 1 }}
             >
-              ALTERA uses AI-powered tools that help you discover your personal style, design clothing based on your ideas, and order custom-tailored products crafted uniquely for you.
+              ALTERA ứng dụng công cụ AI tiên tiến giúp bạn khám phá phong cách cá nhân, tự do thiết kế trang phục theo ý tưởng và đặt may áo đo ni đóng giày dành riêng cho chính bạn.
             </motion.p>
           </div>
 
@@ -71,9 +71,9 @@ export function AboutPage() {
       <section className="bg-electric-blue text-white py-32 md:py-48 px-6">
         <div className="max-w-[var(--spacing-contentMax)] mx-auto flex flex-col items-start">
           <p className="max-w-2xl text-lg md:text-2xl leading-relaxed tracking-tight mb-24 md:mb-40 font-light text-left">
-            Fashion is not just about what you wear, it's about how you express yourself. <br /><br />
-            ALTERA was born out of a desire to make fashion creation easier. We believe everyone deserves to own clothing that reflects their unique personality, rather than simply choosing from ready-made templates. <br /><br />
-            With the assistance of AI, finding your style, designing clothes, and ordering custom tailoring has become faster, more intuitive, and more accessible than ever.
+            Thời trang không chỉ là những gì bạn mặc, đó là cách bạn thể hiện bản sắc của chính mình. <br /><br />
+            ALTERA ra đời từ mong muốn đơn giản hóa việc sáng tạo thời trang. Chúng tôi tin rằng mỗi người đều xứng đáng sở hữu trang phục mang đậm dấu ấn cá nhân thay vì chỉ chọn từ những khuôn mẫu may sẵn. <br /><br />
+            Với sự đồng hành của AI, việc định hình phong cách, thiết kế áo và đặt in may theo yêu cầu trở nên nhanh chóng, trực quan và dễ dàng hơn bao giờ hết.
           </p>
           <h2 className="heading-brand text-[clamp(5rem,20vw,16rem)] tracking-tighter leading-none text-white w-full text-right self-end">
             ALTERA
@@ -90,10 +90,10 @@ export function AboutPage() {
           <div className="flex justify-between items-end mb-24 w-full">
             <h2 className="font-heading text-[clamp(4rem,10vw,8rem)] tracking-normal leading-none text-electric-blue font-black w-full flex flex-col md:flex-row justify-between uppercase">
               <div className="flex gap-4 md:gap-8">
-                <span className="text-transparent" style={{ WebkitTextStroke: '2px #002bff' }}>HOW</span>
+                <span className="text-transparent" style={{ WebkitTextStroke: '2px #002bff' }}>CÁCH</span>
                 <span>ALTERA</span>
               </div>
-              <span className="text-transparent mt-4 md:mt-0" style={{ WebkitTextStroke: '2px #002bff' }}>WORKS</span>
+              <span className="text-transparent mt-4 md:mt-0" style={{ WebkitTextStroke: '2px #002bff' }}>HOẠT ĐỘNG</span>
             </h2>
           </div>
 
@@ -101,22 +101,22 @@ export function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 md:gap-12 relative w-full h-auto md:h-[600px] mt-12 items-center">
             {/* Step 1 */}
             <div className="md:translate-y-[-60px]">
-              <ProcessCard number="01" title={"Discover\nYour Style"} />
+              <ProcessCard number="01" title={"Khám phá\nPhong cách"} />
             </div>
 
             {/* Step 2 */}
             <div className="md:translate-y-[60px]">
-              <ProcessCard number="02" title={"Design\nYour Clothing"} />
+              <ProcessCard number="02" title={"Thiết kế\nTrang phục"} />
             </div>
 
             {/* Step 3 */}
             <div className="md:translate-y-[-60px]">
-              <ProcessCard number="03" title={"Order Your\nCustom Piece"} />
+              <ProcessCard number="03" title={"Đặt may\nTheo yêu cầu"} />
             </div>
 
             {/* Step 4 */}
             <div className="md:translate-y-[60px]">
-              <ProcessCard number="04" title={"Share\nYour Design"} />
+              <ProcessCard number="04" title={"Chia sẻ\nThiết kế"} />
             </div>
           </div>
         </div>
@@ -135,8 +135,8 @@ export function AboutPage() {
             {/* Top Left Callout (Personalization) */}
             <div className="absolute top-[20%] left-[10%] md:left-[15%] hidden md:flex items-center z-30 group">
               <div className="text-[10px] text-white text-right mr-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">PERSONALIZATION</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Each design reflects the unique personality and style of the wearer</span>
+                <span className="font-heading font-black text-sm block mb-1">CÁ NHÂN HÓA</span>
+                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Mỗi thiết kế đều phản ánh cá tính và phong cách độc bản của người mặc</span>
               </div>
               <div className="w-8 h-px bg-white relative">
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
@@ -148,8 +148,8 @@ export function AboutPage() {
             {/* Bottom Left Callout (Creativity) */}
             <div className="absolute bottom-[25%] left-[5%] md:left-[10%] hidden md:flex items-center z-30 group">
               <div className="text-[10px] text-white text-right mr-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">CREATIVITY</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Encouraging everyone to freely express their ideas without limitations</span>
+                <span className="font-heading font-black text-sm block mb-1">SÁNG TẠO</span>
+                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Khuyến khích mọi người tự do thể hiện ý tưởng độc đáo không giới hạn</span>
               </div>
               <div className="w-6 h-px bg-white relative">
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
@@ -161,8 +161,8 @@ export function AboutPage() {
             {/* Top Right Callout (Technology) */}
             <div className="absolute top-[25%] right-[5%] md:right-[15%] hidden md:flex items-center flex-row-reverse z-30 group">
               <div className="text-[10px] text-white text-left ml-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">TECHNOLOGY</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Applying AI to simplify the fashion discovery and design process</span>
+                <span className="font-heading font-black text-sm block mb-1">CÔNG NGHỆ</span>
+                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Ứng dụng AI đột phá giúp đơn giản hóa quy trình tìm kiếm và thiết kế thời trang</span>
               </div>
               <div className="w-12 h-px bg-white relative">
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
@@ -174,8 +174,8 @@ export function AboutPage() {
             {/* Bottom Right Callout (Sustainability) */}
             <div className="absolute bottom-[20%] right-[10%] md:right-[20%] hidden md:flex items-center flex-row-reverse z-30 group">
               <div className="text-[10px] text-white text-left ml-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">SUSTAINABILITY</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Prioritizing on-demand production and solutions that minimize environmental impact</span>
+                <span className="font-heading font-black text-sm block mb-1">BỀN VỮNG</span>
+                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Ưu tiên sản xuất theo yêu cầu thực tế, giảm thiểu tối đa tồn kho và bảo vệ môi trường</span>
               </div>
               <div className="w-16 h-px bg-white relative">
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
@@ -191,7 +191,7 @@ export function AboutPage() {
 
         {/* Bleeding bottom text */}
         <h2 className="absolute bottom-0 left-0 w-full text-center font-heading font-black text-[clamp(8rem,25vw,22rem)] tracking-tighter leading-[0.75] text-white z-0 opacity-100 mix-blend-overlay uppercase pointer-events-none mb-[-2rem] md:mb-[-4rem]">
-          OUR VALUES
+          GIÁ TRỊ CỐT LÕI
         </h2>
       </section>
 

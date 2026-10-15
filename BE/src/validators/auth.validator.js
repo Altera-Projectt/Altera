@@ -5,7 +5,7 @@ const handleValidationErrors = (req, res, next) => {
   if (!errors.isEmpty()) {
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
+      message: 'Dữ liệu không hợp lệ',
       errors: errors.array().map((e) => ({ field: e.path, message: e.msg })),
     });
   }
@@ -15,19 +15,19 @@ const handleValidationErrors = (req, res, next) => {
 const registerValidator = [
   body('fullName')
     .trim()
-    .notEmpty().withMessage('Full name is required')
-    .isLength({ min: 2, max: 100 }).withMessage('Full name must be 2-100 characters'),
+    .notEmpty().withMessage('Họ và tên không được để trống')
+    .isLength({ min: 2, max: 100 }).withMessage('Họ và tên phải từ 2 đến 100 ký tự'),
 
   body('email')
     .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please provide a valid email')
+    .notEmpty().withMessage('Email không được để trống')
+    .isEmail().withMessage('Email không đúng định dạng')
     .normalizeEmail(),
 
   body('password')
-    .notEmpty().withMessage('Password is required')
-    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-    .matches(/\d/).withMessage('Password must contain at least one number'),
+    .notEmpty().withMessage('Mật khẩu không được để trống')
+    .isLength({ min: 6 }).withMessage('Mật khẩu phải có ít nhất 6 ký tự')
+    .matches(/\d/).withMessage('Mật khẩu phải chứa ít nhất một chữ số'),
 
   handleValidationErrors,
 ];
@@ -35,11 +35,11 @@ const registerValidator = [
 const loginValidator = [
   body('email')
     .trim()
-    .notEmpty().withMessage('Email is required')
-    .isEmail().withMessage('Please provide a valid email'),
+    .notEmpty().withMessage('Email không được để trống')
+    .isEmail().withMessage('Email không đúng định dạng'),
 
   body('password')
-    .notEmpty().withMessage('Password is required'),
+    .notEmpty().withMessage('Mật khẩu không được để trống'),
 
   handleValidationErrors,
 ];

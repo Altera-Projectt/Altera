@@ -15,8 +15,8 @@ import AuthLayout from '@/components/layout/AuthLayout'
 
 // ── Schema ─────────────────────────────────────────────────────────────────
 const loginSchema = z.object({
-  email: z.string().min(1, 'Email is required').email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().min(1, 'Vui lòng nhập email').email('Email không đúng định dạng'),
+  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
 })
 
 type LoginFormValues = z.infer<typeof loginSchema>
@@ -51,11 +51,11 @@ export function LoginPage() {
       const { user, token } = response.data.data
 
       storeLogin(user, token)
-      toast.success(response.data.message || 'Successfully signed in.')
+      toast.success(response.data.message || 'Đăng nhập thành công.')
       navigate(user.role === 'ADMIN' ? '/admin/dashboard' : from, { replace: true })
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>
-      const errorMessage = axiosError.response?.data?.message || 'Authentication failed. Please check your credentials.'
+      const errorMessage = axiosError.response?.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.'
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)
@@ -82,14 +82,14 @@ export function LoginPage() {
       {/* Right Column: Form Card */}
       <div className="flex-1 flex items-center justify-center p-4 md:p-8 z-10">
         <div className="bg-[#F4F6F9] w-full max-w-[420px] rounded-[8px] shadow-lg flex flex-col p-8 lg:p-12 relative border-[1.5px] border-[#0011FF]/50">
-          <h2 className="text-[2.25rem] font-bold text-[#0011FF] mb-2 font-heading tracking-tight uppercase">Log in</h2>
+          <h2 className="text-[2.25rem] font-bold text-[#0011FF] mb-2 font-heading tracking-tight uppercase">Đăng nhập</h2>
           <p className="text-[11px] text-[#0011FF] mb-8 leading-relaxed font-medium">
-            Welcome! Sign in to continue creating your unique fashion identity.
+            Chào mừng bạn! Đăng nhập để tiếp tục sáng tạo phong cách thời trang độc bản.
           </p>
 
           {/* Tabs (Visual only) */}
           <div className="flex justify-center text-[10px] font-bold text-[#0011FF] border-b border-[#0011FF]/20 mb-8 uppercase tracking-widest">
-            <div className="pb-2 border-b-[3px] border-[#0011FF] text-center px-10">Account</div>
+            <div className="pb-2 border-b-[3px] border-[#0011FF] text-center px-10">Tài khoản</div>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 flex flex-col" noValidate>
@@ -104,7 +104,7 @@ export function LoginPage() {
             </div>
 
             <div>
-              <label className="text-[10px] text-[#0011FF] font-bold block mb-1.5 uppercase">Password</label>
+              <label className="text-[10px] text-[#0011FF] font-bold block mb-1.5 uppercase">Mật khẩu</label>
               <input
                 type="password"
                 {...register('password')}
@@ -115,12 +115,12 @@ export function LoginPage() {
 
             <div className="flex items-center gap-2 mt-2">
               <input type="checkbox" id="remember" className="w-4 h-4 rounded-[2px] border-[#0011FF]/50 accent-[#0011FF]" />
-              <label htmlFor="remember" className="text-[10px] text-[#0011FF] font-bold">Remember me</label>
+              <label htmlFor="remember" className="text-[10px] text-[#0011FF] font-bold">Ghi nhớ đăng nhập</label>
             </div>
 
             <div className="mt-8">
               <button type="submit" disabled={isLoading} className="w-full bg-[#0011FF] text-white text-[13px] font-bold tracking-widest py-4 rounded-[4px] hover:opacity-90 transition-opacity">
-                {isLoading ? 'LOGIN...' : 'LOGIN'}
+                {isLoading ? 'ĐANG ĐĂNG NHẬP...' : 'ĐĂNG NHẬP'}
               </button>
             </div>
           </form>
@@ -128,14 +128,13 @@ export function LoginPage() {
           {/* Footer links */}
           <div className="mt-8 flex items-center justify-between text-[11px] text-[#0011FF] font-bold tracking-tight">
             <div className="flex items-center gap-1">
-              <span className="opacity-60 font-medium">New User?</span>
-              <Link to="/auth/register" className="underline hover:opacity-80 transition-opacity">Sign up</Link>
+              <span className="opacity-60 font-medium">Chưa có tài khoản?</span>
+              <Link to="/auth/register" className="underline hover:opacity-80 transition-opacity">Đăng ký ngay</Link>
             </div>
-            <Link to="/auth/forgot-password" className="opacity-60 hover:opacity-100 transition-opacity font-medium">Forgot password?</Link>
+            <Link to="/auth/forgot-password" className="opacity-60 hover:opacity-100 transition-opacity font-medium">Quên mật khẩu?</Link>
           </div>
         </div>
       </div>
     </AuthLayout>
   )
 }
-

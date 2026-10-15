@@ -84,10 +84,19 @@ const errorMessage = (error: unknown, fallback: string) => {
 
 async function uploadCanvasThumbnail() {
   const canvasRoot = document.getElementById('r3f-shirt-canvas')
-  if (canvasRoot?.dataset.modelReady !== 'true') throw new Error('The 3D shirt preview is still loading. Please wait and try again.')
+  if (canvasRoot?.dataset.modelReady !== 'true') throw new Error('Bản xem trước áo 3D vẫn đang tải. Vui lòng đợi và thử lại.')
   const canvas = canvasRoot instanceof HTMLCanvasElement ? canvasRoot : canvasRoot?.querySelector('canvas')
-  if (!canvas) throw new Error('The 3D preview is not ready. Please wait for it to load and try again.')
-  const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Could not capture the 3D preview.')), 'image/webp', 0.9))
+  if (!canvas) throw new Error('Bản xem trước 3D chưa sẵn sàng. Vui lòng đợi tải xong và thử lại.')
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    if (typeof canvas.toBlob === 'function') {
+      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Không thể chụp ảnh xem trước 3D.')), 'image/webp', 0.9)
+    } else if (typeof canvas.toDataURL === 'function') {
+      const dataUrl = canvas.toDataURL('image/webp', 0.9)
+      fetch(dataUrl).then((r) => r.blob()).then(resolve).catch(reject)
+    } else {
+      reject(new Error('Trình duyệt không hỗ trợ chụp ảnh canvas.'))
+    }
+  })
   const image = new File([blob], 'design-preview.webp', { type: blob.type || 'image/webp' })
   const response = await DesignService.uploadCustomImage(image)
   return response.data.data.image.url
@@ -497,23 +506,24 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       const saved = id ? await DesignService.updateCustomDraft(id, payload) : await DesignService.createCustomDraft(payload)
       id = saved.data.data.draft._id; setDraftId(id)
       
-      thumbnailUrl = thumbnailUrl || undefined;
-      let canvas = document.getElementById('r3f-shirt-canvas') as HTMLCanvasElement | null;
-      if (canvas && typeof canvas.toDataURL !== 'function') {
-         canvas = canvas.querySelector('canvas');
-      }
-      if (canvas && typeof canvas.toDataURL === 'function') {
-         const thumbnailBase64 = canvas.toDataURL('image/webp', 0.9);
-         const res = await fetch(thumbnailBase64);
-         const blob = await res.blob();
-         const file = new File([blob], 'thumbnail.webp', { type: blob.type });
-         const { data } = await DesignService.uploadCustomImage(file);
-         thumbnailUrl = data.data.image.url;
-      } else {
-         console.error("Failed to target WebGL canvas for snapshot.");
-         setDraftError('Lỗi hệ thống: Không thể tạo ảnh xem trước 3D.');
-         setPublishing(false);
-         return; 
+      if (!thumbnailUrl) {
+        let canvas = document.getElementById('r3f-shirt-canvas') as HTMLCanvasElement | null
+        if (canvas && typeof canvas.toDataURL !== 'function') {
+          canvas = canvas.querySelector('canvas')
+        }
+        if (canvas && typeof canvas.toDataURL === 'function') {
+          const thumbnailBase64 = canvas.toDataURL('image/webp', 0.9)
+          const res = await fetch(thumbnailBase64)
+          const blob = await res.blob()
+          const file = new File([blob], 'thumbnail.webp', { type: blob.type })
+          const { data } = await DesignService.uploadCustomImage(file)
+          thumbnailUrl = data.data.image.url
+        } else {
+          console.error('Failed to target WebGL canvas for snapshot.')
+          setDraftError('Lỗi hệ thống: Không thể tạo ảnh xem trước 3D.')
+          setPublishing(false)
+          return
+        }
       }
       const publishPayload = { 
         draftId: id, 
@@ -534,7 +544,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       
       setShowPublish(false);
       setDraftError('');
-      toast.success(status === 'PUBLISHED' ? 'Design published successfully!' : 'Design submitted for review.');
+      toast.success(status === 'PUBLISHED' ? 'Đã đăng thiết kế thành công lên Marketplace!' : 'Thiết kế đã được gửi để duyệt.');
       
       // Reset form state
       setPublishName('');
@@ -550,8 +560,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       navigate('/designer/me');
     } catch (err: any) { 
       console.error("PUBLISH ERROR:", err.response?.data || err.message);
-      setDraftError(errorMessage(err, 'Could not publish this design.'));
-      toast.error(errorMessage(err, 'Could not publish this design.'));
+      setDraftError(errorMessage(err, 'Không thể đăng thiết kế này. Vui lòng thử lại.'));
+      toast.error(errorMessage(err, 'Không thể đăng thiết kế này. Vui lòng thử lại.'));
     } finally { 
       setPublishing(false) 
     }
@@ -566,7 +576,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       setPublishCollections((items) => [...items, collection])
       setPublishCollectionId(collection._id)
       setNewCollectionName('')
-    } catch (err) { setDraftError(errorMessage(err, 'Could not create this collection.')) } finally { setCreatingCollection(false) }
+    } catch (err) { setDraftError(errorMessage(err, 'Không thể tạo bộ sưu tập này.')) } finally { setCreatingCollection(false) }
   }
   const openPublish = async () => {
     setPublishName(draftName || draftNameInput || '')
@@ -600,7 +610,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       setPreviewThumbnail(saved.thumbnailUrl || saved.thumbnail || '')
       setDraftId(saved._id); setDraftName(saved.name); setDraftStatus('saved')
       setShowDraftGallery(false); setDraftError('')
-    } catch (openError: unknown) { setDraftError(errorMessage(openError, 'Could not open this draft.')) }
+    } catch (openError: unknown) { setDraftError(errorMessage(openError, 'Không thể mở bản nháp này.')) }
   }, [products])
   useEffect(() => {
     const requestedId = new URLSearchParams(window.location.search).get('draft')
@@ -618,25 +628,25 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     return () => window.clearTimeout(timer)
   }, [drafts, isAuthenticated, products, openDraft])
   const renameDraft = async (draft: CustomDesignDraft) => {
-    const name = window.prompt('Design name', draft.name)?.trim()
+    const name = window.prompt('Tên thiết kế', draft.name)?.trim()
     if (!name || name === draft.name) return
     try { const response = await DesignService.updateCustomDraft(draft._id, { name }); setDrafts((items) => items.map((item) => item._id === draft._id ? response.data.data.draft : item)); if (draftId === draft._id) setDraftName(name) }
-    catch (renameError: unknown) { setDraftError(errorMessage(renameError, 'Could not rename this draft.')) }
+    catch (renameError: unknown) { setDraftError(errorMessage(renameError, 'Không thể đổi tên bản nháp này.')) }
   }
   const duplicateDraft = async (draft: CustomDesignDraft) => {
     try { const response = await DesignService.duplicateCustomDraft(draft._id); setDrafts((items) => [response.data.data.draft, ...items]) }
-    catch (duplicateError: unknown) { setDraftError(errorMessage(duplicateError, 'Could not duplicate this draft.')) }
+    catch (duplicateError: unknown) { setDraftError(errorMessage(duplicateError, 'Không thể nhân bản bản nháp này.')) }
   }
   const deleteDraft = async (draft: CustomDesignDraft) => {
-    if (!window.confirm('Are you sure you want to delete this design?')) return
+    if (!window.confirm('Bạn có chắc chắn muốn xóa thiết kế này không?')) return
     try { await DesignService.deleteCustomDraft(draft._id); setDrafts((items) => items.filter((item) => item._id !== draft._id)); if (draftId === draft._id) { setDraftId(null); setDraftName(''); setDraftStatus('idle') } }
-    catch (deleteError: unknown) { setDraftError(errorMessage(deleteError, 'Could not delete this draft.')) }
+    catch (deleteError: unknown) { setDraftError(errorMessage(deleteError, 'Không thể xóa bản nháp này.')) }
   }
 
   useEffect(() => {
     if (!isAuthenticated) return
     let active = true
-    DesignService.listCustomDrafts().then(({ data }) => { if (active) setDrafts(data.data.drafts) }).catch(() => { if (active) setDraftError('Could not load drafts. Please try again.') })
+    DesignService.listCustomDrafts().then(({ data }) => { if (active) setDrafts(data.data.drafts) }).catch(() => { if (active) setDraftError('Không thể tải danh sách bản nháp. Vui lòng thử lại.') })
     return () => { active = false }
   }, [isAuthenticated, authenticatedUserId])
   useEffect(() => {
@@ -665,24 +675,24 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         setSize(detailedProduct.sizes?.find((item) => item.stock > 0)?.label ?? detailedProduct.sizes?.[0]?.label ?? '')
         setTechnique(detailedProduct.printingTechniques?.[0]?.code ?? '')
       }).catch(() => {
-        if (requestId === productDetailsRequestRef.current) setError('Unable to load product sizes. Please try again.')
+        if (requestId === productDetailsRequestRef.current) setError('Không thể tải kích cỡ sản phẩm. Vui lòng thử lại.')
       })
     }
   }
 
   const addToOrder = async (orderNow: boolean) => {
     if (!product || !selectedColor || !selectedSize || !printSide || !selectedTechnique) {
-      setError('Choose a product, color, size, print side, and printing technique.')
+      setError('Vui lòng chọn sản phẩm, màu sắc, kích cỡ, mặt in và công nghệ in.')
       return
     }
     const hasFront = design.frontDesign.layers.some((layer) => layer.visible)
     const hasBack = design.backDesign.layers.some((layer) => layer.visible)
     if ((printSide === 'FRONT' && !hasFront) || (printSide === 'BACK' && !hasBack) || (printSide === 'BOTH' && (!hasFront || !hasBack))) {
-      setError('Add a design layer to every selected print side before ordering.')
+      setError('Vui lòng thêm lớp thiết kế vào các mặt in đã chọn trước khi đặt hàng.')
       return
     }
     if (quantity < 1 || quantity > stock) {
-      setError(quantity > stock ? `Only ${stock} items are in stock for this selection.` : 'Quantity must be at least 1.')
+      setError(quantity > stock ? `Chỉ còn ${stock} sản phẩm trong kho cho lựa chọn này.` : 'Số lượng phải lớn hơn hoặc bằng 1.')
       return
     }
     setError('')
@@ -701,66 +711,66 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         setShowCartSuccess(true)
       }
     } catch (requestError: unknown) {
-      setError(errorMessage(requestError, 'Could not add this design to cart.'))
+      setError(errorMessage(requestError, 'Không thể thêm thiết kế này vào giỏ hàng.'))
     } finally { setSubmitting(false) }
   }
 
   return showDraftGallery ? <section className="space-y-5 rounded-xl border bg-white p-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Drafts</h2><p className="text-sm text-gray-500">Your saved Custom Design projects</p></div><button onClick={() => setShowDraftGallery(false)} className="rounded border px-4 py-2 text-sm">Back to editor</button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Bản nháp</h2><p className="text-sm text-gray-500">Các dự án thiết kế tự chỉnh của bạn</p></div><button onClick={() => setShowDraftGallery(false)} className="rounded border px-4 py-2 text-sm">Quay lại thiết kế</button></div>
     {draftError && <p role="status" className="text-sm text-red-600">{draftError}</p>}
-    {!drafts.length ? <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">No saved drafts yet.</p> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{drafts.map((draft) => <article key={draft._id} className="overflow-hidden rounded-lg border">
-      {draft.thumbnail ? <img src={draft.thumbnail} alt={`${draft.name} preview`} className="aspect-[3/4] w-full bg-gray-100 object-contain"/> : <div className="flex aspect-[3/4] items-center justify-center bg-gray-100 text-sm text-gray-400">No preview</div>}
-      <div className="space-y-2 p-3"><h3 className="truncate font-medium">{draft.name}</h3><p className="text-xs text-gray-500">{new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(draft.updatedAt))}</p><div className="flex flex-wrap gap-2"><button disabled={loadingProducts} onClick={() => void openDraft(draft)} className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50">{loadingProducts ? 'Loading…' : 'Open'}</button><button onClick={() => void renameDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Rename</button><button onClick={() => void duplicateDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Duplicate</button><button onClick={() => void deleteDraft(draft)} className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-600">Delete</button></div></div>
+    {!drafts.length ? <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">Chưa có bản nháp nào được lưu.</p> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{drafts.map((draft) => <article key={draft._id} className="overflow-hidden rounded-lg border">
+      {draft.thumbnail ? <img src={draft.thumbnail} alt={`${draft.name} preview`} className="aspect-[3/4] w-full bg-gray-100 object-contain"/> : <div className="flex aspect-[3/4] items-center justify-center bg-gray-100 text-sm text-gray-400">Chưa có ảnh</div>}
+      <div className="space-y-2 p-3"><h3 className="truncate font-medium">{draft.name}</h3><p className="text-xs text-gray-500">{new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(new Date(draft.updatedAt))}</p><div className="flex flex-wrap gap-2"><button disabled={loadingProducts} onClick={() => void openDraft(draft)} className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50">{loadingProducts ? 'Đang tải…' : 'Mở'}</button><button onClick={() => void renameDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Đổi tên</button><button onClick={() => void duplicateDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Nhân bản</button><button onClick={() => void deleteDraft(draft)} className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-600">Xóa</button></div></div>
     </article>)}</div>}
   </section> : showTemplateGallery ? <section className="relative space-y-5 rounded-xl border bg-white p-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Template Gallery</h2><p className="text-sm text-gray-500">Choose a starting point and keep every layer editable.</p></div><button onClick={() => setShowTemplateGallery(false)} className="rounded border px-4 py-2 text-sm">Back to editor</button></div>
-    <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_220px]"><label className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/><input aria-label="Search templates" placeholder="Search name, category, style, or tag" value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} className="w-full rounded border py-2 pl-9 pr-3 text-sm"/></label><select aria-label="Filter templates by category" value={templateCategory} onChange={(event) => setTemplateCategory(event.target.value)} className="rounded border px-3 py-2 text-sm"><option>All</option>{[...new Set(templates.map((template) => template.category))].sort().map((category) => <option key={category}>{category}</option>)}</select></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Thư viện mẫu</h2><p className="text-sm text-gray-500">Chọn mẫu bắt đầu và thoải mái chỉnh sửa từng lớp.</p></div><button onClick={() => setShowTemplateGallery(false)} className="rounded border px-4 py-2 text-sm">Quay lại thiết kế</button></div>
+    <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_220px]"><label className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/><input aria-label="Tìm kiếm mẫu" placeholder="Tìm theo tên, danh mục, phong cách hoặc thẻ" value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} className="w-full rounded border py-2 pl-9 pr-3 text-sm"/></label><select aria-label="Lọc mẫu theo danh mục" value={templateCategory} onChange={(event) => setTemplateCategory(event.target.value)} className="rounded border px-3 py-2 text-sm"><option>Tất cả</option>{[...new Set(templates.map((template) => template.category))].sort().map((category) => <option key={category}>{category}</option>)}</select></div>
     {templateError && <p role="status" className="text-sm text-red-600">{templateError}</p>}
-    {templateLoading ? <p className="py-10 text-center text-sm text-gray-500">Loading templates…</p> : !filteredTemplates.length ? <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">No templates match these filters.</p> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{filteredTemplates.map((template) => <button key={template._id} onClick={() => void openTemplate(template)} className="overflow-hidden rounded-lg border text-left transition hover:border-black hover:shadow-sm"><img src={template.thumbnail} alt={`${template.name} preview`} loading="lazy" className="aspect-[4/5] w-full bg-gray-100 object-cover"/><span className="block truncate px-3 pt-2 text-sm font-semibold">{template.name}</span><span className="block px-3 pb-3 text-xs text-gray-500">{template.category} · {template.style}</span></button>)}</div>}
-    {templateDetail && <div role="dialog" aria-modal="true" aria-labelledby="template-detail-title" className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/50 p-4" onClick={() => setTemplateDetail(null)}><article className="grid w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2" onClick={(event) => event.stopPropagation()}><img src={templateDetail.thumbnail} alt={`${templateDetail.name} preview`} className="max-h-[70vh] min-h-64 w-full bg-gray-100 object-cover"/><div className="flex flex-col p-5"><div className="flex items-start justify-between gap-2"><h3 id="template-detail-title" className="text-lg font-semibold">{templateDetail.name}</h3><button aria-label="Close template preview" onClick={() => setTemplateDetail(null)} className="rounded border p-1"><X size={16}/></button></div><p className="mt-2 text-xs font-medium uppercase tracking-wide text-gray-500">{templateDetail.category} · {templateDetail.style}</p><p className="mt-4 flex-1 text-sm text-gray-600">{templateDetail.description}</p><p className="mt-3 text-xs text-gray-500">{templateDetail.tags.join(' · ')}</p><button onClick={() => applyTemplate(templateDetail)} className="mt-5 rounded bg-black px-4 py-3 text-sm font-semibold text-white">Use This Template</button></div></article></div>}
+    {templateLoading ? <p className="py-10 text-center text-sm text-gray-500">Đang tải mẫu thiết kế…</p> : !filteredTemplates.length ? <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">Không tìm thấy mẫu phù hợp.</p> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{filteredTemplates.map((template) => <button key={template._id} onClick={() => void openTemplate(template)} className="overflow-hidden rounded-lg border text-left transition hover:border-black hover:shadow-sm"><img src={template.thumbnail} alt={`${template.name} preview`} loading="lazy" className="aspect-[4/5] w-full bg-gray-100 object-cover"/><span className="block truncate px-3 pt-2 text-sm font-semibold">{template.name}</span><span className="block px-3 pb-3 text-xs text-gray-500">{template.category} · {template.style}</span></button>)}</div>}
+    {templateDetail && <div role="dialog" aria-modal="true" aria-labelledby="template-detail-title" className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/50 p-4" onClick={() => setTemplateDetail(null)}><article className="grid w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2" onClick={(event) => event.stopPropagation()}><img src={templateDetail.thumbnail} alt={`${templateDetail.name} preview`} className="max-h-[70vh] min-h-64 w-full bg-gray-100 object-cover"/><div className="flex flex-col p-5"><div className="flex items-start justify-between gap-2"><h3 id="template-detail-title" className="text-lg font-semibold">{templateDetail.name}</h3><button aria-label="Đóng xem trước mẫu" onClick={() => setTemplateDetail(null)} className="rounded border p-1"><X size={16}/></button></div><p className="mt-2 text-xs font-medium uppercase tracking-wide text-gray-500">{templateDetail.category} · {templateDetail.style}</p><p className="mt-4 flex-1 text-sm text-gray-600">{templateDetail.description}</p><p className="mt-3 text-xs text-gray-500">{templateDetail.tags.join(' · ')}</p><button onClick={() => applyTemplate(templateDetail)} className="mt-5 rounded bg-black px-4 py-3 text-sm font-semibold text-white">Dùng mẫu này</button></div></article></div>}
   </section> : <div className="grid gap-6 lg:grid-cols-[290px_minmax(300px,1fr)_300px]">
     <aside className="space-y-4 rounded-xl border border-[var(--color-border)] bg-white p-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wide">Product</h2>
-      <div className="flex flex-wrap gap-2"><button onClick={() => void openPublish()} className="flex flex-1 items-center justify-center gap-1 rounded border border-black bg-[#ffebb3] px-2 py-2 text-xs font-bold uppercase tracking-wide">Đăng Studio</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'My T-Shirt Design'); setDraftError(''); setShowDraftName(true) }} className="flex flex-1 items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Lưu nháp</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex flex-1 items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Drafts</button></div>
-      <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded border px-3 py-2 text-sm font-medium">Template Gallery</button>
-      {draftId && <p role="status" className="text-xs text-gray-500">{draftStatus === 'saving' ? 'Saving…' : draftStatus === 'saved' ? `Saved · ${draftName}` : draftStatus === 'failed' ? 'Save failed' : ''}</p>}
-      {showPublish && <div role="dialog" aria-modal="true" className="space-y-2 rounded-lg border bg-white p-3"><h3 className="text-sm font-semibold">Publish to your collection</h3><p className="text-xs text-gray-500">Your design will appear on your profile and in the Design Market.</p><input value={publishName} onChange={(e) => setPublishName(e.target.value)} maxLength={120} className="w-full rounded border px-3 py-2 text-sm" placeholder="Design name"/><textarea value={publishDescription} onChange={(e) => setPublishDescription(e.target.value)} maxLength={3000} className="w-full rounded border px-3 py-2 text-sm" placeholder="Description"/><select value={publishCollectionId} onChange={(e) => setPublishCollectionId(e.target.value)} className="w-full rounded border px-3 py-2 text-sm"><option value="">No collection</option>{publishCollections.map((collection) => <option key={collection._id} value={collection._id}>{collection.name}</option>)}</select><div className="flex gap-2"><input value={newCollectionName} onChange={(e) => setNewCollectionName(e.target.value)} maxLength={80} className="min-w-0 flex-1 rounded border px-3 py-2 text-sm" placeholder="New collection name"/><button type="button" disabled={creatingCollection || !newCollectionName.trim()} onClick={() => void createCollection()} className="rounded border px-3 py-2 text-xs disabled:opacity-40">{creatingCollection ? 'Creating…' : 'Create'}</button></div><input value={publishCategory} onChange={(e) => setPublishCategory(e.target.value)} maxLength={80} className="w-full rounded border px-3 py-2 text-sm" placeholder="Category"/><input value={publishTags} onChange={(e) => setPublishTags(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Tags, comma separated"/>
+      <h2 className="text-sm font-semibold uppercase tracking-wide">Sản phẩm</h2>
+      <div className="flex flex-wrap gap-2"><button onClick={() => void openPublish()} className="flex flex-1 items-center justify-center gap-1 rounded border border-black bg-[#ffebb3] px-2 py-2 text-xs font-bold uppercase tracking-wide">Đăng Studio</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'Thiết kế áo của tôi'); setDraftError(''); setShowDraftName(true) }} className="flex flex-1 items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Lưu nháp</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex flex-1 items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Bản nháp</button></div>
+      <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded border px-3 py-2 text-sm font-medium">Thư viện mẫu</button>
+      {draftId && <p role="status" className="text-xs text-gray-500">{draftStatus === 'saving' ? 'Đang lưu…' : draftStatus === 'saved' ? `Đã lưu · ${draftName}` : draftStatus === 'failed' ? 'Lưu thất bại' : ''}</p>}
+      {showPublish && <div role="dialog" aria-modal="true" className="space-y-2 rounded-lg border bg-white p-3"><h3 className="text-sm font-semibold">Đăng lên Marketplace</h3><p className="text-xs text-gray-500">Thiết kế của bạn sẽ xuất hiện trên trang cá nhân và Marketplace.</p><input value={publishName} onChange={(e) => setPublishName(e.target.value)} maxLength={120} className="w-full rounded border px-3 py-2 text-sm" placeholder="Tên thiết kế"/><textarea value={publishDescription} onChange={(e) => setPublishDescription(e.target.value)} maxLength={3000} className="w-full rounded border px-3 py-2 text-sm" placeholder="Mô tả thiết kế"/><select value={publishCollectionId} onChange={(e) => setPublishCollectionId(e.target.value)} className="w-full rounded border px-3 py-2 text-sm"><option value="">Không thuộc bộ sưu tập</option>{publishCollections.map((collection) => <option key={collection._id} value={collection._id}>{collection.name}</option>)}</select><div className="flex gap-2"><input value={newCollectionName} onChange={(e) => setNewCollectionName(e.target.value)} maxLength={80} className="min-w-0 flex-1 rounded border px-3 py-2 text-sm" placeholder="Tên bộ sưu tập mới"/><button type="button" disabled={creatingCollection || !newCollectionName.trim()} onClick={() => void createCollection()} className="rounded border px-3 py-2 text-xs disabled:opacity-40">{creatingCollection ? 'Đang tạo…' : 'Tạo'}</button></div><input value={publishCategory} onChange={(e) => setPublishCategory(e.target.value)} maxLength={80} className="w-full rounded border px-3 py-2 text-sm" placeholder="Danh mục"/><input value={publishTags} onChange={(e) => setPublishTags(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Thẻ (cách nhau bằng dấu phẩy)"/>
 <div className="space-y-1">
-  <p className="text-xs text-gray-500">Base Cost: {estimatedPrice.toLocaleString('vi-VN')} ₫</p>
-  <input type="number" min={estimatedPrice} value={publishPrice} onChange={(e) => setPublishPrice(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Selling Price (VND)"/>
+  <p className="text-xs text-gray-500">Giá gốc phôi áo: {estimatedPrice.toLocaleString('vi-VN')} ₫</p>
+  <input type="number" min={estimatedPrice} value={publishPrice} onChange={(e) => setPublishPrice(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Giá bán mong muốn (VNĐ)"/>
 </div>
-{draftError && <p role="status" className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowPublish(false)} className="rounded border px-3 py-1.5 text-xs">Cancel</button><button disabled={publishing || !product} onClick={() => void publishDesign()} className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50">{publishing ? 'Publishing…' : 'Publish now'}</button></div></div>}      {showDraftName && <div role="dialog" aria-modal="true" aria-labelledby="draft-name-title" className="space-y-2 rounded-lg border bg-gray-50 p-3"><h3 id="draft-name-title" className="text-sm font-semibold">Design name</h3><input autoFocus maxLength={100} value={draftNameInput} onChange={(event) => setDraftNameInput(event.target.value)} className="w-full rounded border bg-white px-3 py-2 text-sm" placeholder="My T-Shirt Design"/>{draftError && <p className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowDraftName(false)} className="rounded border px-3 py-1.5 text-xs">Cancel</button><button onClick={() => void saveDraft()} className="rounded bg-black px-3 py-1.5 text-xs text-white">Save</button></div></div>}
-      {loadingProducts ? <p className="text-sm text-gray-500">Loading products…</p> : products.length === 0 ? <p className="text-sm text-gray-500">No active T-shirt products are available.</p> : <select aria-label="Product" value={product?._id ?? ''} onChange={(e) => selectProduct(products.find((item) => item._id === e.target.value) ?? null)} className="w-full rounded border p-2 text-sm">{products.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>}
+{draftError && <p role="status" className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowPublish(false)} className="rounded border px-3 py-1.5 text-xs">Hủy</button><button disabled={publishing || !product} onClick={() => void publishDesign()} className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50">{publishing ? 'Đang đăng…' : 'Đăng bán ngay'}</button></div></div>}      {showDraftName && <div role="dialog" aria-modal="true" aria-labelledby="draft-name-title" className="space-y-2 rounded-lg border bg-gray-50 p-3"><h3 id="draft-name-title" className="text-sm font-semibold">Tên thiết kế</h3><input autoFocus maxLength={100} value={draftNameInput} onChange={(event) => setDraftNameInput(event.target.value)} className="w-full rounded border bg-white px-3 py-2 text-sm" placeholder="Thiết kế áo phông của tôi"/>{draftError && <p className="text-xs text-red-600">{draftError}</p>}<div className="flex justify-end gap-2"><button onClick={() => setShowDraftName(false)} className="rounded border px-3 py-1.5 text-xs">Hủy</button><button onClick={() => void saveDraft()} className="rounded bg-black px-3 py-1.5 text-xs text-white">Lưu</button></div></div>}
+      {loadingProducts ? <p className="text-sm text-gray-500">Đang tải phôi áo…</p> : products.length === 0 ? <p className="text-sm text-gray-500">Không có sản phẩm phôi áo khả dụng.</p> : <select aria-label="Sản phẩm" value={product?._id ?? ''} onChange={(e) => selectProduct(products.find((item) => item._id === e.target.value) ?? null)} className="w-full rounded border p-2 text-sm">{products.map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}</select>}
       {product && <>
-        <p className="text-sm font-semibold">{formatVND(product.discountPrice ?? product.price)} <span className="font-normal text-gray-500">· Stock {stock}</span></p>
-        <div><p className="mb-2 text-xs font-medium">Color</p><div className="flex flex-wrap gap-2">{colors.map((item) => <button key={item.name} disabled={item.stock <= 0} title={item.stock <= 0 ? `${item.name} · Out of Stock` : item.name} aria-label={item.name} onClick={() => setColorName(item.name)} className={`h-8 w-8 rounded-full border-2 disabled:cursor-not-allowed ${item.stock <= 0 ? 'opacity-40' : ''} ${colorName === item.name ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}`} style={{ backgroundColor: item.hex }} />)}{colors.length === 0 && <span className="text-xs text-gray-500">No colors configured</span>}</div>{selectedColor && <p className="mt-1 text-xs text-gray-500">{selectedColor.name} · {selectedColor.stock} in stock</p>}</div>
-        <label className="block text-sm">Size<select aria-label="Size" className="mt-1 w-full rounded border p-2" value={size} onChange={(e) => setSize(e.target.value)}><option value="">Select size</option>{sizes.map((option) => <option key={option.label} value={option.label} disabled={option.stock <= 0}>{option.label}{option.stock <= 0 ? ' · Out of Stock' : ` · ${option.stock} left`}</option>)}</select></label>
-        <div><p className="mb-2 text-xs font-medium">Print side</p><div className="grid grid-cols-3 gap-1">{([['FRONT', 'Front'], ['BACK', 'Back'], ['BOTH', 'Both Sides']] as const).map(([value, label]) => <button key={value} onClick={() => { setPrintSide(value); if (value === 'FRONT') setSide('frontDesign'); if (value === 'BACK') setSide('backDesign'); }} className={`rounded border px-1 py-2 text-xs ${printSide === value ? 'bg-black text-white' : ''}`}>{label}</button>)}</div></div>
-        <label className="block text-sm">Printing technique<select className="mt-1 w-full rounded border p-2" value={technique} onChange={(e) => setTechnique(e.target.value)}><option value="">Select technique</option>{techniques.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
-        <div><p className="mb-2 text-xs font-medium">Quantity</p><div className="flex items-center gap-3"><button aria-label="Decrease quantity" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="rounded border px-3 py-1 disabled:opacity-40">−</button><span>{quantity}</span><button aria-label="Increase quantity" disabled={quantity >= stock} onClick={() => setQuantity((value) => Math.min(stock, value + 1))} className="rounded border px-3 py-1 disabled:opacity-40">+</button><span className="text-xs text-gray-500">Max {stock}</span></div></div>
-        <div className="border-t pt-3"><p className="flex justify-between text-sm"><span>Estimated total</span><strong>{formatVND(estimatedPrice * quantity)}</strong></p><p className="mt-1 text-xs text-gray-500">Product {formatVND(product.discountPrice ?? product.price)} + print {formatVND(selectedTechnique?.price ?? 0)}{printSide === 'BOTH' ? ` + second side ${formatVND(selectedTechnique?.additionalSidePrice ?? 0)}` : ''}{selectedTechnique?.customizationPrice ? ` + customization ${formatVND(selectedTechnique.customizationPrice)}` : ''}</p>{quantity > stock && <p className="mt-1 text-xs text-red-600">Quantity exceeds available stock.</p>}</div>
+        <p className="text-sm font-semibold">{formatVND(product.discountPrice ?? product.price)} <span className="font-normal text-gray-500">· Kho {stock}</span></p>
+        <div><p className="mb-2 text-xs font-medium">Màu sắc</p><div className="flex flex-wrap gap-2">{colors.map((item) => <button key={item.name} disabled={item.stock <= 0} title={item.stock <= 0 ? `${item.name} · Hết hàng` : item.name} aria-label={item.name} onClick={() => setColorName(item.name)} className={`h-8 w-8 rounded-full border-2 disabled:cursor-not-allowed ${item.stock <= 0 ? 'opacity-40' : ''} ${colorName === item.name ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}`} style={{ backgroundColor: item.hex }} />)}{colors.length === 0 && <span className="text-xs text-gray-500">Chưa có màu sắc</span>}</div>{selectedColor && <p className="mt-1 text-xs text-gray-500">{selectedColor.name} · {selectedColor.stock} trong kho</p>}</div>
+        <label className="block text-sm">Kích cỡ<select aria-label="Kích cỡ" className="mt-1 w-full rounded border p-2" value={size} onChange={(e) => setSize(e.target.value)}><option value="">Chọn kích cỡ</option>{sizes.map((option) => <option key={option.label} value={option.label} disabled={option.stock <= 0}>{option.label}{option.stock <= 0 ? ' · Hết hàng' : ` · còn ${option.stock}`}</option>)}</select></label>
+        <div><p className="mb-2 text-xs font-medium">Mặt in</p><div className="grid grid-cols-3 gap-1">{([['FRONT', 'Mặt trước'], ['BACK', 'Mặt sau'], ['BOTH', 'Cả 2 mặt']] as const).map(([value, label]) => <button key={value} onClick={() => { setPrintSide(value); if (value === 'FRONT') setSide('frontDesign'); if (value === 'BACK') setSide('backDesign'); }} className={`rounded border px-1 py-2 text-xs ${printSide === value ? 'bg-black text-white' : ''}`}>{label}</button>)}</div></div>
+        <label className="block text-sm">Công nghệ in<select className="mt-1 w-full rounded border p-2" value={technique} onChange={(e) => setTechnique(e.target.value)}><option value="">Chọn công nghệ in</option>{techniques.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
+        <div><p className="mb-2 text-xs font-medium">Số lượng</p><div className="flex items-center gap-3"><button aria-label="Giảm số lượng" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="rounded border px-3 py-1 disabled:opacity-40">−</button><span>{quantity}</span><button aria-label="Tăng số lượng" disabled={quantity >= stock} onClick={() => setQuantity((value) => Math.min(stock, value + 1))} className="rounded border px-3 py-1 disabled:opacity-40">+</button><span className="text-xs text-gray-500">Tối đa {stock}</span></div></div>
+        <div className="border-t pt-3"><p className="flex justify-between text-sm"><span>Tạm tính</span><strong>{formatVND(estimatedPrice * quantity)}</strong></p><p className="mt-1 text-xs text-gray-500">Phôi áo {formatVND(product.discountPrice ?? product.price)} + in {formatVND(selectedTechnique?.price ?? 0)}{printSide === 'BOTH' ? ` + mặt thứ hai ${formatVND(selectedTechnique?.additionalSidePrice ?? 0)}` : ''}{selectedTechnique?.customizationPrice ? ` + tùy biến ${formatVND(selectedTechnique.customizationPrice)}` : ''}</p>{quantity > stock && <p className="mt-1 text-xs text-red-600">Số lượng vượt quá số lượng trong kho.</p>}</div>
       </>}
       <div onDragOver={(event) => { event.preventDefault(); setDragOver(true) }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setDragOver(false) }} onDrop={(event) => { event.preventDefault(); setDragOver(false); void uploadFile(event.dataTransfer.files[0]) }} className={`rounded-lg border-2 border-dashed p-4 text-center transition-colors ${dragOver ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}>
-        <Upload className="mx-auto mb-2" size={20}/><p className="text-sm font-semibold">Drag and drop or click to upload</p><p className="mt-1 text-xs text-gray-500">PNG, JPG, JPEG, WEBP · Maximum 10MB</p>
-        <button type="button" disabled={uploading} onClick={() => fileInput.current?.click()} className="mt-3 rounded border px-3 py-2 text-sm disabled:opacity-50">{uploading ? 'Uploading…' : 'Choose file'}</button>
+        <Upload className="mx-auto mb-2" size={20}/><p className="text-sm font-semibold">Kéo thả hoặc nhấn để tải ảnh lên</p><p className="mt-1 text-xs text-gray-500">PNG, JPG, JPEG, WEBP · Tối đa 10MB</p>
+        <button type="button" disabled={uploading} onClick={() => fileInput.current?.click()} className="mt-3 rounded border px-3 py-2 text-sm disabled:opacity-50">{uploading ? 'Đang tải lên…' : 'Chọn tệp'}</button>
         <input ref={fileInput} className="sr-only" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" onChange={(event) => void uploadFile(event.target.files?.[0])}/>
       </div>
-      <section aria-label="My image library" className="space-y-2">
-        <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">THƯ VIỆN ẢNH (AI & UPLOAD)</p><span className="text-[10px] text-gray-400">{visibleAssets.length} images</span></div>
-        <div role="tablist" className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1">{([['ALL', 'All'], ['UPLOADED', 'Uploaded'], ['AI', 'AI']] as const).map(([value, label]) => <button key={value} id={`asset-filter-${value.toLowerCase()}`} role="tab" aria-selected={assetFilter === value} type="button" onClick={() => setAssetFilter(value as any)} className={`rounded-md px-2 py-1 text-xs transition ${assetFilter === value ? 'bg-white font-semibold shadow-sm' : 'text-gray-500 hover:text-black'}`}>{label}</button>)}</div>
-        {!isAuthenticated ? <p className="text-xs text-gray-500">Sign in to keep uploaded and AI-generated images in your library.</p> : visibleAssets.length === 0 ? <p className="text-xs text-gray-500">{assetFilter === 'AI' ? 'Generate an image in “Phác thảo mới” and tap “Lưu vào thư viện ảnh”.' : 'Your uploaded and AI images will appear here.'}</p> : <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">{visibleAssets.map((image) => <div key={image._id} className="group relative min-w-0 rounded border p-1 transition hover:border-black">
-          <button type="button" onClick={() => addUploadedImage(image)} title={isAIAsset(image) && image.prompt ? `AI: ${image.prompt}` : `Add ${image.filename} to ${side === 'frontDesign' ? 'front' : 'back'}`} className="block w-full text-left"><img src={image.thumbnailUrl || image.url} alt={isAIAsset(image) ? (image.prompt || 'AI design') : image.filename} loading="lazy" className="aspect-square w-full rounded bg-gray-50 object-cover"/><span className="mt-1 block truncate text-[10px]">{isAIAsset(image) ? (image.prompt || 'AI design') : image.filename}</span></button>
+      <section aria-label="Thư viện ảnh của tôi" className="space-y-2">
+        <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">THƯ VIỆN ẢNH (AI & UPLOAD)</p><span className="text-[10px] text-gray-400">{visibleAssets.length} ảnh</span></div>
+        <div role="tablist" className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1">{([['ALL', 'Tất cả'], ['UPLOADED', 'Tải lên'], ['AI', 'AI Tạo']] as const).map(([value, label]) => <button key={value} id={`asset-filter-${value.toLowerCase()}`} role="tab" aria-selected={assetFilter === value} type="button" onClick={() => setAssetFilter(value as any)} className={`rounded-md px-2 py-1 text-xs transition ${assetFilter === value ? 'bg-white font-semibold shadow-sm' : 'text-gray-500 hover:text-black'}`}>{label}</button>)}</div>
+        {!isAuthenticated ? <p className="text-xs text-gray-500">Đăng nhập để lưu ảnh tải lên và ảnh tạo bằng AI vào thư viện của bạn.</p> : visibleAssets.length === 0 ? <p className="text-xs text-gray-500">{assetFilter === 'AI' ? 'Tạo ảnh tại tab “Phác thảo mới” và bấm “Lưu vào thư viện ảnh”.' : 'Ảnh bạn tải lên và ảnh AI sẽ hiển thị tại đây.'}</p> : <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">{visibleAssets.map((image) => <div key={image._id} className="group relative min-w-0 rounded border p-1 transition hover:border-black">
+          <button type="button" onClick={() => addUploadedImage(image)} title={isAIAsset(image) && image.prompt ? `AI: ${image.prompt}` : `Thêm ${image.filename} vào ${side === 'frontDesign' ? 'mặt trước' : 'mặt sau'}`} className="block w-full text-left"><img src={image.thumbnailUrl || image.url} alt={isAIAsset(image) ? (image.prompt || 'AI design') : image.filename} loading="lazy" className="aspect-square w-full rounded bg-gray-50 object-cover"/><span className="mt-1 block truncate text-[10px]">{isAIAsset(image) ? (image.prompt || 'AI design') : image.filename}</span></button>
           {isAIAsset(image) && <span className="pointer-events-none absolute left-1 top-1 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">AI</span>}
-          <button type="button" onClick={() => void deleteUploadedImage(image)} aria-label={`Remove ${image.filename} from library`} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 opacity-0 shadow transition group-hover:opacity-100 focus:opacity-100"><X size={13}/></button>
+          <button type="button" onClick={() => void deleteUploadedImage(image)} aria-label={`Xóa ${image.filename} khỏi thư viện`} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 opacity-0 shadow transition group-hover:opacity-100 focus:opacity-100"><X size={13}/></button>
         </div>)}</div>}
       </section>
-      {printSide === 'BOTH' && <div className="flex gap-2"><button onClick={() => changeSide('frontDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'frontDesign' ? 'bg-black text-white' : ''}`}>Front</button><button onClick={() => changeSide('backDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'backDesign' ? 'bg-black text-white' : ''}`}>Back</button></div>}
-      <section aria-label="Layers" className="space-y-2 rounded-lg border p-2">
-        <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider">Layers · {printSide === 'BOTH' ? (side === 'frontDesign' ? 'Front' : 'Back') : (printSide === 'FRONT' ? 'Front' : 'Back')}</p><div className="flex gap-1"><button title="Undo" aria-label="Undo" disabled={!undoStack.length} onClick={undo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↶</button><button title="Redo" aria-label="Redo" disabled={!redoStack.length} onClick={redo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↷</button></div></div>
-        {!current.length && <p className="text-sm text-gray-500">No layers yet.</p>}
+      {printSide === 'BOTH' && <div className="flex gap-2"><button onClick={() => changeSide('frontDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'frontDesign' ? 'bg-black text-white' : ''}`}>Mặt trước</button><button onClick={() => changeSide('backDesign')} className={`flex-1 rounded-lg border px-3 py-2 text-sm ${side === 'backDesign' ? 'bg-black text-white' : ''}`}>Mặt sau</button></div>}
+      <section aria-label="Lớp thiết kế" className="space-y-2 rounded-lg border p-2">
+        <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider">Lớp · {printSide === 'BOTH' ? (side === 'frontDesign' ? 'Mặt trước' : 'Mặt sau') : (printSide === 'FRONT' ? 'Mặt trước' : 'Mặt sau')}</p><div className="flex gap-1"><button title="Hoàn tác" aria-label="Hoàn tác" disabled={!undoStack.length} onClick={undo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↶</button><button title="Làm lại" aria-label="Làm lại" disabled={!redoStack.length} onClick={redo} className="rounded border px-2 py-1 text-xs disabled:opacity-40">↷</button></div></div>
+        {!current.length && <p className="text-sm text-gray-500">Chưa có lớp thiết kế nào.</p>}
         {[...current].reverse().map((layer) => <div key={layer.id} className={`rounded border p-1 ${selectedId === layer.id ? 'border-black bg-gray-50' : ''}`}>
-          <div className="flex items-center gap-1"><button type="button" title={layer.visible ? 'Hide layer' : 'Show layer'} aria-label={layer.visible ? `Hide ${layer.name}` : `Show ${layer.name}`} onClick={() => toggleVisibility(layer)} className="rounded p-1">{layer.visible ? <Eye size={15}/> : <EyeOff size={15}/>}</button><button type="button" onClick={() => setSelectedId(layer.id)} className="min-w-0 flex-1 truncate text-left text-sm">{layer.name}</button><button type="button" title={layer.locked ? 'Unlock layer' : 'Lock layer'} aria-label={layer.locked ? `Unlock ${layer.name}` : `Lock ${layer.name}`} onClick={() => changeLayer(layer.id, { locked: !layer.locked })} className="rounded p-1">{layer.locked ? <Lock size={14}/> : <Unlock size={14}/>}</button></div>
-          {selectedId === layer.id && <><input aria-label="Rename layer" value={layer.name} onChange={(event) => changeLayer(layer.id, { name: event.target.value })} className="my-1 w-full rounded border px-2 py-1 text-xs"/><div className="flex flex-wrap gap-1"><button title="Bring to Front" onClick={() => reorder(layer.id, 'front')} className="rounded border p-1"><ArrowUp size={14}/></button><button title="Bring Forward" onClick={() => reorder(layer.id, 'forward')} className="rounded border p-1"><ArrowUp size={12}/></button><button title="Send Backward" onClick={() => reorder(layer.id, 'backward')} className="rounded border p-1"><ArrowDown size={12}/></button><button title="Send to Back" onClick={() => reorder(layer.id, 'back')} className="rounded border p-1"><ArrowDown size={14}/></button><button title="Duplicate layer" onClick={() => duplicate(layer)} className="rounded border p-1"><Copy size={14}/></button><button title="Delete layer" onClick={() => removeLayer(layer.id)} disabled={layer.locked} className="rounded border p-1 text-red-600 disabled:opacity-40"><Trash2 size={14}/></button></div></>}
+          <div className="flex items-center gap-1"><button type="button" title={layer.visible ? 'Ẩn lớp' : 'Hiện lớp'} aria-label={layer.visible ? `Ẩn ${layer.name}` : `Hiện ${layer.name}`} onClick={() => toggleVisibility(layer)} className="rounded p-1">{layer.visible ? <Eye size={15}/> : <EyeOff size={15}/>}</button><button type="button" onClick={() => setSelectedId(layer.id)} className="min-w-0 flex-1 truncate text-left text-sm">{layer.name}</button><button type="button" title={layer.locked ? 'Mở khóa' : 'Khóa lớp'} aria-label={layer.locked ? `Mở khóa ${layer.name}` : `Khóa ${layer.name}`} onClick={() => changeLayer(layer.id, { locked: !layer.locked })} className="rounded p-1">{layer.locked ? <Lock size={14}/> : <Unlock size={14}/>}</button></div>
+          {selectedId === layer.id && <><input aria-label="Đổi tên lớp" value={layer.name} onChange={(event) => changeLayer(layer.id, { name: event.target.value })} className="my-1 w-full rounded border px-2 py-1 text-xs"/><div className="flex flex-wrap gap-1"><button title="Đưa lên đầu" onClick={() => reorder(layer.id, 'front')} className="rounded border p-1"><ArrowUp size={14}/></button><button title="Tiến lên một lớp" onClick={() => reorder(layer.id, 'forward')} className="rounded border p-1"><ArrowUp size={12}/></button><button title="Lùi lại một lớp" onClick={() => reorder(layer.id, 'backward')} className="rounded border p-1"><ArrowDown size={12}/></button><button title="Đưa xuống dưới cùng" onClick={() => reorder(layer.id, 'back')} className="rounded border p-1"><ArrowDown size={14}/></button><button title="Nhân bản lớp" onClick={() => duplicate(layer)} className="rounded border p-1"><Copy size={14}/></button><button title="Xóa lớp" onClick={() => removeLayer(layer.id)} disabled={layer.locked} className="rounded border p-1 text-red-600 disabled:opacity-40"><Trash2 size={14}/></button></div></>}
         </div>)}
       </section>
     </aside>
@@ -784,16 +794,16 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     </div>
     <aside className="max-h-[720px] space-y-4 overflow-auto rounded-xl border border-[var(--color-border)] bg-white p-4">
       {selected?.type === 'image' ? <>
-        <p className="text-sm font-medium">Image layer</p>
-        <label className="block text-sm">Opacity · {Math.round(selected.opacity * 100)}%<input className="w-full" type="range" min="0" max="1" step="0.01" value={selected.opacity} onChange={(e) => update(selected.id, { opacity: Number(e.target.value) })}/></label>
-        <label className="block text-sm">Rotate · {selected.rotation}°<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
-        <label className="block text-sm">Resize · {selected.scaleX.toFixed(1)}×<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
-      </> : <p className="text-sm text-gray-500">Select a layer to edit its properties.</p>}
-      {selected && <button onClick={() => removeLayer(selected.id)} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Delete layer</button>}
-      <div className="flex items-center gap-2 border-t pt-3 text-xs text-gray-500"><RotateCw size={14}/>Drag on canvas to move · use controls to resize and rotate</div>
+        <p className="text-sm font-medium">Lớp hình ảnh</p>
+        <label className="block text-sm">Độ mờ · {Math.round(selected.opacity * 100)}%<input className="w-full" type="range" min="0" max="1" step="0.01" value={selected.opacity} onChange={(e) => update(selected.id, { opacity: Number(e.target.value) })}/></label>
+        <label className="block text-sm">Xoay · {selected.rotation}°<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
+        <label className="block text-sm">Thu phóng · {selected.scaleX.toFixed(1)}×<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
+      </> : <p className="text-sm text-gray-500">Chọn một lớp để chỉnh sửa thuộc tính.</p>}
+      {selected && <button onClick={() => removeLayer(selected.id)} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Xóa lớp</button>}
+      <div className="flex items-center gap-2 border-t pt-3 text-xs text-gray-500"><RotateCw size={14}/>Kéo trên khung áo để di chuyển · dùng thanh trượt để xoay và thu phóng</div>
       {error && <p role="status" className={`text-sm ${error.startsWith('Added') ? 'text-green-700' : 'text-red-600'}`}>{error}</p>}
-      <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(false)} className="w-full rounded-lg border border-black px-4 py-3 text-sm font-semibold disabled:opacity-50">{submitting ? 'Adding…' : 'Add to Cart'}</button>
-      <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(true)} className="w-full rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Order Now</button>
+      <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(false)} className="w-full rounded-lg border border-black px-4 py-3 text-sm font-semibold disabled:opacity-50">{submitting ? 'Đang thêm…' : 'Thêm vào giỏ'}</button>
+      <button disabled={submitting || loadingProducts || !product || !selectedColor || !selectedSize || !selectedTechnique || stock <= 0} onClick={() => void addToOrder(true)} className="w-full rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Mua ngay</button>
     </aside>
     {showCartSuccess && product && (
       <div

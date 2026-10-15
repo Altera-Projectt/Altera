@@ -44,7 +44,7 @@ export function ProductDetailPage() {
           setSelectedColor(productData.colors[0])
         }
       } catch (err: any) {
-        setError(err?.response?.data?.message || 'Failed to load product details')
+        setError(err?.response?.data?.message || 'Không thể tải thông tin sản phẩm')
       } finally {
         setLoading(false)
       }
@@ -69,9 +69,9 @@ export function ProductDetailPage() {
       setAdding(true)
       await CartService.addToCart({ productId: product._id, quantity: 1 })
       await fetchCart()
-      toast.success('Added to cart successfully.')
+      toast.success('Đã thêm vào giỏ hàng thành công.')
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to add to cart')
+      toast.error(err?.response?.data?.message || 'Không thể thêm vào giỏ hàng')
     } finally {
       setAdding(false)
     }
@@ -104,7 +104,7 @@ export function ProductDetailPage() {
   if (!id) {
     return (
       <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 text-center text-[var(--color-error)]">
-        Invalid Product ID
+        Mã sản phẩm không hợp lệ
       </div>
     )
   }
@@ -143,9 +143,9 @@ export function ProductDetailPage() {
   if (error || !product) {
     return (
       <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 text-center flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <p className="text-[var(--color-error)] font-medium">{error || 'Product not found'}</p>
+        <p className="text-[var(--color-error)] font-medium">{error || 'Không tìm thấy sản phẩm'}</p>
         <Button variant="outline" onClick={() => navigate('/products')}>
-          ← Back to Products
+          ← Quay lại danh sách sản phẩm
         </Button>
       </div>
     )
@@ -177,7 +177,7 @@ export function ProductDetailPage() {
                       ? 'ring-white/60'
                       : 'ring-[var(--color-border)] opacity-60 hover:opacity-100 hover:ring-white/30',
                   )}
-                  aria-label={`View image ${i + 1}`}
+                  aria-label={`Xem ảnh ${i + 1}`}
                 >
                   <img src={img} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />
                 </button>
@@ -199,7 +199,7 @@ export function ProductDetailPage() {
               ))
             ) : (
               <div className="aspect-[3/4] w-full bg-[var(--color-muted)] flex items-center justify-center">
-                <span className="text-sm text-[var(--color-muted-foreground)]">No image</span>
+                <span className="text-sm text-[var(--color-muted-foreground)]">Không có ảnh</span>
               </div>
             )}
           </div>
@@ -239,7 +239,7 @@ export function ProductDetailPage() {
                   {formatPrice(product.price)}
                 </span>
                 <span className="text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-widest px-1.5 py-0.5 border border-[var(--color-accent)]/30 rounded-sm">
-                  −{Math.round((1 - product.discountPrice / product.price) * 100)}% OFF
+                  −{Math.round((1 - product.discountPrice / product.price) * 100)}%
                 </span>
               </>
             )}
@@ -290,7 +290,7 @@ export function ProductDetailPage() {
             <div className="mb-7">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-                  Size
+                  Kích cỡ
                 </p>
                 <button className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] underline underline-offset-2 transition-colors">
                   Hướng dẫn chọn size
@@ -321,7 +321,7 @@ export function ProductDetailPage() {
                       {s.label}
                       {s.stock < 5 && s.stock > 0 && (
                         <span className="block text-[8px] font-normal text-[var(--color-accent)]">
-                          {s.stock} left
+                          Còn {s.stock}
                         </span>
                       )}
                     </button>

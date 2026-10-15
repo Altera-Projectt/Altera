@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, CreditCard, Package, Shirt, Users } from 'lucide-react'
+import { ArrowUpRight, CreditCard, Package, Shirt, Users, Box } from 'lucide-react'
 import { AdminService } from '@/services/admin.api'
 import { formatVND } from '@/utils/format'
 
@@ -49,7 +49,7 @@ export function AdminDashboardPage() {
     { label: 'Doanh thu hội viên', value: formatVND(data.membershipRevenue), hint: 'Thanh toán hội viên thành công', icon: CreditCard },
     { label: 'Đơn hàng thành công', value: data.paidTransactions, hint: `Giao dịch đã thanh toán trong ${days} ngày`, icon: CreditCard },
     { label: 'Doanh thu đơn áo', value: formatVND(data.apparelRevenue), hint: 'Thanh toán đơn áo thành công', icon: Shirt },
-    { label: 'Sản phẩm đang bán', value: data.activeProducts, hint: 'Sản phẩm áo hoạt động', icon: Package, href: '/admin/products' },
+    { label: 'Kho phôi áo (Base)', value: data.activeProducts, hint: 'Mẫu phôi hoạt động cho Studio 3D', icon: Box, href: '/admin/products' },
   ] : []
 
   return <section className="mx-auto max-w-[1500px] space-y-5 text-slate-100 sm:space-y-6">

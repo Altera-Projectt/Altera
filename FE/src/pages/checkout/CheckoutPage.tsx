@@ -122,7 +122,7 @@ export function CheckoutPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
-              ALTERA — Cart
+              ALTERA — Giỏ hàng
             </p>
             <h1 className="heading-brand text-3xl mb-2">Giỏ hàng trống</h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">
@@ -173,7 +173,7 @@ export function CheckoutPage() {
           Quay lại giỏ hàng
         </button>
         <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
-          ALTERA — Checkout
+          ALTERA — Thanh toán
         </p>
         <h1 className="heading-brand text-4xl md:text-5xl">Thanh Toán</h1>
       </div>

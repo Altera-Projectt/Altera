@@ -27,12 +27,12 @@ interface NavItem {
 }
 
 const NAV_LINKS: NavItem[] = [
-  { label: 'About us', href: '/about' },
-  { label: 'Design Market', href: '/marketplace' },
-  { label: 'AI Suggest', href: '/outfit' },
+  { label: 'Về chúng tôi', href: '/about' },
+  { label: 'Marketplace', href: '/marketplace' },
+  { label: 'Gợi ý AI', href: '/outfit' },
   { label: 'AI Design', href: '/design' },
-  { label: 'Studio', href: '/studio' },
-  { label: 'Membership', href: '/membership' },
+  { label: '3D Studio', href: '/studio' },
+  { label: 'Hội viên', href: '/membership' },
 ]
 
 // ── Component ──────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ export function Navbar() {
         <Link
           to="/"
           className="transition-opacity duration-300 hover:opacity-80 flex items-center"
-          aria-label="ALTERA — Home"
+          aria-label="ALTERA — Trang chủ"
         >
           <img src={logoSvg} alt="ALTERA Logo" className="h-8 md:h-10 w-auto object-contain" />
         </Link>
@@ -101,18 +101,18 @@ export function Navbar() {
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-1">
               {isAdmin && (
-                <Button variant="ghost" size="icon" asChild aria-label="Admin dashboard" className="text-white hover:bg-white/10 hover:text-white">
+                <Button variant="ghost" size="icon" asChild aria-label="Bảng quản trị Admin" className="text-white hover:bg-white/10 hover:text-white">
                   <Link to="/admin">
                     <LayoutDashboard className="h-[18px] w-[18px]" />
                   </Link>
                 </Button>
               )}
-              <Button variant="ghost" size="icon" asChild aria-label="Wishlist" className="text-white hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="icon" asChild aria-label="Danh sách yêu thích" className="text-white hover:bg-white/10 hover:text-white">
                 <Link to="/wishlist">
                   <Heart className="h-[18px] w-[18px]" />
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" asChild aria-label="My Designs" className="text-white hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="icon" asChild aria-label="Thiết kế của tôi" className="text-white hover:bg-white/10 hover:text-white">
                 <Link to="/my-designs">
                   <Palette className="h-[18px] w-[18px]" />
                 </Link>
@@ -123,7 +123,7 @@ export function Navbar() {
                 variant="ghost"
                 size="icon"
                 asChild
-                aria-label={`Cart — ${totalItems} items`}
+                aria-label={`Giỏ hàng — ${totalItems} sản phẩm`}
                 className="relative text-white hover:bg-white/10 hover:text-white"
               >
                 <Link to="/cart">
@@ -143,7 +143,7 @@ export function Navbar() {
                 variant="ghost"
                 size="icon"
                 asChild
-                aria-label={`Profile — ${user?.fullName || user?.email || 'Profile'}`}
+                aria-label={`Tài khoản — ${user?.fullName || user?.email || 'Hồ sơ'}`}
                 className="text-white hover:bg-white/10 hover:text-white ml-2"
               >
                 <Link to="/profile">
@@ -158,17 +158,18 @@ export function Navbar() {
                   )}
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log out" className="text-white hover:bg-white/10 hover:text-white">
+
+              <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Đăng xuất" className="text-white hover:bg-white/10 hover:text-white">
                 <LogOut className="h-[18px] w-[18px]" />
               </Button>
             </div>
           ) : (
             <div className="hidden md:flex items-center gap-4">
               <Link to="/auth/login" className="text-white font-medium text-sm tracking-wide opacity-90 hover:opacity-100 transition-opacity">
-                Sign in
+                Đăng nhập
               </Link>
               <Link to="/auth/register" className="bg-white text-[#00C8FF] px-6 py-2 rounded-full font-bold text-sm tracking-wide shadow-sm hover:scale-105 transition-transform">
-                Sign up
+                Đăng ký
               </Link>
             </div>
           )}
@@ -178,7 +179,7 @@ export function Navbar() {
             variant="ghost"
             size="icon"
             className="md:hidden ml-1"
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-label={mobileOpen ? 'Đóng menu' : 'Mở menu'}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((v) => !v)}
           >
@@ -279,7 +280,7 @@ export function Navbar() {
                       className="flex items-center gap-2 h-10 px-3 text-sm font-medium text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
                     >
                       <User className="h-4 w-4" />
-                      {user?.fullName || user?.email || 'Profile'}
+                      {user?.fullName || user?.email || 'Hồ sơ cá nhân'}
                     </Link>
                     <Button
                       variant="outline"
@@ -297,7 +298,7 @@ export function Navbar() {
                       <Link to="/auth/login" onClick={() => setMobileOpen(false)}>Đăng nhập</Link>
                     </Button>
                     <Button variant="primary" size="md" asChild className="w-full">
-                      <Link to="/auth/register" onClick={() => setMobileOpen(false)}>Bắt đầu</Link>
+                      <Link to="/auth/register" onClick={() => setMobileOpen(false)}>Đăng ký</Link>
                     </Button>
                   </>
                 )}

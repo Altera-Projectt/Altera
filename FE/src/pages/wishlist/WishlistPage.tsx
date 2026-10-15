@@ -57,7 +57,7 @@ export function WishlistPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
             ALTERA
           </p>
-          <h1 className="heading-brand text-4xl md:text-5xl">My Wishlist</h1>
+          <h1 className="heading-brand text-4xl md:text-5xl">Danh sách yêu thích</h1>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-12">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -116,16 +116,16 @@ export function WishlistPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
-              ALTERA — Wishlist
+              ALTERA — Danh sách yêu thích
             </p>
-            <h1 className="heading-brand text-4xl mb-3">Your Collection is Empty</h1>
+            <h1 className="heading-brand text-4xl mb-3">Danh sách yêu thích trống</h1>
             <p className="text-sm text-[var(--color-muted-foreground)] max-w-sm mx-auto">
-              You haven't saved any items yet. Discover our latest collections and curate your perfect wardrobe.
+              Bạn chưa lưu sản phẩm nào. Hãy khám phá bộ sưu tập mới nhất và chọn những thiết kế ưng ý nhất nhé.
             </p>
           </div>
           <Button asChild variant="primary" size="lg" className="gap-2 uppercase font-bold tracking-widest mt-4">
             <Link to="/marketplace" className="flex items-center gap-2">
-              Discover New Styles
+              Khám phá phong cách mới
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -148,10 +148,10 @@ export function WishlistPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
             ALTERA
           </p>
-          <h1 className="heading-brand text-4xl md:text-5xl">My Wishlist</h1>
+          <h1 className="heading-brand text-4xl md:text-5xl">Danh sách yêu thích</h1>
         </div>
         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-          {products.length} {products.length === 1 ? 'item' : 'items'}
+          {products.length} sản phẩm
         </span>
       </motion.div>
 
@@ -245,7 +245,7 @@ export function WishlistPage() {
                     </span>
                     {product.designerId?.displayName && (
                       <span className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] text-right">
-                        BY {product.designerId.displayName}
+                        Bởi {product.designerId.displayName}
                       </span>
                     )}
                   </div>

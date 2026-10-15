@@ -1,4 +1,4 @@
-﻿const Cart = require('../models/Cart');
+const Cart = require('../models/Cart');
 const Wishlist = require('../models/Wishlist');
 const Product = require('../models/Product');
 const MarketplaceDesign = require('../models/MarketplaceDesign');
@@ -22,33 +22,33 @@ const addToCart = async (req, res, next) => {
     let marketplaceDesign = null;
     if (req.body.marketplaceDesignId) {
       marketplaceDesign = await MarketplaceDesign.findOne({ _id: req.body.marketplaceDesignId, status: 'PUBLISHED' });
-      if (!marketplaceDesign) return res.status(404).json({ success: false, message: 'Published design not found' });
+      if (!marketplaceDesign) return res.status(404).json({ success: false, message: 'Không tìm thấy thiết kế đã đăng bán' });
       productId = marketplaceDesign.productId;
       customization = { ...(customization || {}), printSide: marketplaceDesign.printSide, printingTechnique: marketplaceDesign.printingTechnique, frontDesign: marketplaceDesign.frontDesign, backDesign: marketplaceDesign.backDesign };
     }
     const product = await Product.findById(productId);
-    if (!product || !product.isActive) return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!product || !product.isActive) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
     if (marketplaceDesign && (!customization?.color?.name || !customization?.size)) {
-      return res.status(400).json({ success: false, message: 'Choose a product color and size.' });
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn màu sắc và kích cỡ sản phẩm.' });
     }
     const selectedColor = customization && product.colors.find((item) => item.name === customization.color?.name);
     const selectedSize = customization && product.sizes.find((item) => item.label === customization.size);
     if (marketplaceDesign && (!selectedColor || customization.color.hex !== selectedColor.hex || !selectedSize)) {
-      return res.status(400).json({ success: false, message: 'Choose an available product color and size.' });
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn màu sắc và kích cỡ sản phẩm còn hàng.' });
     }
     const availableStock = customization ? Math.min(product.stock, selectedColor?.stock ?? 0, selectedSize?.stock ?? 0) : product.stock;
-    if (!Number.isInteger(quantity) || quantity < 1 || availableStock < quantity) return res.status(400).json({ success: false, message: `Insufficient stock. Available: ${availableStock}` });
+    if (!Number.isInteger(quantity) || quantity < 1 || availableStock < quantity) return res.status(400).json({ success: false, message: `Không đủ số lượng trong kho. Hiện còn: ${availableStock}` });
     const unitPrice = marketplaceDesign ? marketplaceDesign.price : getCustomizationPrice(product, customization);
     let cart = await Cart.findOne({ userId: req.user._id });
     if (!cart) cart = new Cart({ userId: req.user._id, items: [] });
     const configKey = JSON.stringify(customization || null);
     const existingIndex = cart.items.findIndex((i) => i.productId.toString() === String(productId) && String(i.marketplaceDesignId || '') === String(marketplaceDesign?._id || '') && JSON.stringify(i.customization?.toObject?.() || i.customization || null) === configKey);
     if (existingIndex >= 0) {
-      if (cart.items[existingIndex].quantity + quantity > availableStock) return res.status(400).json({ success: false, message: `Insufficient stock. Available: ${availableStock}` });
+      if (cart.items[existingIndex].quantity + quantity > availableStock) return res.status(400).json({ success: false, message: `Không đủ số lượng trong kho. Hiện còn: ${availableStock}` });
       cart.items[existingIndex].quantity += quantity;
     } else cart.items.push({ productId, marketplaceDesignId: marketplaceDesign?._id || null, quantity, price: unitPrice, ...(customization && { customization }) });
     await cart.save();
-    res.status(200).json({ success: true, message: 'Added to cart', data: { cart } });
+    res.status(200).json({ success: true, message: 'Đã thêm vào giỏ hàng', data: { cart } });
   } catch (error) { next(error); }
 };
 const updateCartItem = async (req, res, next) => {
@@ -57,11 +57,11 @@ const updateCartItem = async (req, res, next) => {
     const { quantity } = req.body;
 
     const cart = await Cart.findOne({ userId: req.user._id });
-    if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
+    if (!cart) return res.status(404).json({ success: false, message: 'Không tìm thấy giỏ hàng' });
 
     let index = cart.items.findIndex((i) => String(i._id) === productId);
     if (index < 0) index = cart.items.findIndex((i) => i.productId.toString() === productId);
-    if (index < 0) return res.status(404).json({ success: false, message: 'Item not in cart' });
+    if (index < 0) return res.status(404).json({ success: false, message: 'Sản phẩm không có trong giỏ hàng' });
 
     if (quantity <= 0) {
       cart.items.splice(index, 1);
@@ -71,14 +71,14 @@ const updateCartItem = async (req, res, next) => {
       const color = line.customization && product?.colors.find((item) => item.name === line.customization.color.name);
       const size = line.customization && product?.sizes.find((item) => item.label === line.customization.size);
       if (!Number.isInteger(quantity) || (line.customization ? Math.min(product?.stock ?? 0, color?.stock ?? 0, size?.stock ?? 0) : product?.stock ?? 0) < quantity) {
-        return res.status(400).json({ success: false, message: 'Quantity exceeds available stock' });
+        return res.status(400).json({ success: false, message: 'Số lượng vượt quá tồn kho khả dụng' });
       }
-      if (line.marketplaceDesignId) { const listing = await MarketplaceDesign.findOne({ _id: line.marketplaceDesignId, status: 'PUBLISHED' }); if (!listing) return res.status(400).json({ success: false, message: 'A design in your cart is no longer available.' }); line.price = listing.price; } else if (product) line.price = getCustomizationPrice(product, line.customization?.toObject?.() || line.customization);
+      if (line.marketplaceDesignId) { const listing = await MarketplaceDesign.findOne({ _id: line.marketplaceDesignId, status: 'PUBLISHED' }); if (!listing) return res.status(400).json({ success: false, message: 'Một thiết kế trong giỏ hàng hiện không còn khả dụng.' }); line.price = listing.price; } else if (product) line.price = getCustomizationPrice(product, line.customization?.toObject?.() || line.customization);
       cart.items[index].quantity = quantity;
     }
 
     await cart.save();
-    res.status(200).json({ success: true, message: 'Cart updated', data: { cart } });
+    res.status(200).json({ success: true, message: 'Cập nhật giỏ hàng thành công', data: { cart } });
   } catch (error) {
     next(error);
   }
@@ -88,12 +88,12 @@ const removeFromCart = async (req, res, next) => {
   try {
     const { productId } = req.params;
     const cart = await Cart.findOne({ userId: req.user._id });
-    if (!cart) return res.status(404).json({ success: false, message: 'Cart not found' });
+    if (!cart) return res.status(404).json({ success: false, message: 'Không tìm thấy giỏ hàng' });
 
     const hasLineId = cart.items.some((i) => String(i._id) === productId);
     cart.items = cart.items.filter((i) => hasLineId ? String(i._id) !== productId : i.productId.toString() !== productId);
     await cart.save();
-    res.status(200).json({ success: true, message: 'Item removed from cart', data: { cart } });
+    res.status(200).json({ success: true, message: 'Đã xóa sản phẩm khỏi giỏ hàng', data: { cart } });
   } catch (error) {
     next(error);
   }
@@ -102,7 +102,7 @@ const removeFromCart = async (req, res, next) => {
 const clearCart = async (req, res, next) => {
   try {
     await Cart.findOneAndUpdate({ userId: req.user._id }, { items: [] });
-    res.status(200).json({ success: true, message: 'Cart cleared' });
+    res.status(200).json({ success: true, message: 'Đã xóa toàn bộ giỏ hàng' });
   } catch (error) {
     next(error);
   }
@@ -124,7 +124,7 @@ const addToWishlist = async (req, res, next) => {
     const { productId } = req.body;
 
     const product = await Product.findById(productId);
-    if (!product || !product.isActive) return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!product || !product.isActive) return res.status(404).json({ success: false, message: 'Không tìm thấy sản phẩm' });
 
     const wishlist = await Wishlist.findOneAndUpdate(
       { userId: req.user._id },
@@ -132,7 +132,7 @@ const addToWishlist = async (req, res, next) => {
       { upsert: true, new: true }
     ).populate('products', 'name imageUrl price category');
 
-    res.status(200).json({ success: true, message: 'Added to wishlist', data: { wishlist } });
+    res.status(200).json({ success: true, message: 'Đã thêm vào danh sách yêu thích', data: { wishlist } });
   } catch (error) {
     next(error);
   }
@@ -147,7 +147,7 @@ const removeFromWishlist = async (req, res, next) => {
       { new: true }
     ).populate('products', 'name imageUrl price category');
 
-    res.status(200).json({ success: true, message: 'Removed from wishlist', data: { wishlist } });
+    res.status(200).json({ success: true, message: 'Đã xóa khỏi danh sách yêu thích', data: { wishlist } });
   } catch (error) {
     next(error);
   }

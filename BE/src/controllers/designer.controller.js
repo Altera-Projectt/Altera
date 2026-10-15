@@ -189,7 +189,7 @@ exports.getProfile = async (req, res, next) => {
       await profile.populate('userId', 'fullName avatar');
     } else {
       profile = await DesignerProfile.findOne({ username: req.params.username.toLowerCase() }).populate('userId', 'fullName avatar');
-      if (!profile) throw fail(404, 'Designer not found');
+      if (!profile) throw fail(404, 'Không tìm thấy nhà thiết kế');
     }
     const owner = isMe || Boolean(req.user && String(req.user._id) === String(profile.userId?._id || profile.userId));
     const match = { designerId: profile._id, status: 'PUBLISHED' };
@@ -228,21 +228,21 @@ exports.updateProfile = async (req, res, next) => {
     for (const key of ['displayName', 'bio']) if (req.body[key] !== undefined) profile[key] = req.body[key];
     if (req.body.avatar !== undefined) profile.avatar = await ensureCloudinaryUrl(req.body.avatar, 'altera/users/avatars');
     if (req.body.coverImage !== undefined) profile.coverImage = await ensureCloudinaryUrl(req.body.coverImage, 'altera/users/covers');
-    if (req.body.username !== undefined) { const username = slugify(String(req.body.username)); if (!username || username.length > 40) throw fail(400, 'Username must contain 1 to 40 letters, numbers, or hyphens'); profile.username = username; }
+    if (req.body.username !== undefined) { const username = slugify(String(req.body.username)); if (!username || username.length > 40) throw fail(400, 'Tên người dùng phải chứa 1-40 chữ cái, chữ số hoặc dấu gạch nối'); profile.username = username; }
     await profile.save(); res.json({ success: true, data: { profile } });
   } catch (error) { next(error); }
 };
 
 exports.createCollection = async (req, res, next) => {
-  try { const profile = await profileForUser(req.user._id), name = String(req.body.name || '').trim(); if (!name) throw fail(400, 'Collection name is required'); const collection = await DesignerCollection.create({ designerId: profile._id, name, slug: slugify(name) }); res.status(201).json({ success: true, data: { collection } }); }
+  try { const profile = await profileForUser(req.user._id), name = String(req.body.name || '').trim(); if (!name) throw fail(400, 'Tên bộ sưu tập không được để trống'); const collection = await DesignerCollection.create({ designerId: profile._id, name, slug: slugify(name) }); res.status(201).json({ success: true, data: { collection } }); }
   catch (error) { next(error); }
 };
 exports.updateCollection = async (req, res, next) => {
-  try { const profile = await profileForUser(req.user._id), name = String(req.body.name || '').trim(); if (!name) throw fail(400, 'Collection name is required'); const collection = await DesignerCollection.findOne({ _id: req.params.id, designerId: profile._id }); if (!collection) throw fail(404, 'Collection not found'); collection.name = name; collection.slug = slugify(name); await collection.save(); res.json({ success: true, data: { collection } }); }
+  try { const profile = await profileForUser(req.user._id), name = String(req.body.name || '').trim(); if (!name) throw fail(400, 'Tên bộ sưu tập không được để trống'); const collection = await DesignerCollection.findOne({ _id: req.params.id, designerId: profile._id }); if (!collection) throw fail(404, 'Không tìm thấy bộ sưu tập'); collection.name = name; collection.slug = slugify(name); await collection.save(); res.json({ success: true, data: { collection } }); }
   catch (error) { next(error); }
 };
 exports.deleteCollection = async (req, res, next) => {
-  try { const profile = await profileForUser(req.user._id), collection = await DesignerCollection.findOneAndDelete({ _id: req.params.id, designerId: profile._id }); if (!collection) throw fail(404, 'Collection not found'); await MarketplaceDesign.updateMany({ collectionId: collection._id }, { $unset: { collectionId: 1 } }); res.json({ success: true }); }
+  try { const profile = await profileForUser(req.user._id), collection = await DesignerCollection.findOneAndDelete({ _id: req.params.id, designerId: profile._id }); if (!collection) throw fail(404, 'Không tìm thấy bộ sưu tập'); await MarketplaceDesign.updateMany({ collectionId: collection._id }, { $unset: { collectionId: 1 } }); res.json({ success: true }); }
   catch (error) { next(error); }
 };
 
@@ -251,7 +251,7 @@ exports.createDesign = async (req, res, next) => {
     console.log("RECEIVED BODY:", { ...req.body, thumbnailBase64: req.body.thumbnailBase64 ? 'BASE64_STRING_PRESENT' : undefined });
     
     const profile = await profileForUser(req.user._id), draft = await CustomDesignDraft.findOne({ _id: req.body.draftId, userId: req.user._id });
-    if (!draft) throw fail(404, 'Owned design draft not found');
+    if (!draft) throw fail(404, 'Không tìm thấy bản nháp thiết kế của bạn');
     const existing = await MarketplaceDesign.findOne({ draftId: draft._id, userId: req.user._id }).sort({ updatedAt: -1 });
     if (existing?.status === 'PUBLISHED') {
       return res.status(200).json({ success: true, data: { design: existing } });
@@ -269,12 +269,12 @@ exports.createDesign = async (req, res, next) => {
       }
     } catch (uploadError) {
       console.error("CLOUDINARY UPLOAD CRASH:", uploadError);
-      throw fail(500, 'Failed to upload thumbnail image');
+      throw fail(500, 'Không thể tải lên ảnh xem trước thiết kế');
     }
 
-    if (!name || name.length > 120 || String(req.body.description || '').length > 3000 || !draft.productId || !hasRequiredLayers || !finalThumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Design name, description, product, design layer, preview, and valid price are required');
-    if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'The selected product or printing technique is unavailable.');
-    if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer');
+    if (!name || name.length > 120 || String(req.body.description || '').length > 3000 || !draft.productId || !hasRequiredLayers || !finalThumbnail || !Number.isFinite(price) || price <= 0) throw fail(400, 'Tên thiết kế, mô tả, phôi áo, lớp thiết kế, ảnh xem trước và giá bán hợp lệ là bắt buộc');
+    if (!await hasAvailableBaseVariant(draft)) throw fail(400, 'Sản phẩm phôi hoặc kỹ thuật in đã chọn hiện không khả dụng.');
+    if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Bộ sưu tập không thuộc về nhà thiết kế này');
     
     let designUrl = req.body.designUrl ?? draft.designUrl;
     if (designUrl) designUrl = await ensureCloudinaryUrl(designUrl, 'altera/marketplace');
@@ -302,7 +302,7 @@ exports.createDesign = async (req, res, next) => {
       }
     } catch (dbError) {
       console.error("MONGODB SAVE CRASH:", dbError);
-      throw fail(500, 'Failed to save design to database');
+      throw fail(500, 'Không thể lưu thiết kế vào cơ sở dữ liệu');
     }
     
     res.status(201).json({ success: true, data: { design } });
@@ -314,8 +314,8 @@ exports.createDesign = async (req, res, next) => {
 exports.updateDesign = async (req, res, next) => {
   try {
     const profile = await ownedProfile(req.user._id), design = await MarketplaceDesign.findOne({ _id: req.params.id, designerId: profile?._id });
-    if (!design) throw fail(404, 'Design not found');
-    if (design.status === 'PUBLISHED') throw fail(409, 'Duplicate a published design to make a new version');
+    if (!design) throw fail(404, 'Không tìm thấy thiết kế');
+    if (design.status === 'PUBLISHED') throw fail(409, 'Vui lòng nhân bản thiết kế đã đăng để tạo phiên bản mới');
     for (const key of ['thumbnailUrl', 'shirtColor', 'designUrl']) {
       if (req.body[key] !== undefined) {
         if (key === 'thumbnailUrl') {
@@ -331,25 +331,25 @@ exports.updateDesign = async (req, res, next) => {
     }
     if (req.body.decalTransform !== undefined) design.decalTransform = normalizeDecalTransform(req.body.decalTransform);
     for (const key of ['name', 'description', 'category']) if (req.body[key] !== undefined) design[key] = req.body[key];
-    if (req.body.price !== undefined) { const price = Number(req.body.price); if (!Number.isFinite(price) || price <= 0) throw fail(400, 'Price must be greater than zero'); design.price = price; }
+    if (req.body.price !== undefined) { const price = Number(req.body.price); if (!Number.isFinite(price) || price <= 0) throw fail(400, 'Giá bán phải lớn hơn 0'); design.price = price; }
     if (req.body.tags !== undefined) design.tags = Array.isArray(req.body.tags) ? req.body.tags.slice(0, 20) : [];
-    if (req.body.collectionId !== undefined) { if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Collection does not belong to this designer'); design.collectionId = req.body.collectionId || null; }
+    if (req.body.collectionId !== undefined) { if (req.body.collectionId && !await DesignerCollection.exists({ _id: req.body.collectionId, designerId: profile._id })) throw fail(400, 'Bộ sưu tập không thuộc về nhà thiết kế này'); design.collectionId = req.body.collectionId || null; }
     if (design.status === 'REJECTED' || design.status === 'DRAFT') design.status = submissionStatus();
     await design.save(); res.json({ success: true, data: { design } });
   } catch (error) { next(error); }
 };
 exports.duplicateDesign = async (req, res, next) => {
-  try { const profile = await ownedProfile(req.user._id), source = await MarketplaceDesign.findOne({ _id: req.params.id, designerId: profile?._id }); if (!source) throw fail(404, 'Design not found'); const copy = source.toObject(); delete copy._id; delete copy.createdAt; delete copy.updatedAt; copy.name = `${source.name} copy`; copy.slug = `${slugify(copy.name)}-${Date.now().toString(36)}`; copy.status = 'DRAFT'; copy.rejectionReason = ''; const design = await MarketplaceDesign.create(copy); res.status(201).json({ success: true, data: { design } }); }
+  try { const profile = await ownedProfile(req.user._id), source = await MarketplaceDesign.findOne({ _id: req.params.id, designerId: profile?._id }); if (!source) throw fail(404, 'Không tìm thấy thiết kế'); const copy = source.toObject(); delete copy._id; delete copy.createdAt; delete copy.updatedAt; copy.name = `${source.name} copy`; copy.slug = `${slugify(copy.name)}-${Date.now().toString(36)}`; copy.status = 'DRAFT'; copy.rejectionReason = ''; const design = await MarketplaceDesign.create(copy); res.status(201).json({ success: true, data: { design } }); }
   catch (error) { next(error); }
 };
 exports.deleteDesign = async (req, res, next) => {
-  try { const profile = await ownedProfile(req.user._id), design = await MarketplaceDesign.findOne({ _id: req.params.id, designerId: profile?._id }); if (!design) throw fail(404, 'Design not found'); const hasOrders = await Order.exists({ 'items.marketplaceDesignId': design._id }); if (hasOrders) { design.status = 'ARCHIVED'; await design.save(); return res.json({ success: true, data: { archived: true } }); } await Promise.all([DesignerLike.deleteMany({ designId: design._id }), design.deleteOne()]); res.json({ success: true, data: { archived: false } }); }
+  try { const profile = await ownedProfile(req.user._id), design = await MarketplaceDesign.findOne({ _id: req.params.id, designerId: profile?._id }); if (!design) throw fail(404, 'Không tìm thấy thiết kế'); const hasOrders = await Order.exists({ 'items.marketplaceDesignId': design._id }); if (hasOrders) { design.status = 'ARCHIVED'; await design.save(); return res.json({ success: true, data: { archived: true } }); } await Promise.all([DesignerLike.deleteMany({ designId: design._id }), design.deleteOne()]); res.json({ success: true, data: { archived: false } }); }
   catch (error) { next(error); }
 };
 exports.likeDesign = async (req, res, next) => {
   try { 
     const design = await MarketplaceDesign.findOne({ _id: req.params.id, status: 'PUBLISHED' }); 
-    if (!design) throw fail(404, 'Design not found'); 
+    if (!design) throw fail(404, 'Không tìm thấy thiết kế'); 
     await DesignerLike.updateOne({ userId: req.user._id, designId: design._id }, { $setOnInsert: { userId: req.user._id, designId: design._id } }, { upsert: true }); 
     const likesCount = await DesignerLike.countDocuments({ designId: design._id });
     design.likesCount = likesCount;
@@ -368,7 +368,7 @@ exports.unlikeDesign = async (req, res, next) => {
   catch (error) { next(error); }
 };
 exports.follow = async (req, res, next) => {
-  try { const profile = await DesignerProfile.findById(req.params.id); if (!profile) throw fail(404, 'Designer not found'); if (String(profile.userId) === String(req.user._id)) throw fail(400, 'You cannot follow yourself'); await DesignerFollow.updateOne({ followerId: req.user._id, designerId: profile._id }, { $setOnInsert: { followerId: req.user._id, designerId: profile._id } }, { upsert: true }); res.json({ success: true }); }
+  try { const profile = await DesignerProfile.findById(req.params.id); if (!profile) throw fail(404, 'Không tìm thấy nhà thiết kế'); if (String(profile.userId) === String(req.user._id)) throw fail(400, 'Bạn không thể tự theo dõi chính mình'); await DesignerFollow.updateOne({ followerId: req.user._id, designerId: profile._id }, { $setOnInsert: { followerId: req.user._id, designerId: profile._id } }, { upsert: true }); res.json({ success: true }); }
   catch (error) { next(error); }
 };
 exports.unfollow = async (req, res, next) => { try { await DesignerFollow.deleteOne({ followerId: req.user._id, designerId: req.params.id }); res.json({ success: true }); } catch (error) { next(error); } };
@@ -376,10 +376,10 @@ exports.getDesign = async (req, res, next) => {
   try {
     const design = await MarketplaceDesign.findOne({ slug: req.params.slug, status: 'PUBLISHED' })
       .populate('designerId', 'username displayName avatar');
-    if (!design) throw fail(404, 'Design not found');
+    if (!design) throw fail(404, 'Không tìm thấy thiết kế');
     const product = await Product.findById(design.productId)
       .select('name imageUrl price discountPrice sizes colors printingTechniques isActive');
-    if (!product?.isActive) throw fail(404, 'Design not found');
+    if (!product?.isActive) throw fail(404, 'Không tìm thấy thiết kế');
     design.productId = product;
     const [likes, sales, isLiked] = await Promise.all([DesignerLike.countDocuments({ designId: design._id }), Order.aggregate([{ $match: { paymentStatus: 'PAID' } }, { $unwind: '$items' }, { $match: { 'items.marketplaceDesignId': design._id } }, { $group: { _id: null, count: { $sum: '$items.quantity' } } }]), req.user ? DesignerLike.exists({ userId: req.user._id, designId: design._id }) : null]);
     res.json({ success: true, data: { design: design.toObject(), likesCount: likes, salesCount: sales[0]?.count || 0, isLiked: Boolean(isLiked) } });
@@ -388,17 +388,17 @@ exports.getDesign = async (req, res, next) => {
 };
 exports.moderate = async (req, res, next) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw fail(400, 'Invalid design ID');
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) throw fail(400, 'ID thiết kế không hợp lệ');
     const { status } = req.body;
     const reason = typeof req.body.rejectionReason === 'string' ? req.body.rejectionReason.trim() : '';
-    if (!['PUBLISHED', 'REJECTED', 'ARCHIVED'].includes(status)) throw fail(400, 'Invalid moderation status');
-    if (status === 'REJECTED' && (!reason || reason.length > 1000)) throw fail(400, 'A rejection reason of at most 1000 characters is required.');
+    if (!['PUBLISHED', 'REJECTED', 'ARCHIVED'].includes(status)) throw fail(400, 'Trạng thái kiểm duyệt không hợp lệ');
+    if (status === 'REJECTED' && (!reason || reason.length > 1000)) throw fail(400, 'Lý do từ chối tối đa 1000 ký tự là bắt buộc.');
     const design = await MarketplaceDesign.findById(req.params.id);
-    if (!design) throw fail(404, 'Design not found');
+    if (!design) throw fail(404, 'Không tìm thấy thiết kế');
     const allowed = design.status === 'PENDING_REVIEW'
       ? ['PUBLISHED', 'REJECTED']
       : design.status === 'PUBLISHED' ? ['ARCHIVED'] : [];
-    if (!allowed.includes(status)) throw fail(409, `Cannot change design from ${design.status} to ${status}.`);
+    if (!allowed.includes(status)) throw fail(409, `Không thể chuyển trạng thái thiết kế từ ${design.status} sang ${status}.`);
     design.status = status;
     design.rejectionReason = status === 'REJECTED' ? reason : '';
     design.moderationHistory.push({ status, reason: status === 'REJECTED' ? reason : '', moderatorId: req.user._id, changedAt: new Date() });

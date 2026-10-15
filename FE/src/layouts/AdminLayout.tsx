@@ -1,18 +1,18 @@
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
-import { LayoutDashboard, Package, ShoppingCart, CreditCard, Users, LogOut, ChevronLeft, Menu, Shirt, UserRound } from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, CreditCard, Users, LogOut, ChevronLeft, Menu, Shirt, UserRound, Box } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui'
 
 const ADMIN_LINKS = [
   { label: 'Tổng quan', href: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Sản phẩm áo', href: '/admin/products', icon: Package },
+  { label: 'Áo đang bán (Marketplace)', href: '/admin/designs', icon: Shirt },
   { label: 'Đơn hàng áo', href: '/admin/orders', icon: ShoppingCart },
   { label: 'Thanh toán', href: '/admin/payments', icon: CreditCard },
   { label: 'Thanh toán thành viên', href: '/admin/membership-payments', icon: CreditCard },
   { label: 'Khách hàng', href: '/admin/customers', icon: Users },
   { label: 'Tài khoản', href: '/admin/users', icon: Users },
-  { label: 'Thiết kế', href: '/admin/designs', icon: Shirt },
+  { label: 'Kho Phôi Áo (Base)', href: '/admin/products', icon: Box },
 ]
 
 export function AdminLayout() {

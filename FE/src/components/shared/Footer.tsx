@@ -8,6 +8,24 @@ interface FooterProps {
 }
 
 export function Footer({ className }: FooterProps) {
+  const navigateLinks = [
+    { label: 'Tìm kiếm', href: '/products' },
+    { label: 'Về chúng tôi', href: '/about' },
+    { label: 'Chính sách hội viên', href: '/membership' },
+    { label: 'Yêu cầu hóa đơn', href: '#' },
+    { label: 'Liên hệ hỗ trợ', href: '#' },
+    { label: 'Điều khoản dịch vụ', href: '#' },
+  ]
+
+  const officialLinks = [
+    { label: 'Chính sách hội viên', href: '/membership' },
+    { label: 'Chính sách đổi trả', href: '#' },
+    { label: 'Chính sách giao hàng', href: '#' },
+    { label: 'Chính sách kiểm hàng', href: '#' },
+    { label: 'Chính sách bảo mật', href: '#' },
+    { label: 'Chính sách thanh toán', href: '#' },
+  ]
+
   return (
     <footer className={cn("bg-white py-16 md:py-24 font-body border-t border-gray-200", className)}>
       <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6">
@@ -22,27 +40,27 @@ export function Footer({ className }: FooterProps) {
             <form className="mb-4 max-w-[240px]" onSubmit={e => e.preventDefault()}>
               <input
                 type="email"
-                placeholder="Email Address"
+                placeholder="Địa chỉ Email của bạn"
                 className="w-full bg-transparent text-[10px] font-bold text-black placeholder:text-black mb-3 outline-none"
               />
               <Link to="/membership" className="w-full bg-gradient-brand text-white font-bold uppercase tracking-widest text-[10px] py-3 rounded-sm hover:opacity-90 transition-opacity flex justify-center items-center">
-                SUBSCRIBE
+                ĐĂNG KÝ NHẬN TIN
               </Link>
             </form>
             <p className="text-[10px] leading-relaxed text-black max-w-[200px]">
-              By signing up, you agree to our <br />
-              Privacy Policy.
+              Bằng việc đăng ký, bạn đồng ý với <br />
+              Chính sách bảo mật của chúng tôi.
             </p>
           </div>
 
           {/* ── Column 2: NAVIGATE ── */}
           <div className="flex flex-col">
-            <h3 className="heading-brand text-base md:text-lg text-black mb-6">NAVIGATE</h3>
+            <h3 className="heading-brand text-base md:text-lg text-black mb-6">ĐIỀU HƯỚNG</h3>
             <ul className="flex flex-col gap-3">
-              {['Search', 'About Us', 'Membership Policy', 'Invoice on Request', 'Contact Us', 'Terms of Service'].map(link => (
-                <li key={link}>
-                  <Link to="#" className="text-[11px] md:text-xs text-black hover:text-electric-blue transition-colors tracking-tight font-medium">
-                    {link}
+              {navigateLinks.map(link => (
+                <li key={link.label}>
+                  <Link to={link.href} className="text-[11px] md:text-xs text-black hover:text-electric-blue transition-colors tracking-tight font-medium">
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -51,7 +69,7 @@ export function Footer({ className }: FooterProps) {
 
           {/* ── Column 3: SOCIAL ── */}
           <div className="flex flex-col">
-            <h3 className="heading-brand text-base md:text-lg text-black mb-6">SOCIAL</h3>
+            <h3 className="heading-brand text-base md:text-lg text-black mb-6">MẠNG XÃ HỘI</h3>
             <ul className="flex flex-col gap-3">
               <li>
                 <a href="#" className="text-[11px] md:text-xs text-black hover:text-electric-blue transition-colors flex items-center gap-2 tracking-tight font-medium">
@@ -73,12 +91,12 @@ export function Footer({ className }: FooterProps) {
 
           {/* ── Column 4: OFFICIAL ── */}
           <div className="flex flex-col">
-            <h3 className="heading-brand text-base md:text-lg text-black mb-6">OFFICIAL</h3>
+            <h3 className="heading-brand text-base md:text-lg text-black mb-6">CHÍNH SÁCH</h3>
             <ul className="flex flex-col gap-3">
-              {['Membership Policy', 'Return & Exchange Policy', 'Shipping Policy', 'Inspection Policy', 'Privacy Policy', 'Payment Policy'].map(link => (
-                <li key={link}>
-                  <Link to="#" className="text-[11px] md:text-xs text-black hover:text-electric-blue transition-colors tracking-tight font-medium">
-                    {link}
+              {officialLinks.map(link => (
+                <li key={link.label}>
+                  <Link to={link.href} className="text-[11px] md:text-xs text-black hover:text-electric-blue transition-colors tracking-tight font-medium">
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -87,15 +105,15 @@ export function Footer({ className }: FooterProps) {
 
           {/* ── Column 5: SUPPORT ── */}
           <div className="flex flex-col">
-            <h3 className="heading-brand text-base md:text-lg text-black mb-6">SUPPORT</h3>
+            <h3 className="heading-brand text-base md:text-lg text-black mb-6">HỖ TRỢ</h3>
             <div className="text-[11px] md:text-xs text-black leading-loose mb-12 tracking-tight font-medium">
-              We're here Mon-Sun <br />
-              10:00am - 9:30pm GMT+7. <br />
-              Drop us a note anytime.
+              Hỗ trợ từ Thứ 2 - Chủ Nhật <br />
+              10:00 - 21:30 (GMT+7). <br />
+              Liên hệ với chúng tôi bất cứ lúc nào.
             </div>
 
             <p className="text-[11px] md:text-xs text-black mt-auto tracking-tight font-medium">
-              © Copyright ALTERA 2026
+              © Bản quyền thuộc về ALTERA 2026
             </p>
           </div>
 

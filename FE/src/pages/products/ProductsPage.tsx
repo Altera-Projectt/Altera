@@ -9,8 +9,21 @@ import { ChevronDown, Search } from 'lucide-react'
 import homepage2 from '@/assets/homepage2.jpg'
 
 const CATEGORIES = ['T-Shirt', 'Hoodie', 'Pants', 'Accessory', 'Shoes']
+const CATEGORY_LABELS: Record<string, string> = {
+  'T-Shirt': 'Áo thun (T-Shirt)',
+  Hoodie: 'Áo Hoodie',
+  Pants: 'Quần',
+  Accessory: 'Phụ kiện',
+  Shoes: 'Giày',
+}
+
 const STYLES = ['Oversize', 'Boxy', 'Baby Tee', 'Regular', 'Crop', 'Slim']
 const GENDERS = ['Men', 'Women', 'Unisex']
+const GENDER_LABELS: Record<string, string> = {
+  Men: 'Nam',
+  Women: 'Nữ',
+  Unisex: 'Unisex',
+}
 
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -45,7 +58,7 @@ export function ProductsPage() {
       setProducts(products)
       setTotalPages(pagination.totalPages)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to fetch products')
+      setError(err?.response?.data?.message || 'Không thể tải danh sách sản phẩm')
     } finally {
       setLoading(false)
     }
@@ -90,7 +103,7 @@ export function ProductsPage() {
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 font-heading font-black text-sm md:text-base uppercase tracking-widest hover:text-[#0011FF] transition-colors w-full md:w-auto justify-between md:justify-start"
           >
-            FILTER <ChevronDown className={cn("w-4 h-4 transition-transform", showFilters && "rotate-180")} />
+            BỘ LỌC <ChevronDown className={cn("w-4 h-4 transition-transform", showFilters && "rotate-180")} />
           </button>
 
           {/* Middle: Search Input */}
@@ -114,7 +127,7 @@ export function ProductsPage() {
           <div className="mb-12 p-6 md:p-8 bg-[#F8F8F8] space-y-6 md:space-y-8 shadow-inner">
             {/* Categories */}
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-              <span className="text-xs font-bold uppercase tracking-widest md:w-24 text-gray-500">Category</span>
+              <span className="text-xs font-bold uppercase tracking-widest md:w-24 text-gray-500">Danh mục</span>
               <div className="flex flex-wrap gap-2">
                 {CATEGORIES.map(cat => (
                   <button
@@ -127,7 +140,7 @@ export function ProductsPage() {
                         : 'border-black/20 text-black hover:border-black bg-white',
                     )}
                   >
-                    {cat}
+                    {CATEGORY_LABELS[cat] || cat}
                   </button>
                 ))}
               </div>
@@ -135,7 +148,7 @@ export function ProductsPage() {
 
             {/* Styles */}
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-              <span className="text-xs font-bold uppercase tracking-widest md:w-24 text-gray-500">Style</span>
+              <span className="text-xs font-bold uppercase tracking-widest md:w-24 text-gray-500">Phong cách</span>
               <div className="flex flex-wrap gap-2">
                 {STYLES.map(s => (
                   <button
@@ -156,7 +169,7 @@ export function ProductsPage() {
 
             {/* Genders + clear */}
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-              <span className="text-xs font-bold uppercase tracking-widest md:w-24 text-gray-500">Gender</span>
+              <span className="text-xs font-bold uppercase tracking-widest md:w-24 text-gray-500">Giới tính</span>
               <div className="flex flex-wrap items-center gap-2 w-full">
                 {GENDERS.map(g => (
                   <button
@@ -169,7 +182,7 @@ export function ProductsPage() {
                         : 'border-black/20 text-black hover:border-black bg-white',
                     )}
                   >
-                    {g}
+                    {GENDER_LABELS[g] || g}
                   </button>
                 ))}
 
@@ -178,7 +191,7 @@ export function ProductsPage() {
                     onClick={handleClearFilters}
                     className="md:ml-auto mt-4 md:mt-0 text-[11px] uppercase tracking-widest font-black underline underline-offset-4 hover:text-[#0011FF]"
                   >
-                    CLEAR ALL
+                    XÓA TẤT CẢ
                   </button>
                 )}
               </div>
@@ -194,7 +207,7 @@ export function ProductsPage() {
             <div className="flex flex-col items-center justify-center py-20 gap-4 border border-red-500/20 bg-red-500/5">
               <p className="text-sm font-medium text-red-500">{error}</p>
               <Button onClick={() => fetchProducts()} size="sm" variant="outline" className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white">
-                Retry
+                Thử lại
               </Button>
             </div>
           ) : products.length === 0 ? (
@@ -223,7 +236,7 @@ export function ProductsPage() {
                     disabled={page === 1}
                     className="border-black text-black hover:bg-black hover:text-white font-bold tracking-widest uppercase text-[10px]"
                   >
-                    PREV
+                    TRƯỚC
                   </Button>
                   <span className="text-sm font-bold px-4">
                     {page} / {totalPages}
@@ -234,7 +247,7 @@ export function ProductsPage() {
                     disabled={page === totalPages}
                     className="border-black text-black hover:bg-black hover:text-white font-bold tracking-widest uppercase text-[10px]"
                   >
-                    NEXT
+                    SAU
                   </Button>
                 </div>
               )}

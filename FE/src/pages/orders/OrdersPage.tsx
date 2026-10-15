@@ -13,21 +13,21 @@ import { formatVND } from '@/utils/format'
 function getStatusBadge(status: string) {
   switch (status?.toUpperCase()) {
     case 'PENDING':
-      return <Badge variant="warning">Pending</Badge>
+      return <Badge variant="warning">Chờ xử lý</Badge>
     case 'CONFIRMED':
-      return <Badge variant="secondary">Confirmed</Badge>
+      return <Badge variant="secondary">Đã xác nhận</Badge>
     case 'PROCESSING':
-      return <Badge variant="secondary">Processing</Badge>
+      return <Badge variant="secondary">Đang chuẩn bị</Badge>
     case 'SHIPPED':
-      return <Badge variant="outline">Shipped</Badge>
+      return <Badge variant="outline">Đang vận chuyển</Badge>
     case 'DELIVERED':
-      return <Badge variant="success">Delivered</Badge>
+      return <Badge variant="success">Đã giao hàng</Badge>
     case 'CANCELLED':
-      return <Badge variant="danger">Cancelled</Badge>
+      return <Badge variant="danger">Đã hủy</Badge>
     case 'PAID':
-      return <Badge variant="success">Paid</Badge>
+      return <Badge variant="success">Đã thanh toán</Badge>
     case 'FAILED':
-      return <Badge variant="danger">Failed</Badge>
+      return <Badge variant="danger">Thất bại</Badge>
     default:
       return <Badge variant="muted">{status || '—'}</Badge>
   }
@@ -61,7 +61,7 @@ export function OrdersPage() {
       setOrders(data.orders)
       setTotalPages(data.pagination.totalPages || 1)
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to fetch orders')
+      setError(err?.response?.data?.message || 'Không thể tải danh sách đơn hàng')
     } finally {
       setLoading(false)
     }
@@ -80,7 +80,7 @@ export function OrdersPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
             ALTERA
           </p>
-          <h1 className="heading-brand text-4xl md:text-5xl">My Orders</h1>
+          <h1 className="heading-brand text-4xl md:text-5xl">Đơn hàng của tôi</h1>
         </div>
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -114,7 +114,7 @@ export function OrdersPage() {
         </div>
         <p className="text-sm text-[var(--color-error)]">{error}</p>
         <Button onClick={() => fetchOrders()} variant="outline" size="sm">
-          Retry
+          Thử lại
         </Button>
       </div>
     )
@@ -136,16 +136,16 @@ export function OrdersPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
-              ALTERA — Orders
+              ALTERA — Đơn hàng
             </p>
-            <h1 className="heading-brand text-4xl mb-3">No Orders Yet</h1>
+            <h1 className="heading-brand text-4xl mb-3">Chưa có đơn hàng nào</h1>
             <p className="text-sm text-[var(--color-muted-foreground)] max-w-xs">
-              Start your style journey. Every great wardrobe begins with a single piece.
+              Bắt đầu hành trình phong cách của bạn cùng ALTERA ngay hôm nay.
             </p>
           </div>
           <Button asChild variant="primary" size="lg" className="gap-2 uppercase font-bold tracking-widest">
             <Link to="/products" className="flex items-center gap-2">
-              Start Shopping
+              Khám phá mua sắm
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
@@ -169,12 +169,12 @@ export function OrdersPage() {
         <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
           ALTERA
         </p>
-        <h1 className="heading-brand text-4xl md:text-5xl">My Orders</h1>
+        <h1 className="heading-brand text-4xl md:text-5xl">Đơn hàng của tôi</h1>
       </motion.div>
 
       {/* Column labels */}
       <div className="hidden md:grid md:grid-cols-[1fr_120px_120px_120px_48px] gap-4 pb-4 border-b border-[var(--color-border)] mb-2">
-        {['Order', 'Date', 'Status', 'Total', ''].map((label) => (
+        {['Mã đơn', 'Ngày đặt', 'Trạng thái', 'Tổng tiền', ''].map((label) => (
           <span key={label} className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
             {label}
           </span>
@@ -221,7 +221,7 @@ export function OrdersPage() {
                       #{order._id.slice(-8).toUpperCase()}
                     </p>
                     <p className="text-[10px] text-[var(--color-muted-foreground)] mt-0.5">
-                      {items.length} {items.length === 1 ? 'item' : 'items'}
+                      {items.length} sản phẩm
                     </p>
                   </div>
                 </div>
@@ -267,7 +267,7 @@ export function OrdersPage() {
                           <>
                             {items.map((item: any, idx: number) => {
                               const product = item.product ?? item.productId ?? {}
-                              const name = product.name ?? item.name ?? `Product ${idx + 1}`
+                              const name = product.name ?? item.name ?? `Sản phẩm ${idx + 1}`
                               const qty = item.quantity ?? 1
                               const price = item.price ?? product.price ?? 0
                               const img = product.imageUrl
@@ -290,7 +290,7 @@ export function OrdersPage() {
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium line-clamp-1">{name}</p>
                                     <p className="text-xs text-[var(--color-muted-foreground)]">
-                                      Qty: {qty}
+                                      SL: {qty}
                                     </p>
                                   </div>
                                   <span className="text-sm font-bold whitespace-nowrap">
@@ -302,7 +302,7 @@ export function OrdersPage() {
                             {/* Row total */}
                             <div className="flex justify-between items-center px-5 py-4 border-t border-[var(--color-border)] bg-[var(--color-muted)]/30">
                               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-                                Order Total
+                                Tổng giá trị đơn
                               </span>
                               <span className="text-base font-black text-[var(--color-foreground)]">
                                 {formatVND(totalPrice)}
@@ -311,7 +311,7 @@ export function OrdersPage() {
                           </>
                         ) : (
                           <p className="px-5 py-4 text-xs text-[var(--color-muted-foreground)]">
-                            Details not available yet.
+                            Chưa có thông tin chi tiết.
                           </p>
                         )}
                       </div>
@@ -321,7 +321,7 @@ export function OrdersPage() {
                           to={`/orders/success/${order._id}`}
                           className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
                         >
-                          View Details
+                          Xem chi tiết
                           <ChevronRight className="h-3 w-3" />
                         </Link>
                       </div>
@@ -343,7 +343,7 @@ export function OrdersPage() {
             disabled={page === 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Previous
+            Trước
           </Button>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
             {page} / {totalPages}
@@ -354,7 +354,7 @@ export function OrdersPage() {
             disabled={page === totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
-            Next
+            Sau
           </Button>
         </div>
       )}

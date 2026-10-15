@@ -215,7 +215,7 @@ export function OrderSuccessPage() {
 
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
-              ALTERA — Order Confirmation
+              ALTERA — Xác nhận đơn hàng
             </p>
             <h1 className="heading-brand text-4xl mb-2">{headlineText}</h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">
@@ -271,7 +271,7 @@ export function OrderSuccessPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium line-clamp-1">{name}</p>
-                        <p className="text-xs text-[var(--color-muted-foreground)]">Qty: {qty}</p>
+                        <p className="text-xs text-[var(--color-muted-foreground)]">SL: {qty}</p>
                       </div>
                       <span className="text-sm font-bold whitespace-nowrap">{formatVND(price * qty)}</span>
                     </div>
@@ -371,7 +371,7 @@ export function OrderSuccessPage() {
                     />
                   </div>
                   <p className="text-center text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mt-2">
-                    Scan to Pay
+                    Quét mã để thanh toán
                   </p>
                 </div>
 

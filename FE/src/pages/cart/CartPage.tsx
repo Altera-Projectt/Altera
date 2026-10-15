@@ -77,7 +77,7 @@ export function CartPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
             ALTERA
           </p>
-          <h1 className="heading-brand text-4xl md:text-5xl">Shopping Cart</h1>
+          <h1 className="heading-brand text-4xl md:text-5xl">Giỏ hàng</h1>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-12">
           <div className="space-y-4">
@@ -122,17 +122,17 @@ export function CartPage() {
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-3">
-              ALTERA — Cart
+              ALTERA — Giỏ hàng
             </p>
-            <h1 className="heading-brand text-4xl mb-3">Cart is Empty</h1>
+            <h1 className="heading-brand text-4xl mb-3">Giỏ hàng trống</h1>
             <p className="text-sm text-[var(--color-muted-foreground)] max-w-xs">
-              You haven't added anything yet. Explore our collection and find something you love.
+              Bạn chưa có sản phẩm nào trong giỏ hàng. Hãy khám phá bộ sưu tập và chọn món đồ yêu thích nhé.
             </p>
           </div>
           <Button asChild variant="primary" size="lg" className="gap-2 uppercase font-bold tracking-widest">
             <Link to="/marketplace" className="flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Return to Shop
+              Tiếp tục mua sắm
             </Link>
           </Button>
         </motion.div>
@@ -156,10 +156,10 @@ export function CartPage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
             ALTERA
           </p>
-          <h1 className="heading-brand text-4xl md:text-5xl">Shopping Cart</h1>
+          <h1 className="heading-brand text-4xl md:text-5xl">Giỏ hàng</h1>
         </div>
         <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-          {cart.totalItems} {cart.totalItems === 1 ? 'item' : 'items'}
+          {cart.totalItems} sản phẩm
         </span>
       </motion.div>
 
@@ -170,9 +170,9 @@ export function CartPage() {
         <div>
           {/* Column headers */}
           <div className="hidden sm:grid sm:grid-cols-[1fr_auto_auto] gap-4 pb-4 border-b border-[var(--color-border)]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">Product</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] text-center w-28">Quantity</span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] text-right w-24">Total</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">Sản phẩm</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] text-center w-28">Số lượng</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] text-right w-24">Tổng tiền</span>
           </div>
 
           {/* Items with AnimatePresence */}
@@ -220,7 +220,7 @@ export function CartPage() {
                       {/* Meta */}
                       <div className="flex-1 min-w-0">
                         <h3 className="text-sm font-bold line-clamp-2 leading-snug mb-1">
-                          {item.productId?.name || 'Unknown Product'}
+                          {item.productId?.name || 'Sản phẩm không xác định'}
                         </h3>
 
                         {/* Customization pills */}
@@ -228,7 +228,7 @@ export function CartPage() {
                           <div className="flex flex-wrap gap-2 mt-1.5 mb-1.5">
                             {item.customization.color?.name && (
                               <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] border border-[var(--color-border)] px-2 py-0.5">
-                                Color: {item.customization.color.name}
+                                Màu: {item.customization.color.name}
                               </span>
                             )}
                             {item.customization.size && (
@@ -238,14 +238,14 @@ export function CartPage() {
                             )}
                             {item.customization.printSide && (
                               <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] border border-[var(--color-border)] px-2 py-0.5">
-                                {item.customization.printSide}
+                                {item.customization.printSide === 'FRONT' ? 'Mặt trước' : item.customization.printSide === 'BACK' ? 'Mặt sau' : 'Cả 2 mặt'}
                               </span>
                             )}
                           </div>
                         )}
 
                         <p className="text-xs text-[var(--color-muted-foreground)]">
-                          {formatVND(item.price ?? item.productId?.price ?? 0)} / unit
+                          {formatVND(item.price ?? item.productId?.price ?? 0)} / áo
                         </p>
 
                         {/* Remove — visible on mobile */}
@@ -255,7 +255,7 @@ export function CartPage() {
                           disabled={isUpdating}
                           className="mt-2 sm:hidden flex items-center gap-1 text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] transition-colors"
                         >
-                          <Trash2 className="h-3 w-3" /> Remove
+                          <Trash2 className="h-3 w-3" /> Xóa
                         </button>
                       </div>
                     </div>
@@ -269,7 +269,7 @@ export function CartPage() {
                           onClick={() => handleUpdateQuantity(itemKey!, item.quantity - 1)}
                           disabled={isUpdating || item.quantity <= 1}
                           className="h-9 w-9 flex items-center justify-center text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-white/[0.06] disabled:opacity-30 transition-colors"
-                          aria-label="Decrease quantity"
+                          aria-label="Giảm số lượng"
                         >
                           <Minus className="h-3 w-3" />
                         </button>
@@ -281,7 +281,7 @@ export function CartPage() {
                           onClick={() => handleUpdateQuantity(itemKey!, item.quantity + 1)}
                           disabled={isUpdating}
                           className="h-9 w-9 flex items-center justify-center text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:bg-white/[0.06] disabled:opacity-30 transition-colors"
-                          aria-label="Increase quantity"
+                          aria-label="Tăng số lượng"
                         >
                           <Plus className="h-3 w-3" />
                         </button>
@@ -293,7 +293,7 @@ export function CartPage() {
                         onClick={() => handleRemoveItem(itemKey!)}
                         disabled={isUpdating}
                         className="hidden sm:flex h-9 w-9 items-center justify-center text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] transition-colors"
-                        aria-label="Remove item"
+                        aria-label="Xóa sản phẩm"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -318,7 +318,7 @@ export function CartPage() {
               className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors group"
             >
               <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
-              Continue Shopping
+              Tiếp tục mua sắm
             </Link>
             <button
               type="button"
@@ -327,7 +327,7 @@ export function CartPage() {
               className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-error)] transition-colors disabled:opacity-40"
             >
               <Trash2 className="h-3 w-3" />
-              Clear Cart
+              Xóa tất cả giỏ hàng
             </button>
           </div>
         </div>
@@ -339,24 +339,24 @@ export function CartPage() {
             {/* Summary header */}
             <div className="px-6 py-5 border-b border-[var(--color-border)]">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-                Order Summary
+                Tóm tắt đơn hàng
               </p>
             </div>
 
             {/* Breakdown rows */}
             <div className="px-6 py-5 space-y-4 text-sm">
               <div className="flex justify-between text-[var(--color-muted-foreground)]">
-                <span>Subtotal</span>
+                <span>Tạm tính</span>
                 <span className="font-medium text-[var(--color-foreground)]">
                   {formatVND(cart.totalPrice || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-[var(--color-muted-foreground)]">
-                <span>Shipping</span>
-                <span>Calculated at checkout</span>
+                <span>Phí vận chuyển</span>
+                <span>Tính khi thanh toán</span>
               </div>
               <div className="flex justify-between text-[var(--color-muted-foreground)]">
-                <span>Discount</span>
+                <span>Giảm giá</span>
                 <span>—</span>
               </div>
             </div>
@@ -365,7 +365,7 @@ export function CartPage() {
             <div className="px-6 py-5 border-t border-[var(--color-border)]">
               <div className="flex justify-between items-baseline">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-                  Estimated Total
+                  Tổng thanh toán dự kiến
                 </span>
                 <span className="text-xl font-black text-[var(--color-foreground)]">
                   {formatVND(cart.totalPrice || 0)}
@@ -382,12 +382,12 @@ export function CartPage() {
                 disabled={!!updating}
               >
                 <ShoppingBag className="h-4 w-4" />
-                Proceed to Checkout
+                Tiến hành thanh toán
                 <ArrowRight className="h-4 w-4" />
               </Button>
 
               <p className="text-[10px] text-center text-[var(--color-muted-foreground)] mt-4 leading-relaxed">
-                Taxes and shipping calculated at checkout
+                Phí vận chuyển và ưu đãi sẽ được tính khi thanh toán
               </p>
             </div>
           </div>

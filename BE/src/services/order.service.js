@@ -1,4 +1,4 @@
-﻿const Order = require('../models/Order');
+const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Payment = require('../models/Payment');
 const Cart = require('../models/Cart');
@@ -16,17 +16,17 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
   if (checkoutKey) {
     const existing = await Order.findOne({ userId, checkoutKey }).select('+checkoutKey');
     if (existing) {
-      if (existing.paymentMethod !== paymentMethod) { const error = new Error('This checkout was already submitted with another payment method.'); error.statusCode = 409; throw error; }
+      if (existing.paymentMethod !== paymentMethod) { const error = new Error('Đơn thanh toán này đã được gửi với phương thức thanh toán khác.'); error.statusCode = 409; throw error; }
       const payment = await Payment.findOne({ orderId: existing._id }).sort({ createdAt: -1 });
       return { order: await existing.populate('userId', 'fullName email'), payment: payment ? { paymentReference: payment.paymentReference, paymentMethod, paymentStatus: payment.paymentStatus, transfer: paymentMethod === 'BANK_TRANSFER' ? paymentService.transferDetails(payment) : null } : null };
     }
   }
   const cart = await Cart.findOne({ userId });
-  if (!cart || cart.items.length === 0) { const error = new Error('Your cart is empty.'); error.statusCode = 400; throw error; }
+  if (!cart || cart.items.length === 0) { const error = new Error('Giỏ hàng của bạn đang trống.'); error.statusCode = 400; throw error; }
   const requestedByLine = new Map((items || []).filter((item) => item.cartItemId).map((item) => [String(item.cartItemId), item]));
   const usesCartLineIds = requestedByLine.size > 0;
   if (usesCartLineIds && (requestedByLine.size !== cart.items.length || cart.items.some((item) => Number(requestedByLine.get(String(item._id))?.quantity) !== item.quantity))) {
-    const error = new Error('Your cart changed. Refresh it and try again.'); error.statusCode = 409; throw error;
+    const error = new Error('Giỏ hàng đã thay đổi. Vui lòng tải lại trang và thử lại.'); error.statusCode = 409; throw error;
   }
   if (!usesCartLineIds) {
     const requested = new Map();
@@ -34,7 +34,7 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
     const cartItems = new Map();
     for (const item of cart.items) cartItems.set(String(item.productId), (cartItems.get(String(item.productId)) || 0) + item.quantity);
     if (requested.size !== cartItems.size || [...cartItems].some(([id, quantity]) => requested.get(id) !== quantity)) {
-      const error = new Error('Your cart changed. Refresh it and try again.'); error.statusCode = 409; throw error;
+      const error = new Error('Giỏ hàng đã thay đổi. Vui lòng tải lại trang và thử lại.'); error.statusCode = 409; throw error;
     }
   }
   // Validate products and calculate total
@@ -49,19 +49,19 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
     const product = await Product.findById(productId);
 
     if (!product) {
-      const error = new Error(`Product not found: ${productId}`);
+      const error = new Error(`Không tìm thấy sản phẩm: ${productId}`);
       error.statusCode = 404;
       throw error;
     }
 
     if (!product.isActive) {
-      const error = new Error(`Product is no longer available: ${product.name}`);
+      const error = new Error(`Sản phẩm hiện không còn kinh doanh: ${product.name}`);
       error.statusCode = 400;
       throw error;
     }
 
     if (product.stock < quantity) {
-      const error = new Error(`Insufficient stock for ${product.name}. Available: ${product.stock}`);
+      const error = new Error(`Sản phẩm ${product.name} không đủ tồn kho. Hiện còn: ${product.stock}`);
       error.statusCode = 400;
       throw error;
     }
@@ -75,14 +75,14 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
     let listing = null;
     if (line.marketplaceDesignId) {
       listing = await MarketplaceDesign.findOne({ _id: line.marketplaceDesignId, status: 'PUBLISHED' });
-      if (!listing || String(listing.productId) !== String(product._id)) { const error = new Error('A marketplace design in your cart is no longer available.'); error.statusCode = 400; throw error; }
+      if (!listing || String(listing.productId) !== String(product._id)) { const error = new Error('Một thiết kế trong giỏ hàng hiện không còn khả dụng.'); error.statusCode = 400; throw error; }
     }
     const price = listing ? listing.price : getCustomizationPrice(product, customization);
     if (customization) {
       const color = product.colors.find((option) => option.name === customization.color.name);
       const size = product.sizes.find((option) => option.label === customization.size);
       if (Math.min(product.stock, color.stock, size.stock) < line.quantity) {
-        const error = new Error(`Insufficient stock for ${product.name} in the selected color and size.`); error.statusCode = 400; throw error;
+        const error = new Error(`Sản phẩm ${product.name} theo màu sắc và kích cỡ đã chọn không đủ số lượng trong kho.`); error.statusCode = 400; throw error;
       }
     }
     const snapshot = listing ? { id: String(listing._id), slug: listing.slug, name: listing.name, description: listing.description, thumbnail: listing.thumbnail, price: listing.price, color: listing.color, size: listing.size, printSide: listing.printSide, printingTechnique: listing.printingTechnique, frontDesign: listing.frontDesign, backDesign: listing.backDesign, category: listing.category, tags: listing.tags, productId: String(listing.productId), capturedAt: new Date() } : null;
@@ -108,7 +108,7 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
       const product = await Product.findOneAndUpdate(
         filter, update, options
       );
-      if (!product) { const error = new Error(`Insufficient stock for ${item.name}`); error.statusCode = 400; throw error; }
+      if (!product) { const error = new Error(`Sản phẩm ${item.name} không đủ số lượng trong kho`); error.statusCode = 400; throw error; }
       reserved.push(item);
     }
     order = await Order.create({ userId, checkoutKey, items: orderItems, totalPrice, shippingAddress, note, paymentMethod, paymentStatus: 'PENDING', status: 'PENDING' });
@@ -179,13 +179,13 @@ const getOrderById = async (orderId, userId, role) => {
     .populate('items.designId', 'previewImage customImage shirtColor status');
 
   if (!order) {
-    const error = new Error('Order not found');
+    const error = new Error('Không tìm thấy đơn hàng');
     error.statusCode = 404;
     throw error;
   }
 
   if (role !== 'ADMIN' && order.userId._id.toString() !== userId.toString()) {
-    const error = new Error('Access denied. This order belongs to another user.');
+    const error = new Error('Không có quyền truy cập. Đơn hàng này thuộc về người dùng khác.');
     error.statusCode = 403;
     throw error;
   }
@@ -202,9 +202,9 @@ const updateOrderStatus = async (orderId, status, note) => {
   try {
     await session.withTransaction(async () => {
       const order = await Order.findById(orderId).session(session);
-      if (!order) { const error = new Error('Order not found'); error.statusCode = 404; throw error; }
+      if (!order) { const error = new Error('Không tìm thấy đơn hàng'); error.statusCode = 404; throw error; }
       const allowedTransitions = { PENDING: ['CONFIRMED', 'CANCELLED'], CONFIRMED: ['SHIPPING', 'CANCELLED'], SHIPPING: ['DELIVERED'], DELIVERED: [], CANCELLED: [] };
-      if (!allowedTransitions[order.status].includes(status)) { const error = new Error(`Cannot change status from ${order.status} to ${status}`); error.statusCode = 400; throw error; }
+      if (!allowedTransitions[order.status].includes(status)) { const error = new Error(`Không thể chuyển trạng thái từ ${order.status} sang ${status}`); error.statusCode = 400; throw error; }
 
       if (status === 'CANCELLED') {
         await paymentService.cancelOrderPayment(order, session);

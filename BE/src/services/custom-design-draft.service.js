@@ -7,13 +7,13 @@ const draftFields = ['name', 'productId', 'color', 'size', 'printSide', 'printin
 
 const ownedDraft = async (id, userId) => {
   if (!mongoose.isValidObjectId(id)) {
-    const error = new Error('Draft not found.');
+    const error = new Error('Không tìm thấy bản nháp.');
     error.statusCode = 404;
     throw error;
   }
   const draft = await CustomDesignDraft.findOne({ _id: id, userId });
   if (!draft) {
-    const error = new Error('Draft not found.');
+    const error = new Error('Không tìm thấy bản nháp.');
     error.statusCode = 404;
     throw error;
   }

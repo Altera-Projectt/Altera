@@ -294,7 +294,7 @@ export function ProfilePage() {
         <div className="flex items-center justify-between border-b border-[var(--color-border)] overflow-x-auto no-scrollbar">
           <div className="flex items-center gap-8">
             {[
-              { id: 'store', label: 'Collection' },
+              { id: 'store', label: 'Bộ sưu tập' },
               { id: 'overview', label: 'Tổng quan' },
               { id: 'measurements', label: 'Chỉ số cơ thể' },
               { id: 'preferences', label: 'Sở thích' },
@@ -327,11 +327,11 @@ export function ProfilePage() {
                  onChange={(e) => setStoreSort(e.target.value)}
                  className="bg-transparent border-none outline-none cursor-pointer appearance-none uppercase text-xs font-bold text-[var(--color-foreground)]"
                >
-                 <option value="Newest">Newest</option>
-                 <option value="Popular">Popular</option>
-                 <option value="Best Selling">Best Selling</option>
-                 <option value="Price Low → High">Price Low → High</option>
-                 <option value="Price High → Low">Price High → Low</option>
+                 <option value="Newest">Mới nhất</option>
+                 <option value="Popular">Phổ biến</option>
+                 <option value="Best Selling">Bán chạy nhất</option>
+                 <option value="Price Low → High">Giá: Thấp đến Cao</option>
+                 <option value="Price High → Low">Giá: Cao đến Thấp</option>
                </select>
                <span className="pointer-events-none">▾</span>
             </div>
@@ -445,7 +445,7 @@ export function ProfilePage() {
                   <div className="flex items-center justify-between mb-6">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1">
-                        Personal Info
+                        Thông tin cá nhân
                       </p>
                       <h3 className="font-heading text-2xl uppercase tracking-widest text-[var(--color-foreground)]">Bio & Giới thiệu</h3>
                     </div>
@@ -495,7 +495,7 @@ export function ProfilePage() {
 
                 <section className="pt-8">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1">
-                    Timeline
+                    Dòng thời gian
                   </p>
                   <h3 className="font-heading text-2xl uppercase tracking-widest text-[var(--color-foreground)] mb-6">Hoạt động gần đây</h3>
                   <div className="border border-dashed border-[var(--color-border)] rounded-[var(--radius-xl)] p-12 text-center bg-[var(--color-card)]/50">

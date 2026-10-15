@@ -7,7 +7,7 @@ const { generateToken } = require('../utils/jwt');
 const register = async ({ fullName, email, password }) => {
   const existingUser = await User.findOne({ email });
   if (existingUser) {
-    const error = new Error('Email already registered');
+    const error = new Error('Email này đã được đăng ký');
     error.statusCode = 409;
     throw error;
   }
@@ -24,20 +24,20 @@ const register = async ({ fullName, email, password }) => {
 const login = async ({ email, password }) => {
   const user = await User.findOne({ email }).select('+password');
   if (!user) {
-    const error = new Error('Invalid email or password');
+    const error = new Error('Email hoặc mật khẩu không chính xác');
     error.statusCode = 401;
     throw error;
   }
 
   if (user.isActive === false) {
-    const error = new Error('This account has been deactivated');
+    const error = new Error('Tài khoản này đã bị khóa');
     error.statusCode = 401;
     throw error;
   }
 
   const isPasswordMatch = await user.comparePassword(password);
   if (!isPasswordMatch) {
-    const error = new Error('Invalid email or password');
+    const error = new Error('Email hoặc mật khẩu không chính xác');
     error.statusCode = 401;
     throw error;
   }
