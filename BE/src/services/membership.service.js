@@ -63,7 +63,7 @@ async function checkout(userId, body, clientIp = '127.0.0.1') {
   if (method === 'MOMO' && env.NODE_ENV === 'production' && (env.PAYMENT_ENV !== 'production' || env.MOMO_ENDPOINT.includes('test-payment.momo.vn'))) throw fail('MoMo production credentials and endpoint are required.', 503);
   if (method === 'VNPAY' && !(env.VNPAY_TMN_CODE && env.VNPAY_HASH_SECRET && env.VNPAY_URL && env.VNPAY_RETURN_URL && env.VNPAY_IPN_URL)) throw fail('VNPay is not configured.', 503);
   if (method === 'VNPAY' && env.NODE_ENV === 'production' && (env.VNPAY_URL.includes('sandbox') || env.PAYMENT_ENV !== 'production')) throw fail('VNPay production credentials and endpoint are required.', 503);
-  const ref = reference(); const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+  const ref = reference(); const expiresAt = new Date(Date.now() + (method === 'BANK_TRANSFER' ? 24 * 60 * 60 * 1000 : 30 * 60 * 1000));
   const order = await MembershipOrder.create({ userId, membershipPlanId: plan._id, fullName, email, phone, amount: plan.price, paymentMethod: method, paymentReference: ref, expiresAt });
   const payment = await Payment.create({ membershipOrderId: order._id, membershipPlanId: plan._id, userId, paymentMethod: method, paymentStatus: 'PENDING', amount: plan.price, currency: plan.currency, paymentReference: ref, provider: method === 'BANK_TRANSFER' ? 'VIETQR' : method, providerOrderId: ref, expiresAt });
   let paymentUrl = null; let transfer = null;
@@ -138,7 +138,14 @@ async function momoIpn(body) {
 async function verifyBank(orderId, adminId, approved, reason) {
   const order = await MembershipOrder.findById(orderId); if (!order || order.paymentMethod !== 'BANK_TRANSFER') throw fail('Bank transfer payment not found.', 404);
   const payment = await Payment.findOne({ membershipOrderId: order._id }); if (!payment) throw fail('Payment not found.', 404);
-  if (order.expiresAt && order.expiresAt <= new Date()) throw fail('This bank transfer request has expired.', 409);
+  if (order.status !== 'PENDING') throw fail('Payment is no longer pending.', 409);
+  if (order.expiresAt && order.expiresAt <= new Date()) {
+    await Promise.all([
+      MembershipOrder.updateOne({ _id: order._id, status: 'PENDING' }, { $set: { status: 'EXPIRED' } }),
+      Payment.updateOne({ _id: payment._id, paymentStatus: { $in: ['PENDING', 'PROCESSING'] } }, { $set: { paymentStatus: 'EXPIRED' } }),
+    ]);
+    throw fail('This bank transfer request has expired.', 409);
+  }
   if (approved) return settle(order, payment, adminId, order.transactionId);
   if (order.status !== 'PENDING' || !['PENDING','PROCESSING'].includes(payment.paymentStatus)) throw fail('Payment is no longer pending.', 409);
   const session = await mongoose.startSession();
