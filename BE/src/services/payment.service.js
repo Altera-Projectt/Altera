@@ -4,6 +4,7 @@ const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const env = require('../config/env');
+const { incrementPaidOrderDesignSales } = require('./marketplace-sales.service');
 
 const newReference = () => `ALT${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
 const sign = (value, secret) => crypto.createHmac('sha256', secret).update(value).digest('hex');
@@ -198,6 +199,7 @@ const confirmPayment = async (orderId, adminId, transactionId) => {
       if (!updated) throw paymentError('Payment has already been processed.', 409);
       const orderUpdate = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: updated.paidAt, ...(order.status === 'PENDING' ? { status: 'CONFIRMED' } : {}) } }, { session });
       if (!orderUpdate.modifiedCount) throw paymentError('Order payment status changed. Refresh and try again.', 409);
+      await incrementPaidOrderDesignSales(order, session);
       result = { order: await Order.findById(order._id).session(session), payment: updated };
     });
     return result;
@@ -253,6 +255,7 @@ const momoNotification = async (body) => {
         if (!updated) return { duplicate: true };
         const changed = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } }, { session });
         if (!changed.modifiedCount) throw paymentError('Order payment status changed while processing MoMo notification.', 409);
+        await incrementPaidOrderDesignSales(order, session);
       } else {
         const failed = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'FAILED', failureReason: String(body.message || 'MoMo payment failed').slice(0, 300) } }, { new: true, session });
         if (!failed) return { duplicate: true };
@@ -266,16 +269,24 @@ const momoNotification = async (body) => {
 
 const bankNotification = async (req) => {
   if (!env.PAYMENT_WEBHOOK_TOKEN) throw paymentError('Bank transaction webhook is not configured.', 503);
-  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  const authorization = String(req.headers.authorization || '');
+  const match = authorization.match(/^(?:Bearer|Apikey)\s+(.+)$/i);
+  const token = match?.[1]?.trim() || '';
   if (!token || !equalSignature(Buffer.from(token).toString('hex'), Buffer.from(env.PAYMENT_WEBHOOK_TOKEN).toString('hex'))) throw paymentError('Invalid bank callback authorization', 401);
   const data = req.body || {};
   const content = String(data.content || '').toUpperCase();
-  const ref = String(data.orderId || content.match(/ALT-?[A-F0-9]{10,16}/)?.[0] || '').trim().toUpperCase();
-  if (String(data.transType).toUpperCase() !== 'C' || String(data.bankaccount) !== String(env.BANK_ACCOUNT_NUMBER)) throw paymentError('Bank transaction does not match payment account or transaction type.');
-  const transactionId = String(data.transactionid || data.referencenumber || '');
+  const suppliedCode = String(data.code || '').toUpperCase();
+  const referenceMatch = `${suppliedCode} ${content}`.match(/ALT-?[A-F0-9]{10,16}/);
+  const ref = String(data.orderId || referenceMatch?.[0] || '').trim().toUpperCase();
+  const transferType = String(data.transferType ?? data.transType ?? '').toUpperCase();
+  const accountNumber = String(data.accountNumber ?? data.bankaccount ?? '');
+  const amount = Number(data.transferAmount ?? data.amount);
+  if (!['IN', 'C'].includes(transferType) || accountNumber !== String(env.BANK_ACCOUNT_NUMBER)) throw paymentError('Bank transaction does not match payment account or transaction type.');
+  const transactionId = String(data.id ?? data.transactionid ?? data.referenceCode ?? data.referencenumber ?? '');
   if (!transactionId) throw paymentError('Transaction ID is required.');
+  const normalizedData = { ...data, content, amount, transactionid: transactionId, referencenumber: transactionId, transactiontime: data.transactionDate ?? data.transactiontime };
   const membershipPayment = await Payment.findOne({ provider: 'VIETQR', paymentReference: ref });
-  if (membershipPayment?.membershipOrderId) return require('./membership.service').bankWebhook(data, membershipPayment);
+  if (membershipPayment?.membershipOrderId) return require('./membership.service').bankWebhook(normalizedData, membershipPayment);
   const session = await mongoose.startSession();
   try {
     return await session.withTransaction(async () => {
@@ -283,7 +294,7 @@ const bankNotification = async (req) => {
       if (!payment) throw paymentError('Payment reference not found', 404);
       if (payment.paymentStatus !== 'PENDING') return { duplicate: true };
       if (payment.expiresAt && payment.expiresAt <= new Date()) { await expireAttempt(payment, session); return { expired: true }; }
-      if (Number(data.amount) !== payment.amount) throw paymentError('Bank transaction amount does not match payment.');
+      if (amount !== payment.amount) throw paymentError('Bank transaction amount does not match payment.');
       if (!content.includes(payment.paymentReference.toUpperCase())) throw paymentError('Bank transfer content does not match payment reference.');
       const order = await Order.findById(payment.orderId).session(session);
       if (!order || order.status === 'CANCELLED' || order.paymentStatus !== 'PENDING' || order.paymentReference !== payment.paymentReference) return { stale: true };
@@ -291,6 +302,7 @@ const bankNotification = async (req) => {
       if (!updated) return { duplicate: true };
       const changed = await Order.updateOne({ _id: order._id, paymentStatus: 'PENDING', status: { $ne: 'CANCELLED' }, paymentReference: payment.paymentReference }, { $set: { paymentStatus: 'PAID', paidAt: new Date(), status: order.status === 'PENDING' ? 'CONFIRMED' : order.status } }, { session });
       if (!changed.modifiedCount) throw paymentError('Order payment status changed while processing bank notification.', 409);
+      await incrementPaidOrderDesignSales(order, session);
       return { duplicate: false };
     });
   } finally { await session.endSession(); }

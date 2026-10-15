@@ -6,6 +6,7 @@ const MarketplaceDesign = require('../models/MarketplaceDesign');
 const mongoose = require('mongoose');
 const paymentService = require('./payment.service');
 const { getCustomizationPrice } = require('./customization.service');
+const { incrementPaidOrderDesignSales } = require('./marketplace-sales.service');
 
 /**
  * Create a new order
@@ -224,7 +225,7 @@ const updateOrderStatus = async (orderId, status, note) => {
         const payment = await Payment.findOne({ orderId: order._id, paymentMethod: 'COD' }).sort({ createdAt: -1 }).session(session);
         if (payment?.paymentStatus === 'PENDING') {
           const paid = await Payment.findOneAndUpdate({ _id: payment._id, paymentStatus: 'PENDING' }, { $set: { paymentStatus: 'PAID', paidAt: new Date() } }, { new: true, session });
-          if (paid) { order.paymentStatus = 'PAID'; order.paidAt = paid.paidAt; }
+          if (paid) { order.paymentStatus = 'PAID'; order.paidAt = paid.paidAt; await incrementPaidOrderDesignSales(order, session); }
         }
       }
       if (note && order.statusHistory.length) order.statusHistory[order.statusHistory.length - 1].note = note;

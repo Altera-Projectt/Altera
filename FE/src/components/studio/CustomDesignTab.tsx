@@ -131,6 +131,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
   const visibleImageLayers = current.filter((layer) => layer.type === 'image' && layer.visible) as ImageLayer[]
   const selected = current.find((layer) => layer.id === selectedId) ?? null
+  const activeImageLayer = (selected?.type === 'image' && selected.visible ? selected : visibleImageLayers[0]) as ImageLayer | undefined
   const commit = (next: DesignState) => { setUndoStack((stack) => [...stack.slice(-49), design]); setRedoStack([]); setDesign(next) }
   const undo = () => { const previous = undoStack.at(-1); if (!previous) return; setRedoStack((stack) => [...stack, design]); setUndoStack((stack) => stack.slice(0, -1)); setDesign(previous) }
   const redo = () => { const next = redoStack.at(-1); if (!next) return; setUndoStack((stack) => [...stack, design]); setRedoStack((stack) => stack.slice(0, -1)); setDesign(next) }
@@ -165,45 +166,13 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
 
     const fetchAllImages = async () => {
       try {
-        // Fetch both explicitly uploaded images and all AI designs
-        const [uploadsRes, designsRes] = await Promise.allSettled([
-          DesignService.getCustomImages(),
-          DesignService.getMyDesigns(1, 100)
-        ])
-        
+        // Only fetch explicitly uploaded images. AI designs are loaded on demand
+        // by the "Thư viện" tab (DesignStudioPage) to avoid a heavy request on mount.
+        const uploadsRes = await DesignService.getCustomImages()
+
         if (!active) return
-        
-        let fetchedImages: UploadedCustomImage[] = []
-        
-        if (uploadsRes.status === 'fulfilled') {
-          fetchedImages = uploadsRes.value.data.data.images || []
-        }
-        
-        if (designsRes.status === 'fulfilled') {
-          const aiDesigns = designsRes.value.data.data.designs || []
-          const aiImages: UploadedCustomImage[] = aiDesigns
-            .filter(d => d.previewImage || d.customImage)
-            .map(d => ({
-              _id: d._id,
-              url: d.previewImage || d.customImage || '',
-              thumbnailUrl: d.previewImage || d.customImage || '',
-              filename: `ai-design-${d._id}.png`,
-              mimeType: 'image/png',
-              size: 0,
-              source: 'AI',
-              prompt: d.prompt,
-              designId: d._id,
-              createdAt: d.createdAt || new Date().toISOString()
-            }))
-            
-          // Merge AI images avoiding duplicates
-          for (const aiImg of aiImages) {
-            if (!fetchedImages.some(img => img.url === aiImg.url)) {
-              fetchedImages.push(aiImg)
-            }
-          }
-        }
-        
+
+        const fetchedImages: UploadedCustomImage[] = uploadsRes.data.data.images || []
         // Safely merge with existing state (to preserve pendingAsset or inflight uploads)
         setUploads(prev => {
           const merged = [...prev];
@@ -734,10 +703,16 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       <div className="w-full max-w-[500px] aspect-square rounded-2xl overflow-hidden shadow-2xl border border-gray-300">
          <ShirtCanvas3D 
            shirtColor={selectedColor?.hex ?? '#ffffff'} 
+           designImage={activeImageLayer?.src}
            designLayers={visibleImageLayers}
            selectedLayerId={selectedId}
-           onLayerPositionChange={(id, x, y) => update(id, { x, y })}
            onLayerSelect={setSelectedId}
+           onUpdateLayer={(id, patch) => update(id, patch as Partial<ImageLayer>)}
+           onLayerPositionChange={(id, x, y) => update(id, { x, y })}
+           decalOpacity={activeImageLayer?.opacity ?? 1}
+           decalRotationDegrees={activeImageLayer?.rotation ?? 0}
+           decalScaleMultiplier={activeImageLayer?.scaleX ?? 1}
+           decalLocked={activeImageLayer?.locked ?? false}
            printSide={printSide === 'BOTH' ? (side === 'frontDesign' ? 'FRONT' : 'BACK') : printSide}
          />
       </div>

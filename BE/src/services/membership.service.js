@@ -164,7 +164,7 @@ async function verifyBank(orderId, adminId, approved, reason) {
 async function bankWebhook(data, payment) {
   const order = await MembershipOrder.findById(payment.membershipOrderId);
   if (!order || order.status !== 'PENDING') return { duplicate: true };
-  if (Number(data.amount) !== payment.amount || !String(data.content || '').toUpperCase().includes(payment.paymentReference.toUpperCase())) throw fail('Bank payment amount or reference does not match.');
+  if (Number(data.transferAmount ?? data.amount) !== payment.amount || !String(data.content || '').toUpperCase().includes(payment.paymentReference.toUpperCase())) throw fail('Bank payment amount or reference does not match.');
   return settle(order, payment, null, String(data.transactionid || data.referencenumber));
 }
 async function history(userId) { return MembershipOrder.find({ userId }).populate('membershipPlanId', 'code name').sort({ createdAt: -1 }).lean(); }
