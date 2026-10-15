@@ -10,12 +10,50 @@ import { useAuthStore } from '@/store/authStore'
 import type { Product } from '@/types/product.types'
 import { formatVND } from '@/utils/format'
 import ShirtCanvas3D from './ShirtCanvas3D'
-type ImageLayer = { id: string; type: 'image'; name: string; visible: boolean; locked: boolean; zIndex: number; src: string; x: number; y: number; rotation: number; scaleX: number; scaleY: number; opacity: number }
+type ImageLayer = { 
+  id: string; 
+  type: 'image'; 
+  name: string; 
+  visible: boolean; 
+  locked: boolean; 
+  zIndex: number; 
+  src: string; 
+  x: number; 
+  y: number; 
+  rotation: number; 
+  scaleX: number; 
+  scaleY: number; 
+  opacity: number;
+  position3D?: [number, number, number];
+  rotation3D?: [number, number, number];
+}
 type DesignLayer = ImageLayer
 type DesignState = { frontDesign: { layers: DesignLayer[] }; backDesign: { layers: DesignLayer[] } }
 const isAIAsset = (image: UploadedCustomImage) => image.imageType === 'AI' || image.source === 'AI'
 
-const makeImage = (src: string): ImageLayer => ({ id: crypto.randomUUID(), type: 'image', name: 'Image', visible: true, locked: false, zIndex: Date.now(), src, x: 50, y: 50, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1 })
+const makeImage = (src: string, offsetIndex = 0): ImageLayer => {
+  const xOffset = ((offsetIndex % 5) - 2) * 8;
+  const yOffset = ((offsetIndex % 3) - 1) * 8;
+  const posX = (xOffset / 100) * 0.6;
+  const posY = 0.1 - (yOffset / 100) * 0.5;
+  return { 
+    id: crypto.randomUUID(), 
+    type: 'image', 
+    name: 'Image', 
+    visible: true, 
+    locked: false, 
+    zIndex: Date.now(), 
+    src, 
+    x: 50 + xOffset, 
+    y: 50 + yOffset, 
+    rotation: 0, 
+    scaleX: 1, 
+    scaleY: 1, 
+    opacity: 1,
+    position3D: [posX, posY, 0.155],
+    rotation3D: [Math.PI / 2, 0, 0]
+  };
+}
 
 function readDesign(storageKey: string): DesignState {
   try {
@@ -255,7 +293,17 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     } catch (uploadError: unknown) { setError(errorMessage(uploadError, 'Could not upload this image.')) }
     finally { setUploading(false); if (fileInput.current) fileInput.current.value = '' }
   }
-  const addUploadedImage = (image: UploadedCustomImage) => { const layer = { ...makeImage(image.url), name: isAIAsset(image) ? `AI · ${(image.prompt || 'Design').slice(0, 24)}` : image.filename, zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 }; commit({ ...design, [side]: { layers: [...design[side].layers, layer] } }); setSelectedId(layer.id); setError('') }
+  const addUploadedImage = (image: UploadedCustomImage) => {
+    const offsetIndex = design[side].layers.length;
+    const layer = { 
+      ...makeImage(image.url, offsetIndex), 
+      name: isAIAsset(image) ? `AI · ${(image.prompt || 'Design').slice(0, 24)}` : image.filename, 
+      zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 
+    }; 
+    commit({ ...design, [side]: { layers: [...design[side].layers, layer] } }); 
+    setSelectedId(layer.id); 
+    setError('') 
+  }
   const visibleAssets = uploads.filter((image) => assetFilter === 'ALL' || (assetFilter === 'AI' ? isAIAsset(image) : !isAIAsset(image)))
   // Place an asset handed over from the AI tab exactly once.
   const consumedAssetRef = useRef<string | null>(null)
@@ -309,7 +357,20 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     const [layer] = layers.splice(index, 1); const target = direction === 'front' ? layers.length : direction === 'back' ? 0 : Math.max(0, Math.min(layers.length, index + (direction === 'forward' ? 1 : -1)))
     layers.splice(target, 0, layer); commit({ ...design, [side]: { layers: layers.map((item, i) => ({ ...item, zIndex: i })) } })
   }
-  const duplicate = (layer: DesignLayer) => { const copy = { ...layer, id: crypto.randomUUID(), name: `${layer.name} copy`, x: Math.min(100, layer.x + 3), y: Math.min(100, layer.y + 3), zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1 } as DesignLayer; commit({ ...design, [side]: { layers: [...design[side].layers, copy] } }); setSelectedId(copy.id) }
+  const duplicate = (layer: DesignLayer) => { 
+    const copy = { 
+      ...layer, 
+      id: crypto.randomUUID(), 
+      name: `${layer.name} copy`, 
+      x: Math.min(100, layer.x + 3), 
+      y: Math.min(100, layer.y + 3), 
+      zIndex: Math.max(0, ...design[side].layers.map((item) => item.zIndex)) + 1,
+      position3D: layer.position3D ? [layer.position3D[0] + 0.03, layer.position3D[1] - 0.03, layer.position3D[2]] : undefined,
+      rotation3D: layer.rotation3D ? [...layer.rotation3D] : undefined,
+    } as DesignLayer; 
+    commit({ ...design, [side]: { layers: [...design[side].layers, copy] } }); 
+    setSelectedId(copy.id) 
+  }
   const toggleVisibility = (layer: DesignLayer) => changeLayer(layer.id, { visible: !layer.visible })
   const changeSide = (next: 'frontDesign' | 'backDesign') => { setSide(next); setSelectedId(null) }
   const loadTemplates = async () => {

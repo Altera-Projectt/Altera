@@ -17,6 +17,8 @@ export type CanvasDesignLayer = {
   visible?: boolean;
   name?: string;
   type?: string;
+  position3D?: [number, number, number];
+  rotation3D?: [number, number, number];
 };
 
 class ModelErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
@@ -84,46 +86,23 @@ function DesignDecal({
   );
 }
 
-// Helper to convert 2D layer properties into 3D decal transforms
-function layerTo3DTransform(
+// Helper to determine initial 3D position if a layer does not have position3D yet
+function getInitialLayer3D(
   layer: CanvasDesignLayer, 
   isBack: boolean
-): { position: [number, number, number]; rotation: [number, number, number]; scale: [number, number, number] } {
+): { pos: [number, number, number]; rot: [number, number, number] } {
+  if (layer.position3D && layer.rotation3D) {
+    return { pos: layer.position3D, rot: layer.rotation3D };
+  }
   const lx = layer.x ?? 50;
   const ly = layer.y ?? 50;
-  const rotDeg = layer.rotation ?? 0;
-  const sx = (layer.scaleX ?? 1) * 0.25;
-  const sy = (layer.scaleY ?? 1) * 0.25;
-
   const posX = isBack ? -(((lx - 50) / 100) * 0.6) : (((lx - 50) / 100) * 0.6);
-  const posY = 0.1 + ((50 - ly) / 100) * 0.6;
-  const posZ = isBack ? -0.155 + (posX * posX) * 0.12 : 0.155 - (posX * posX) * 0.12;
-
-  const rotation: [number, number, number] = isBack
-    ? [Math.PI / 2, Math.PI, -(rotDeg * Math.PI) / 180]
-    : [Math.PI / 2, 0, (rotDeg * Math.PI) / 180];
-
+  const posY = 0.35 - (ly / 100) * 0.7;
+  const posZ = isBack ? -0.155 : 0.155;
   return {
-    position: [posX, posY, posZ],
-    rotation,
-    scale: [sx, sy, 0.3]
+    pos: [posX, posY, posZ],
+    rot: isBack ? [Math.PI / 2, Math.PI, 0] : [Math.PI / 2, 0, 0]
   };
-}
-
-// Hit-test: find the top layer under the click point
-function findLayerAtPoint(layers: CanvasDesignLayer[], x: number, y: number): CanvasDesignLayer | null {
-  for (let i = layers.length - 1; i >= 0; i--) {
-    const layer = layers[i];
-    if (layer.locked || layer.visible === false) continue;
-    const lx = layer.x ?? 50;
-    const ly = layer.y ?? 50;
-    const halfW = ((0.25 * (layer.scaleX ?? 1)) / 0.6) * 50;
-    const halfH = ((0.25 * (layer.scaleY ?? 1)) / 0.6) * 50;
-    if (x >= lx - halfW && x <= lx + halfW && y >= ly - halfH && y <= ly + halfH) {
-      return layer;
-    }
-  }
-  return null;
 }
 
 // ----------------------------------------------------------------------
@@ -133,9 +112,6 @@ interface DragState {
   id: string;
   pos: [number, number, number];
   rot: [number, number, number];
-  x: number;
-  y: number;
-  dragOffset?: { x: number; y: number };
 }
 
 interface ShirtModelProps {
@@ -179,7 +155,6 @@ function ShirtModel({
   onDragEnd,
   onReady
 }: ShirtModelProps) {
-  // Load the GLTF model. Make sure you place `shirt.glb` in public/models/
   const { nodes } = useGLTF('/models/shirt.glb') as any;
   useEffect(() => { onReady?.() }, [onReady]);
 
@@ -192,7 +167,6 @@ function ShirtModel({
       .sort((a, b) => (a.zIndex ?? 0) - (b.zIndex ?? 0));
   }, [designLayers]);
 
-  // Legacy single active layer check for cursor state
   const activeLayer = sortedLayers.find((layer) => layer.id === (draggingLayer?.id || selectedLayerId))
     ?? sortedLayers[sortedLayers.length - 1];
   const isLocked = activeLayer?.locked || (designImage && !sortedLayers.length && decalLocked);
@@ -203,7 +177,6 @@ function ShirtModel({
         <Center>
           {Object.values(nodes).map((node: any) => {
             if (node.isMesh) {
-              // Heuristic to find the main body mesh for the Decal (usually has the most vertices)
               const isMainBody = node.geometry.attributes.position.count > 1500; 
               
               return (
@@ -219,17 +192,30 @@ function ShirtModel({
                       const localPoint = targetObj.worldToLocal(e.point.clone());
                       const localNormal = e.face?.normal?.clone() || new THREE.Vector3(0, 0, 1);
 
-                      const clickX = isBack
-                        ? Math.max(0, Math.min(100, Math.round(((-localPoint.x + 0.3) / 0.6) * 100)))
-                        : Math.max(0, Math.min(100, Math.round(((localPoint.x + 0.3) / 0.6) * 100)));
-                      const clickY = Math.max(0, Math.min(100, Math.round(50 - ((localPoint.y - 0.1) / 0.6) * 100)));
+                      // Find closest unlocked layer to click point in 3D
+                      let targetLayer: CanvasDesignLayer | null = null;
+                      let minDistance = Infinity;
 
-                      const hitLayer = findLayerAtPoint(sortedLayers, clickX, clickY);
-                      const targetLayer = hitLayer
-                        ?? sortedLayers.find((layer) => layer.id === selectedLayerId)
-                        ?? [...sortedLayers].reverse().find((layer) => !layer.locked)
-                        ?? sortedLayers[sortedLayers.length - 1]
-                        ?? null;
+                      for (let i = sortedLayers.length - 1; i >= 0; i--) {
+                        const layer = sortedLayers[i];
+                        if (layer.locked || layer.visible === false) continue;
+                        const layerInit = getInitialLayer3D(layer, isBack);
+                        const layerPos = new THREE.Vector3(...(layer.position3D || layerInit.pos));
+                        const radius = 0.25 * Math.max(layer.scaleX ?? 1, layer.scaleY ?? 1);
+                        const dist = localPoint.distanceTo(layerPos);
+                        if (dist <= radius && dist < minDistance) {
+                          minDistance = dist;
+                          targetLayer = layer;
+                        }
+                      }
+
+                      // Fallback to active/selected layer
+                      if (!targetLayer) {
+                        targetLayer = sortedLayers.find((layer) => layer.id === selectedLayerId)
+                          ?? [...sortedLayers].reverse().find((layer) => !layer.locked)
+                          ?? sortedLayers[sortedLayers.length - 1]
+                          ?? null;
+                      }
 
                       if (targetLayer?.locked || (designImage && !sortedLayers.length && decalLocked)) {
                         return;
@@ -271,39 +257,40 @@ function ShirtModel({
                     }
                   }}
                 >
-                  {/* Dynamic Color Changing applied to ALL parts (body, collar, sleeves) */}
                   <meshStandardMaterial 
                     color={colorHex} 
                     roughness={0.8}
                     metalness={0.1}
                   />
                   
-                  {/* Multi-layer Decals: Render all layers currently in the designLayers array */}
+                  {/* Multi-layer Decals: Free 3D surface dragging across the entire shirt */}
                   {isMainBody && sortedLayers.length > 0 ? (
                     sortedLayers.map((layer, index) => {
                       const isBeingDragged = isDragging && draggingLayer?.id === layer.id;
-                      const transform = layerTo3DTransform(layer, isBack);
+                      const initial = getInitialLayer3D(layer, isBack);
 
-                      // Outside-in reactive properties:
-                      const scale: [number, number, number] = [
-                        0.25 * (layer.scaleX ?? 1),
-                        0.25 * (layer.scaleY ?? 1),
-                        0.3
-                      ];
-                      const opacity = layer.opacity ?? 1;
-
-                      let position = transform.position;
-                      let rotation = transform.rotation;
+                      let position = layer.position3D || initial.pos;
+                      let baseRotation = layer.rotation3D || initial.rot;
 
                       if (isBeingDragged && draggingLayer) {
                         position = draggingLayer.pos;
-                        const rotDeg = layer.rotation ?? 0;
-                        rotation = [
-                          draggingLayer.rot[0],
-                          draggingLayer.rot[1],
-                          draggingLayer.rot[2] + ((rotDeg * Math.PI) / 180)
-                        ];
+                        baseRotation = draggingLayer.rot;
                       }
+
+                      // Reactive rotation slider (outside-in)
+                      const rotDeg = layer.rotation ?? 0;
+                      const rotation: [number, number, number] = [
+                        baseRotation[0],
+                        baseRotation[1],
+                        baseRotation[2] + ((rotDeg * Math.PI) / 180)
+                      ];
+
+                      // Reactive resize slider (outside-in)
+                      const scale: [number, number, number] = [
+                        0.25 * (layer.scaleX ?? 1),
+                        0.25 * (layer.scaleY ?? 1),
+                        0.45 * Math.max(layer.scaleX ?? 1, layer.scaleY ?? 1)
+                      ];
 
                       return (
                         <DesignDecal
@@ -312,7 +299,7 @@ function ShirtModel({
                           position={position}
                           rotation={rotation}
                           scale={scale}
-                          opacity={opacity}
+                          opacity={layer.opacity ?? 1}
                           polygonOffsetFactor={-1 - (index * 2)}
                         />
                       );
@@ -401,102 +388,77 @@ export default function ShirtCanvas3D({
       onLayerSelect(targetLayer.id);
     }
 
-    const clickX = isBack
-      ? Math.max(0, Math.min(100, Math.round(((-localPoint.x + 0.3) / 0.6) * 100)))
-      : Math.max(0, Math.min(100, Math.round(((localPoint.x + 0.3) / 0.6) * 100)));
-    const clickY = Math.max(0, Math.min(100, Math.round(50 - ((localPoint.y - 0.1) / 0.6) * 100)));
-
-    const layerX = targetLayer?.x ?? 50;
-    const layerY = targetLayer?.y ?? 50;
-    const distX = clickX - layerX;
-    const distY = clickY - layerY;
-    const keepOffset = Math.hypot(distX, distY) <= 30;
-    const offsetX = keepOffset ? distX : 0;
-    const offsetY = keepOffset ? distY : 0;
-
-    const targetX = Math.max(5, Math.min(95, Math.round(clickX - offsetX)));
-    const targetY = Math.max(5, Math.min(95, Math.round(clickY - offsetY)));
-
-    const posX = isBack ? -(((targetX - 50) / 100) * 0.6) : (((targetX - 50) / 100) * 0.6);
-    const posY = 0.1 + ((50 - targetY) / 100) * 0.6;
-    const posZ = isBack ? -0.155 + (posX * posX) * 0.12 : 0.155 - (posX * posX) * 0.12;
-
+    // Direct 3D mesh surface point & orientation (pure free dragging)
     const dummy = new THREE.Object3D();
-    dummy.position.set(posX, posY, posZ);
-    dummy.lookAt(dummy.position.clone().add(normal));
+    dummy.position.copy(localPoint);
+    dummy.lookAt(localPoint.clone().add(normal));
+
+    const newPos: [number, number, number] = [localPoint.x, localPoint.y, localPoint.z];
+    const newRot: [number, number, number] = [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z];
 
     const initialDrag: DragState = {
       id: targetLayer ? targetLayer.id : '__fallback__',
-      pos: [posX, posY, posZ],
-      rot: [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z],
-      x: targetX,
-      y: targetY,
-      dragOffset: { x: offsetX, y: offsetY }
+      pos: newPos,
+      rot: newRot,
     };
 
     setDraggingLayer(initialDrag);
-    setPos([posX, posY, posZ]);
-    setRot([dummy.rotation.x, dummy.rotation.y, dummy.rotation.z]);
+    setPos(newPos);
+    setRot(newRot);
     setIsDragging(true);
-  }, [isBack, onLayerSelect, selectedLayerId]);
+  }, [onLayerSelect, selectedLayerId]);
 
   const handleDragMove = useCallback((localPoint: THREE.Vector3, normal: THREE.Vector3) => {
+    // Pure free 3D surface dragging: follows mouse wherever it touches the shirt mesh
+    const dummy = new THREE.Object3D();
+    dummy.position.copy(localPoint);
+    dummy.lookAt(localPoint.clone().add(normal));
+
+    const newPos: [number, number, number] = [localPoint.x, localPoint.y, localPoint.z];
+    const newRot: [number, number, number] = [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z];
+
+    setPos(newPos);
+    setRot(newRot);
+
     setDraggingLayer((prev) => {
       if (!prev) return null;
-
-      const rawX = isBack
-        ? ((-localPoint.x + 0.3) / 0.6) * 100
-        : ((localPoint.x + 0.3) / 0.6) * 100;
-      const rawY = 50 - ((localPoint.y - 0.1) / 0.6) * 100;
-
-      const offsetX = prev.dragOffset?.x ?? 0;
-      const offsetY = prev.dragOffset?.y ?? 0;
-
-      const clampedX = Math.max(5, Math.min(95, Math.round(rawX - offsetX)));
-      const clampedY = Math.max(5, Math.min(95, Math.round(rawY - offsetY)));
-
-      const posX = isBack ? -(((clampedX - 50) / 100) * 0.6) : (((clampedX - 50) / 100) * 0.6);
-      const posY = 0.1 + ((50 - clampedY) / 100) * 0.6;
-      const posZ = isBack ? -0.155 + (posX * posX) * 0.12 : 0.155 - (posX * posX) * 0.12;
-
-      const dummy = new THREE.Object3D();
-      dummy.position.set(posX, posY, posZ);
-      dummy.lookAt(dummy.position.clone().add(normal));
-
-      const newPos: [number, number, number] = [posX, posY, posZ];
-      const newRot: [number, number, number] = [dummy.rotation.x, dummy.rotation.y, dummy.rotation.z];
-
-      setPos(newPos);
-      setRot(newRot);
-
       return {
         ...prev,
         pos: newPos,
         rot: newRot,
-        x: clampedX,
-        y: clampedY
       };
     });
-  }, [isBack]);
+  }, []);
 
   const handleDragEnd = useCallback(() => {
     setDraggingLayer((current) => {
       if (current && current.id !== '__fallback__') {
+        const p = current.pos;
+        // Approximate 2D percentages for thumbnails and saved draft compatibility
+        const x = isBack
+          ? Math.max(0, Math.min(100, Math.round(((-p[0] + 0.3) / 0.6) * 100)))
+          : Math.max(0, Math.min(100, Math.round(((p[0] + 0.3) / 0.6) * 100)));
+        const y = Math.max(0, Math.min(100, Math.round(((0.35 - p[1]) / 0.7) * 100)));
+
         if (onUpdateLayer) {
-          onUpdateLayer(current.id, { x: current.x, y: current.y });
+          onUpdateLayer(current.id, {
+            position3D: p,
+            rotation3D: current.rot,
+            x,
+            y,
+          });
         } else if (onLayerPositionChange) {
-          onLayerPositionChange(current.id, current.x, current.y);
+          onLayerPositionChange(current.id, x, y);
         }
       }
       return null;
     });
     setIsDragging(false);
-  }, [onLayerPositionChange, onUpdateLayer]);
+  }, [isBack, onLayerPositionChange, onUpdateLayer]);
 
   return (
     <ModelErrorBoundary>
       <div id="r3f-shirt-canvas" data-model-ready={modelReady} className="w-full h-full relative min-h-[400px] rounded-xl overflow-hidden shadow-inner border border-gray-300">
-        {/* HTML Loading Overlay nằm BÊN NGOÀI Canvas để tránh removeChild crash */}
         {!modelReady && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-50/70 backdrop-blur-[1px] pointer-events-none transition-opacity duration-300">
             <div className="rounded-lg bg-white/95 px-4 py-2.5 text-sm font-medium text-gray-700 shadow-md border border-gray-200 flex items-center gap-2">
@@ -515,32 +477,26 @@ export default function ShirtCanvas3D({
           gl={{ preserveDrawingBuffer: true, alpha: true }}
         >
           <PerspectiveCamera makeDefault position={[0, 0, 5]} />
-          {/* Lighting Setup */}
           <ambientLight intensity={0.6} />
-          {/* Main Key Light (Front Right) */}
           <directionalLight 
             position={[2, 2, 5]} 
             intensity={1.2}  
             castShadow 
             shadow-mapSize={1024}
           />
-          {/* Fill Light (Front Left) */}
           <directionalLight 
             position={[-3, 0, 4]} 
             intensity={0.8}  
           />
-          {/* Back Light (Rim Light) */}
           <directionalLight 
             position={[0, 2, -5]} 
             intensity={1.5}  
           />
-          {/* Top Light */}
           <directionalLight 
             position={[0, 5, 0]} 
             intensity={0.5}  
           />
           
-          {/* 3D Content - Suspense fallback={null} để không can thiệp DOM bên trong Canvas */}
           <Suspense fallback={null}>
             <ShirtModel 
               colorHex={shirtColor} 
@@ -564,7 +520,6 @@ export default function ShirtCanvas3D({
             />
           </Suspense>
 
-          {/* Camera Controls - disable when dragging decals */}
           <OrbitControls 
             makeDefault
             enabled={!isDragging}
@@ -578,5 +533,4 @@ export default function ShirtCanvas3D({
   );
 }
 
-// Preload the model so it loads faster when the component mounts
 useGLTF.preload('/models/shirt.glb');

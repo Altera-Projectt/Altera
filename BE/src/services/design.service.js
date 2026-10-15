@@ -78,7 +78,7 @@ const getUserDesigns = async (userId, { page = 1, limit = 10 }) => {
   const skip = (page - 1) * limit;
 
   const [designs, total] = await Promise.all([
-    Design.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
+    Design.find({ userId }).select('_id prompt style previewImage status createdAt').sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean(),
     Design.countDocuments({ userId }),
   ]);
 

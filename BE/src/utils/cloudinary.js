@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+const fs = require('fs');
 const cloudinary = require('cloudinary').v2;
 const { CLOUDINARY } = require('../config/env');
 
@@ -8,8 +10,62 @@ cloudinary.config({
 });
 
 /**
- * Upload file to Cloudinary
- * @param {string} filePath - Local file path or base64 data URI
+ * Kiểm tra xem chuỗi có phải Base64 hoặc Data URI hay không
+ * @param {string} str
+ * @returns {boolean}
+ */
+const isBase64OrDataUri = (str) => {
+  if (typeof str !== 'string' || !str) return false;
+  if (str.startsWith('data:')) return true;
+  if (str.startsWith('http://') || str.startsWith('https://')) return false;
+  if (str.length >= 16 && /^[A-Za-z0-9+/=\r\n]+$/.test(str.trim())) return true;
+  return false;
+};
+
+/**
+ * Tạo mã hash (MD5) từ nội dung ảnh (Base64 string, Buffer, hoặc File Path) để deduplication
+ * @param {string|Buffer} filePath
+ * @returns {string} 32-character hex string
+ */
+const getImageHash = (filePath) => {
+  const hash = crypto.createHash('md5');
+
+  if (Buffer.isBuffer(filePath)) {
+    hash.update(filePath);
+  } else if (typeof filePath === 'string') {
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      // Remote URL
+      hash.update(filePath);
+    } else if (isBase64OrDataUri(filePath)) {
+      // Chuỗi Base64 hoặc Data URI
+      const base64Data = filePath.includes(';base64,')
+        ? filePath.split(';base64,')[1]
+        : filePath;
+      try {
+        hash.update(Buffer.from(base64Data.trim(), 'base64'));
+      } catch {
+        hash.update(base64Data);
+      }
+    } else if (fs.existsSync(filePath)) {
+      // Đường dẫn file cục bộ
+      try {
+        hash.update(fs.readFileSync(filePath));
+      } catch {
+        hash.update(filePath);
+      }
+    } else {
+      hash.update(filePath);
+    }
+  } else {
+    hash.update(String(filePath));
+  }
+
+  return hash.digest('hex');
+};
+
+/**
+ * Upload file to Cloudinary với nguyên lý Deduplication (Chống trùng lặp ảnh)
+ * @param {string|Buffer} filePath - Local file path, Buffer, hoặc Base64 data URI
  * @param {string} folder - Cloudinary folder name
  * @param {object} options - Custom Cloudinary upload options
  * @returns {Promise<{url: string, publicId: string}>}
@@ -22,12 +78,31 @@ const uploadImage = async (filePath, folder = 'altera', options = {}) => {
       : "MISSING",
   });
 
-  // Tuyệt đối không nuốt lỗi, ném trực tiếp lỗi ra ngoài nếu upload thất bại
-  const result = await cloudinary.uploader.upload(filePath, {
+  // Băm nội dung bức ảnh bằng MD5 để làm public_id chống trùng lặp (Deduplication)
+  const contentHash = getImageHash(filePath);
+
+  const uploadOptions = {
     folder,
     resource_type: 'auto',
+    public_id: contentHash,
+    overwrite: true,
+    unique_filename: false,
     ...options,
-  });
+  };
+
+  // Nếu options không chỉ định public_id hoặc overwrite thì ưu tiên thiết lập chống trùng lặp
+  if (!options.public_id) {
+    uploadOptions.public_id = contentHash;
+  }
+  if (options.overwrite === undefined) {
+    uploadOptions.overwrite = true;
+  }
+  if (options.unique_filename === undefined) {
+    uploadOptions.unique_filename = false;
+  }
+
+  // Tuyệt đối không nuốt lỗi, ném trực tiếp lỗi ra ngoài nếu upload thất bại
+  const result = await cloudinary.uploader.upload(filePath, uploadOptions);
 
   return { url: result.secure_url, publicId: result.public_id };
 };
@@ -100,6 +175,7 @@ const deleteImage = async (publicId) => {
 
 module.exports = {
   uploadImage,
+  getImageHash,
   ensureCloudinaryUrl,
   sanitizeDesignLayers,
   deleteImage,

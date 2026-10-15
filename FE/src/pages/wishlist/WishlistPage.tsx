@@ -4,7 +4,7 @@ import { Heart, Trash2, ShoppingBag, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
 import api from '@/utils/axios'
-import { formatVND, extractDesignLayers, optimizeImage, getLqipImage } from '@/utils/format'
+import { formatVND, optimizeImage, getLqipImage } from '@/utils/format'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -177,19 +177,12 @@ export function WishlistPage() {
                     {product.thumbnail ? (
                       <>
                         <ProgressiveImage
-                          src={optimizeImage(product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail, 400)}
-                          placeholderSrc={getLqipImage(product.productId?.imageUrl || product.productId?.images?.[0] || product.thumbnail)}
+                          src={optimizeImage(product.thumbnail || product.productId?.imageUrl || '', 400)}
+                          placeholderSrc={getLqipImage(product.thumbnail || product.productId?.imageUrl || '')}
                           alt={product.name}
                           loading="lazy"
-                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                          className="h-full w-full object-contain p-2 transition-transform duration-700 group-hover:scale-105"
                         />
-                        {(product.productId?.imageUrl || (product.productId?.images && product.productId.images.length > 0)) && (
-                          <img
-                            src={extractDesignLayers(product.thumbnail)}
-                            alt={`${product.name} overlay`}
-                            className="absolute inset-0 h-full w-full object-contain transition-transform duration-700 group-hover:scale-105"
-                          />
-                        )}
                       </>
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">

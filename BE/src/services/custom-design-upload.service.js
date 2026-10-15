@@ -37,9 +37,11 @@ const upload = async (userId, file, imageType = 'UPLOADED') => {
   const { filename, mimeType } = validateImageFile(file);
   const result = await uploadImage(`data:${mimeType};base64,${file.buffer.toString('base64')}`, 'altera/designs/uploads', {
     resource_type: 'image',
-    public_id: `${userId}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`,
-    overwrite: false,
   });
+  const existing = await UploadedImage.findOne({ userId, publicId: result.publicId });
+  if (existing) {
+    return existing;
+  }
   return UploadedImage.create({ userId, url: result.url, thumbnailUrl: toThumbnail(result.url), publicId: result.publicId, filename, mimeType, size: file.size, source: 'UPLOAD', imageType: normalizedImageType });
 };
 
@@ -51,7 +53,7 @@ const list = async (userId, { source = 'ALL', page = 1, limit = 24 } = {}) => {
   if (safeSource === 'AI') filter.source = 'AI';
   if (safeSource === 'UPLOAD') filter.source = { $ne: 'AI' };
   const [images, total] = await Promise.all([
-    UploadedImage.find(filter).sort({ createdAt: -1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).select(LIST_FIELDS).lean(),
+    UploadedImage.find(filter).sort({ createdAt: -1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).select('_id url thumbnailUrl filename source imageType prompt createdAt').lean(),
     UploadedImage.countDocuments(filter),
   ]);
   const normalizedImages = images.map((image) => ({ ...image, imageType: image.imageType || (image.source === 'AI' ? 'AI' : 'UPLOADED') }));

@@ -181,9 +181,17 @@ exports.getMyProfile = async (req, res, next) => {
 
 exports.getProfile = async (req, res, next) => {
   try {
-    const profile = await DesignerProfile.findOne({ username: req.params.username.toLowerCase() }).populate('userId', 'fullName avatar');
-    if (!profile) throw fail(404, 'Designer not found');
-    const owner = Boolean(req.user && String(req.user._id) === String(profile.userId._id));
+    let profile;
+    const isMe = req.params.username.toLowerCase() === 'me';
+    if (isMe) {
+      if (!req.user) throw fail(401, 'Vui lòng đăng nhập để xem hồ sơ thiết kế của bạn.');
+      profile = await profileForUser(req.user._id);
+      await profile.populate('userId', 'fullName avatar');
+    } else {
+      profile = await DesignerProfile.findOne({ username: req.params.username.toLowerCase() }).populate('userId', 'fullName avatar');
+      if (!profile) throw fail(404, 'Designer not found');
+    }
+    const owner = isMe || Boolean(req.user && String(req.user._id) === String(profile.userId?._id || profile.userId));
     const match = { designerId: profile._id, status: 'PUBLISHED' };
     if (owner && ['DRAFT', 'PENDING_REVIEW', 'REJECTED', 'ARCHIVED'].includes(req.query.status)) match.status = req.query.status;
     if (req.query.search) match.$or = [{ name: { $regex: req.query.search, $options: 'i' } }, { tags: { $regex: req.query.search, $options: 'i' } }, { category: { $regex: req.query.search, $options: 'i' } }];
@@ -204,7 +212,7 @@ exports.getProfile = async (req, res, next) => {
         .populate('productId', 'name imageUrl price discountPrice isActive')
         .lean(),
       MarketplaceDesign.countDocuments(match), DesignerCollection.find({ designerId: profile._id }).sort({ name: 1 }).lean(),
-      DesignerFollow.countDocuments({ designerId: profile._id }), DesignerFollow.countDocuments({ followerId: profile.userId._id }),
+      DesignerFollow.countDocuments({ designerId: profile._id }), DesignerFollow.countDocuments({ followerId: profile.userId?._id || profile.userId }),
       req.user ? DesignerFollow.exists({ followerId: req.user._id, designerId: profile._id }) : null,
     ]);
     const ids = designs.map((design) => design._id);

@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth'
 import api from '@/utils/axios'
 import { toast } from 'sonner'
 
-import { extractDesignLayers, optimizeImage, getLqipImage } from '@/utils/format'
+import { optimizeImage, getLqipImage } from '@/utils/format'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 
 const money = (value: number) => `${new Intl.NumberFormat('vi-VN').format(value)} ₫`
@@ -90,17 +90,14 @@ export function MarketplacePage() {
       {loading && !error && <div aria-label="Đang tải thiết kế" className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, i) => <div key={i} className="animate-pulse"><div className="aspect-[4/5] bg-neutral-100"/><div className="mt-3 h-4 w-3/4 bg-neutral-100"/><div className="mt-2 h-3 w-1/2 bg-neutral-100"/></div>)}</div>}
       {!loading && !error && designs.length === 0 && <div className="border-y border-neutral-200 py-20 text-center"><p className="text-lg font-semibold">Chưa có thiết kế phù hợp</p><p className="mt-2 text-sm text-neutral-500">Hãy thử từ khóa khác hoặc quay lại sau.</p></div>}
       {!loading && !error && designs.length > 0 && <div className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 md:gap-x-6 lg:grid-cols-4">{designs.map((design) => <article key={design._id}>
-        <div className="group relative"><Link to={`/design/${design.slug}`} className="block"><div className="relative aspect-[3/4] overflow-hidden bg-neutral-100">
+        <div className="group relative"><Link to={`/design/${design.slug}`} className="block"><div className="relative aspect-[3/4] overflow-hidden bg-neutral-100 flex items-center justify-center">
           <ProgressiveImage
-            src={optimizeImage(design.productId?.imageUrl || design.productId?.images?.[0] || design.thumbnail, 400)}
-            placeholderSrc={getLqipImage(design.productId?.imageUrl || design.productId?.images?.[0] || design.thumbnail)}
+            src={optimizeImage(design.thumbnail || design.productId?.imageUrl || '', 500)}
+            placeholderSrc={getLqipImage(design.thumbnail || design.productId?.imageUrl || '')}
             alt={design.name}
             loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            className="h-full w-full object-contain p-2 transition-transform duration-500 group-hover:scale-[1.03]"
           />
-          {(design.productId?.imageUrl || (design.productId?.images && design.productId.images.length > 0)) && (
-            <img src={extractDesignLayers(design.thumbnail)} alt={`${design.name} overlay`} loading="lazy" className="absolute inset-0 h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"/>
-          )}
           <span className="absolute bottom-3 left-3 z-10 bg-white/95 px-2 py-1 text-[10px] uppercase tracking-widest">{design.category || design.productId?.category || 'Custom'}</span></div><h3 className="mt-3 truncate text-sm font-semibold uppercase tracking-wide">{design.name}</h3></Link><button onClick={() => void toggleLike(design)} aria-label={design.isLiked ? 'Unlike design' : 'Like design'} className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 shadow-sm"><Heart className={`h-4 w-4 ${design.isLiked ? 'fill-black' : ''}`}/></button></div>
         <p className="mt-1 text-sm">{money(design.price)}</p><Link to={`/designer/${design.designerId.username}`} className="mt-1 inline-block text-xs text-neutral-500 hover:text-black">Designed by {design.designerId.displayName}</Link>
       </article>)}</div>}

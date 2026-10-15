@@ -4,3 +4,5 @@ node_modules/
 BE/.env
 BE/.env.*
 Altera.env
+logs/
+*.log
