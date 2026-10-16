@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const MembershipPlan = require('../models/MembershipPlan');
 const env = require('../config/env');
 const { incrementPaidOrderDesignSales } = require('./marketplace-sales.service');
 
@@ -163,12 +164,19 @@ const listAdminPayments = async ({ status, method, search, from, to, page = 1, l
       { transactionId: { $regex: escaped, $options: 'i' } },
       { providerOrderId: { $regex: escaped, $options: 'i' } },
       { orderId: { $in: orders.map((order) => order._id) } },
+      { userId: { $in: users.map((user) => user._id) } },
     ];
   }
   const pageNumber = Math.max(Number.parseInt(page, 10) || 1, 1);
   const pageLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 20, 1), 100);
   const [payments, total] = await Promise.all([
-    Payment.find(query).sort({ createdAt: -1 }).skip((pageNumber - 1) * pageLimit).limit(pageLimit).lean(),
+    Payment.find(query)
+      .populate('userId', 'fullName email')
+      .populate('membershipPlanId', 'name code')
+      .sort({ createdAt: -1 })
+      .skip((pageNumber - 1) * pageLimit)
+      .limit(pageLimit)
+      .lean(),
     Payment.countDocuments(query),
   ]);
   const orders = await Order.find({ _id: { $in: payments.map((payment) => payment.orderId).filter(Boolean) } }).populate('userId', 'fullName email').lean();
