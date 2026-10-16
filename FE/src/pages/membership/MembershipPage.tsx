@@ -218,7 +218,7 @@ export function MembershipPage() {
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="py-24 bg-[#EBEBEB] px-6">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-heading font-black text-center text-[#4A4A4A] mb-16 uppercase tracking-tight">CÂU HỎI THƯỜNG GẶP</h2>
+          <h2 className="text-4xl md:text-5xl font-heading font-black text-center text-[#4A4A4A] mb-16 uppercase tracking-normal">CÂU HỎI THƯỜNG GẶP</h2>
           
           <div className="flex flex-col border border-black/30 bg-white shadow-sm">
             {faqs.map((faq, idx) => (

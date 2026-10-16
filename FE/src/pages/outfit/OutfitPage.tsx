@@ -431,7 +431,7 @@ export function OutfitPage() {
                 <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
                   Phong cách của bạn
                 </p>
-                <h2 className="font-heading text-4xl md:text-5xl font-black uppercase tracking-tight text-white">
+                <h2 className="font-heading text-4xl md:text-5xl font-black uppercase tracking-normal text-white">
                   {quizResult.style}
                 </h2>
               </div>
@@ -595,7 +595,7 @@ export function OutfitPage() {
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">
               Phong cách của bạn
             </p>
-            <h2 className="font-heading text-4xl font-black uppercase tracking-tight text-white mb-6">
+            <h2 className="font-heading text-4xl font-black uppercase tracking-normal text-white mb-6">
               {recommendResult.style}
             </h2>
             {recommendResult.reason && (

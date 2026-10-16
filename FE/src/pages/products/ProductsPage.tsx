@@ -88,7 +88,7 @@ export function ProductsPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
         
         <div className="absolute bottom-12 left-6 md:left-12 max-w-4xl z-10">
-          <h1 className="font-heading text-[clamp(2.5rem,6vw,5rem)] font-black uppercase text-white leading-[1.05] tracking-tight">
+          <h1 className="font-heading text-[clamp(2.5rem,6vw,5rem)] font-black uppercase text-white leading-[1.05] tracking-normal">
             KHÁM PHÁ NHỮNG MẪU <br /> THIẾT KẾ ĐỘC ĐÁO
           </h1>
         </div>

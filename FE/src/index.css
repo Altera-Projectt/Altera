@@ -9,6 +9,7 @@
   font-display: swap;
 }
 
+/* PP Rader - Thin (100-300) */
 @font-face {
   font-family: 'PP Rader';
   src: url('./assets/fonts/PPRader-Thin.ttf') format('truetype');
@@ -16,7 +17,29 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Thin.ttf') format('truetype');
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Thin.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Thin.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
 
+/* PP Rader - Regular (400-600) */
 @font-face {
   font-family: 'PP Rader';
   src: url('./assets/fonts/PPRader-Regular.ttf') format('truetype');
@@ -24,11 +47,70 @@
   font-style: normal;
   font-display: swap;
 }
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Regular.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Regular.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
 
+/* PP Rader - Bold (700-900) */
 @font-face {
   font-family: 'PP Rader';
   src: url('./assets/fonts/PPRader-Bold.ttf') format('truetype');
   font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Bold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Bold.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Direct family aliases */
+@font-face {
+  font-family: 'PP Rader Bold';
+  src: url('./assets/fonts/PPRader-Bold.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Rader Thin';
+  src: url('./assets/fonts/PPRader-Thin.ttf') format('truetype');
+  font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
@@ -38,10 +120,10 @@
    ───────────────────────────────────────────────── */
 @theme {
   /* ── Fonts ── */
-  --font-heading: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "PP Rader", "PP Rader Bold", "Montserrat", sans-serif;
   --font-body: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-montserrat: "Montserrat", sans-serif;
-  --font-rader: "PP Rader", "Montserrat", sans-serif;
+  --font-rader: "PP Rader", "PP Rader Bold", "Montserrat", sans-serif;
 
   /* ── Brand Colors (Tech-Fashion Brutalist) ── */
   --color-electric-blue: #002bff; /* Electric Blue for primary blocks */
@@ -161,9 +243,9 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: 800;
-    line-height: 1.2;
-    letter-spacing: 0.01em;
-    word-spacing: 0.05em;
+    line-height: 1.15;
+    letter-spacing: 0.015em;
+    word-spacing: 0.18em;
     text-transform: uppercase;
   }
 
@@ -211,18 +293,22 @@
   /* Typography */
   .font-heading {
     font-family: var(--font-heading);
+    word-spacing: 0.18em;
   }
 
   .font-body {
     font-family: var(--font-body);
+    word-spacing: normal;
   }
 
   .font-rader {
     font-family: var(--font-rader);
+    word-spacing: 0.18em;
   }
 
   .font-montserrat {
     font-family: var(--font-montserrat);
+    word-spacing: normal;
   }
 
   /* Fashion-brand text effects */
@@ -292,7 +378,7 @@
   font-family: var(--font-heading);
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: 0.01em;
-  word-spacing: 0.06em;
+  letter-spacing: 0.015em;
+  word-spacing: 0.18em;
   line-height: 1.15;
 }
