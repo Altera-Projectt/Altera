@@ -33,7 +33,7 @@ export function AboutPage() {
               ARE
             </motion.h1>
             <motion.p
-              className="mt-8 md:mt-12 text-sm md:text-base font-normal leading-relaxed max-w-md text-neutral-800 tracking-normal ml-0.5"
+              className="font-rader mt-8 md:mt-12 text-sm md:text-base font-normal leading-relaxed max-w-md text-neutral-800 tracking-normal ml-0.5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.8 }}
@@ -61,7 +61,7 @@ export function AboutPage() {
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="bg-electric-blue text-white py-32 md:py-48 px-6">
         <div className="max-w-[var(--spacing-contentMax)] mx-auto flex flex-col items-start">
-          <p className="max-w-2xl text-lg md:text-2xl leading-relaxed tracking-tight mb-24 md:mb-40 font-light text-left">
+          <p className="font-rader max-w-3xl text-xl md:text-3xl leading-[1.4] tracking-normal mb-24 md:mb-40 font-normal text-left text-white/95">
             Thời trang không chỉ là những gì bạn mặc, đó là cách bạn thể hiện bản sắc của chính mình. <br /><br />
             ALTERA ra đời từ mong muốn đơn giản hóa việc sáng tạo thời trang. Chúng tôi tin rằng mỗi người đều xứng đáng sở hữu trang phục mang đậm dấu ấn cá nhân thay vì chỉ chọn từ những khuôn mẫu may sẵn. <br /><br />
             Với sự đồng hành của AI, việc định hình phong cách, thiết kế áo và đặt in may theo yêu cầu trở nên nhanh chóng, trực quan và dễ dàng hơn bao giờ hết.

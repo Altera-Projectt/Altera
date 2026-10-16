@@ -74,7 +74,7 @@ export function HomePage() {
           <div className="flex items-center gap-2 mb-10 text-[10px] font-bold uppercase tracking-widest mix-blend-multiply">
             <img src={logoSvg} alt="ALTERA Logo" className="h-6 w-auto object-contain" />
           </div>
-          <h2 className="font-body text-3xl md:text-5xl lg:text-6xl font-light leading-[1.15] tracking-wide mb-16 text-balance max-w-4xl mx-auto text-white/90">
+          <h2 className="font-rader text-2xl md:text-4xl lg:text-5xl font-light leading-[1.25] tracking-wide mb-16 text-balance max-w-4xl mx-auto text-white uppercase">
             Chúng tôi biến ý tưởng sáng tạo thành hiện thực thông qua công nghệ và tay nghề thủ công tỉ mỉ. Đồng hành cùng những tâm hồn yêu thời trang khát khao sự chuẩn xác, cái đẹp và sự tận tâm.
           </h2>
           <Button asChild variant="primary" className="bg-black text-white hover:bg-neutral-800 rounded-none px-12 py-6 uppercase tracking-widest font-bold text-xs border-none">
