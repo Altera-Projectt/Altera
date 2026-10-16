@@ -138,14 +138,18 @@ const retryBankPayment = async (orderId, userId) => {
   return transferDetails(attempt);
 };
 
-const listAdminPayments = async ({ status, method, search, from, to, page = 1, limit = 20 } = {}) => {
+const listAdminPayments = async ({ status, method, type, search, from, to, page = 1, limit = 20 } = {}) => {
   const query = {};
   const statuses = ['PENDING', 'PROCESSING', 'PAID', 'SUCCESS', 'FAILED', 'CANCELLED', 'EXPIRED', 'REFUNDED'];
   const methods = ['COD', 'BANK_TRANSFER', 'MOMO', 'VNPAY'];
+  const types = ['ORDER', 'MEMBERSHIP'];
   if (status && !statuses.includes(status)) throw paymentError('Invalid payment status filter.');
   if (method && !methods.includes(method)) throw paymentError('Invalid payment method filter.');
+  if (type && !types.includes(type)) throw paymentError('Invalid payment type filter.');
   if (status) query.paymentStatus = status;
   if (method) query.paymentMethod = method;
+  if (type === 'ORDER') query.orderId = { $ne: null };
+  if (type === 'MEMBERSHIP') query.membershipOrderId = { $ne: null };
   if (from || to) {
     const start = from ? new Date(from) : null;
     const end = to ? new Date(`${to}T23:59:59.999Z`) : null;

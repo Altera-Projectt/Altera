@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 // Layouts
 import { MainLayout, AdminLayout } from '@/layouts'
@@ -40,12 +40,9 @@ import { MarketplacePage } from '@/pages/marketplace/MarketplacePage'
 // Admin Pages
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage'
 import { AdminProductsPage } from '@/pages/admin/AdminProductsPage'
-import { AdminOrdersPage } from '@/pages/admin/AdminOrdersPage'
 import { AdminPaymentOrdersPage } from '@/pages/admin/AdminPaymentOrdersPage'
 import { AdminUsersPage } from '@/pages/admin/AdminUsersPage'
-import { AdminCustomersPage } from '@/pages/admin/AdminCustomersPage'
 import { AdminDesignsPage } from '@/pages/admin/AdminDesignsPage'
-import { AdminMembershipPaymentsPage } from '@/pages/admin/AdminMembershipPaymentsPage'
 
 export const router = createBrowserRouter([
   {
@@ -112,10 +109,10 @@ export const router = createBrowserRouter([
           { index: true, element: <AdminDashboardPage /> },
           { path: 'dashboard', element: <AdminDashboardPage /> },
           { path: 'products', element: <AdminProductsPage /> },
-          { path: 'orders', element: <AdminOrdersPage /> },
+          { path: 'orders', element: <Navigate to="/admin/dashboard" replace /> },
           { path: 'payments', element: <AdminPaymentOrdersPage /> },
-          { path: 'membership-payments', element: <AdminMembershipPaymentsPage /> },
-          { path: 'customers', element: <AdminCustomersPage /> },
+          { path: 'membership-payments', element: <Navigate to="/admin/payments" replace /> },
+          { path: 'customers', element: <Navigate to="/admin/users" replace /> },
           { path: 'users', element: <AdminUsersPage /> },
           { path: 'designs', element: <AdminDesignsPage /> },
         ],

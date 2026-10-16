@@ -6,6 +6,5 @@ router.get('/plans', membership.plans);
 router.get('/current', protect, membership.current);
 router.post('/checkout', protect, membership.checkout);
 router.get('/payments/history', protect, membership.history);
-router.get('/admin/payments', protect, restrictTo('ADMIN'), membership.adminList);
 router.patch('/admin/payments/:id/verify', protect, restrictTo('ADMIN'), membership.adminVerify);
 module.exports = router;

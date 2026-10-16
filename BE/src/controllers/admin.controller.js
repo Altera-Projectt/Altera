@@ -197,15 +197,6 @@ exports.getUser = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-exports.getCustomer = async (req, res, next) => {
-  try {
-    if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid customer ID' });
-    const user = await User.findOne({ _id: req.params.id, role: 'USER' }).select('-password');
-    if (!user) return res.status(404).json({ success: false, message: 'Customer not found' });
-    res.json({ success: true, data: { user } });
-  } catch (error) { next(error); }
-};
-
 exports.updateUser = async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user ID' });
@@ -220,45 +211,6 @@ exports.updateUser = async (req, res, next) => {
     for (const field of allowed) if (req.body[field] !== undefined) user[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
     await user.save();
     res.json({ success: true, data: { user } });
-  } catch (error) { next(error); }
-};
-
-exports.listOrders = async (req, res, next) => {
-  try {
-    const { page, limit, skip } = pagination(req.query);
-    const query = {};
-    if (req.query.status && ['PENDING', 'CONFIRMED', 'SHIPPING', 'DELIVERED', 'CANCELLED'].includes(req.query.status)) query.status = req.query.status;
-    if (req.query.paymentStatus) {
-      if (!['PENDING', 'PAID', 'FAILED', 'CANCELLED', 'EXPIRED'].includes(req.query.paymentStatus)) return res.status(400).json({ success: false, message: 'Invalid payment status.' });
-      query.paymentStatus = req.query.paymentStatus;
-    }
-    if (req.query.from || req.query.to) {
-      const from = req.query.from ? new Date(req.query.from) : null;
-      const to = req.query.to ? new Date(`${req.query.to}T23:59:59.999Z`) : null;
-      if ((from && Number.isNaN(from.getTime())) || (to && Number.isNaN(to.getTime()))) return res.status(400).json({ success: false, message: 'Invalid date filter.' });
-      query.createdAt = { ...(from ? { $gte: from } : {}), ...(to ? { $lte: to } : {}) };
-    }
-    if (req.query.search) {
-      const search = String(req.query.search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const users = await User.find({ $or: [{ fullName: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }] }).select('_id');
-      const clauses = [...(validId(search) ? [{ _id: search }] : []), { userId: { $in: users.map((u) => u._id) } }];
-      query.$or = clauses;
-    }
-    const [orders, total] = await Promise.all([Order.find(query).populate('userId', 'fullName email').sort({ createdAt: -1 }).skip(skip).limit(limit), Order.countDocuments(query)]);
-    const payments = await Payment.find({ orderId: { $in: orders.map((order) => order._id) } }).sort({ createdAt: -1 }).lean();
-    const latestPayment = new Map();
-    for (const payment of payments) if (!latestPayment.has(String(payment.orderId))) latestPayment.set(String(payment.orderId), payment);
-    res.json({ success: true, data: { orders: orders.map((order) => { const payment = latestPayment.get(String(order._id)); return { ...order.toObject(), transactionId: payment?.transactionId || null }; }), pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } } });
-  } catch (error) { next(error); }
-};
-
-exports.getOrder = async (req, res, next) => {
-  try {
-    if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid order ID' });
-    const order = await Order.findById(req.params.id).populate('userId', 'fullName email').populate('items.productId', 'name imageUrl').populate('items.designId', 'previewImage customImage');
-    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
-    const payment = await Payment.findOne({ orderId: order._id }).sort({ createdAt: -1 });
-    res.json({ success: true, data: { order, payment } });
   } catch (error) { next(error); }
 };
 
