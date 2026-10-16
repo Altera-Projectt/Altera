@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Palette,
@@ -382,7 +382,7 @@ function GenerateForm({
 
       {/* Prompt examples */}
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">Gợi ý</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Gợi ý</p>
         <div className="flex flex-wrap gap-1.5">
           {PROMPT_EXAMPLES.map((example) => (
             <button
@@ -391,8 +391,8 @@ function GenerateForm({
               onClick={() => setForm((prev) => ({ ...prev, prompt: example }))}
               className={cn(
                 'text-[10px] px-2.5 py-1 rounded-full',
-                'border border-[var(--color-border)] bg-white/[0.04] text-[var(--color-muted-foreground)]',
-                'hover:bg-white/[0.09] hover:text-[var(--color-foreground)] hover:border-white/20',
+                'border border-slate-200 bg-slate-50 text-slate-600',
+                'hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50/50',
                 'transition-all duration-150 cursor-pointer',
               )}
             >
@@ -865,17 +865,17 @@ function CreateTab({
   onDesignShirt: () => Promise<void>
 }) {
   return (
-    <div className="flex flex-col lg:flex-row gap-0 h-full min-h-[750px] rounded-[var(--radius-xl)] border border-[var(--color-border)] overflow-hidden">
+    <div className="flex flex-col lg:flex-row gap-0 h-full min-h-[750px] rounded-2xl border border-slate-200/80 shadow-sm bg-white overflow-hidden">
 
       {/* ── Fixed Sidebar (300px) ── */}
-      <aside className="w-full lg:w-[300px] shrink-0 flex flex-col border-r border-[var(--color-border)] bg-[var(--color-card)]">
+      <aside className="w-full lg:w-[320px] shrink-0 flex flex-col border-r border-slate-200/80 bg-white">
         {/* Sidebar header */}
-        <div className="px-6 py-5 border-b border-[var(--color-border)]">
+        <div className="px-6 py-5 border-b border-slate-200/80">
           <div className="flex items-center gap-2">
-            <Wand2 className="h-4 w-4 text-[var(--color-accent)]" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-200 text-[10px] font-bold uppercase tracking-widest shadow-xs">
+              <Wand2 className="h-3.5 w-3.5" />
               Công cụ sáng tạo
-            </p>
+            </span>
           </div>
           {viewState === 'result' && currentDesign && (
             <button
@@ -936,7 +936,7 @@ function CreateTab({
       </aside>
 
       {/* ── Central Canvas ── */}
-      <div className="flex-1 relative bg-[#0d0d0d] flex items-center justify-center p-10 min-h-[550px]">
+      <div className="flex-1 relative bg-gradient-to-br from-[#060B16] via-[#0A1122] to-[#0F172A] border-l border-blue-500/20 flex items-center justify-center p-10 min-h-[550px]">
 
         {/* ── AI Generation Loading Overlay ── */}
         <AnimatePresence>
@@ -1059,14 +1059,14 @@ function CreateTab({
               exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-4 text-center"
             >
-              <div className="h-20 w-20 rounded-full border border-[var(--color-border)] flex items-center justify-center">
-                <Palette className="h-8 w-8 text-[var(--color-border)]" />
+              <div className="h-20 w-20 rounded-full border border-blue-500/30 bg-blue-950/40 backdrop-blur-sm flex items-center justify-center shadow-lg shadow-blue-900/20">
+                <Palette className="h-8 w-8 text-cyan-400" />
               </div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-200">
                 Canvas trống
               </p>
-              <p className="text-xs text-[var(--color-muted-foreground)]/60 max-w-[200px]">
-                Mô tả ý tưởng và để AI phác thảo cho bạn
+              <p className="text-xs text-slate-400 max-w-[220px] leading-relaxed">
+                Mô tả ý tưởng và để AI phác thảo một thiết kế độc đáo cho bạn
               </p>
             </motion.div>
           ) : null}
@@ -1140,10 +1140,28 @@ function LibraryTab({
 
 export function DesignStudioPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { toasts, show: showToast } = useToast()
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<'create' | 'custom' | 'library'>(() => new URLSearchParams(window.location.search).has('draft') ? 'custom' : 'create')
+  // ── Tab state derived from URL searchParams ────────────────────────────────
+  const tabParam = searchParams.get('tab')
+  const activeTab: 'create' | 'custom' | 'library' =
+    tabParam === 'custom' || tabParam === '3d' || searchParams.has('draft')
+      ? 'custom'
+      : tabParam === 'library'
+      ? 'library'
+      : 'create'
+
+  const setActiveTab = (tab: 'create' | 'custom' | 'library') => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('tab', tab === 'create' ? 'ai' : tab)
+        return next
+      },
+      { replace: true }
+    )
+  }
   const [viewState, setViewState] = useState<'form' | 'result'>('form')
   const [generating, setGenerating] = useState(false)
   const [refining, setRefining] = useState(false)
@@ -1420,26 +1438,28 @@ export function DesignStudioPage() {
       </div>
 
       {/* ── Tabs ── */}
-      <div className="mb-6 flex gap-0 border-b border-[var(--color-border)]">
+      <div className="mb-6 flex gap-2 border-b border-slate-200">
         {(['create', 'custom', 'library'] as const).map((tab) => (
           <button
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => {
+              setActiveTab(tab)
+              setSearchParams({ tab: tab === 'create' ? 'ai' : tab })
+            }}
             className={cn(
-              'relative px-5 py-3 text-[10px] font-bold uppercase tracking-widest transition-all duration-200 inline-flex items-center gap-2',
-              'after:absolute after:bottom-0 after:left-0 after:h-px after:w-full after:origin-left after:transition-transform after:duration-200',
+              'relative px-5 py-3 text-xs font-bold uppercase tracking-wider transition-all duration-200 inline-flex items-center gap-2 border-b-2 -mb-[2px]',
               activeTab === tab
-                ? 'text-[var(--color-foreground)] after:bg-white after:scale-x-100'
-                : 'text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] after:bg-white after:scale-x-0 hover:after:scale-x-100',
+                ? 'text-blue-600 border-blue-600 bg-blue-50/50 rounded-t-lg'
+                : 'text-slate-500 hover:text-slate-900 border-transparent hover:border-slate-300',
             )}
           >
             {tab === 'create' ? (
-              <><Wand2 className="h-3.5 w-3.5" /> Phác thảo mới</>
+              <><Wand2 className="h-3.5 w-3.5" /> Phác thảo mới (AI)</>
             ) : tab === 'custom' ? (
-              <>Studio 3D Tự Chỉnh</>
+              <><Shirt className="h-3.5 w-3.5" /> Studio 3D Tự Chỉnh</>
             ) : (
-              <><BookOpen className="h-3.5 w-3.5" /> Thư viện</>
+              <><BookOpen className="h-3.5 w-3.5" /> Thư viện của tôi</>
             )}
           </button>
         ))}

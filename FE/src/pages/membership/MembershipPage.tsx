@@ -71,7 +71,7 @@ export function MembershipPage() {
         <div className="max-w-[var(--spacing-contentMax)] mx-auto w-full relative z-10 flex flex-col lg:flex-row justify-between items-center px-6 gap-12">
           {/* Left Text Content */}
           <div className="w-full lg:w-[50%]">
-            <h2 className="text-[clamp(2.5rem,5vw,4rem)] font-heading font-black mb-6 leading-[1.1] tracking-tight">
+            <h2 className="text-[clamp(2.5rem,5vw,4rem)] font-heading font-black mb-6 leading-[1.15] tracking-normal">
               Trải nghiệm Trọn vẹn <br />
               Tiện ích cùng ALTERA
             </h2>
@@ -125,9 +125,9 @@ export function MembershipPage() {
                 {/* Card 1: FREE */}
                 <div className="min-w-full w-full bg-white text-black p-8 flex flex-col justify-between snap-center border-[3px] border-[#0011FF] rounded-[24px] shrink-0 h-full relative">
                   <div className="flex flex-col items-center text-center">
-                    <div className="bg-[#0011FF] text-white text-[11px] font-bold px-6 py-1.5 rounded-full uppercase tracking-widest mb-6">Free Plan</div>
-                    <h3 className="text-[#0011FF] text-xl font-black font-heading tracking-widest mb-2">BASIC</h3>
-                    <div className="text-[#0011FF] text-6xl font-black font-heading mb-6 tracking-tighter">FREE</div>
+                    <div className="bg-[#0011FF] text-white text-[11px] font-bold px-6 py-1.5 rounded-full uppercase tracking-widest mb-6">Gói Miễn Phí</div>
+                    <h3 className="text-[#0011FF] text-xl font-black font-heading tracking-widest mb-2">CƠ BẢN</h3>
+                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal">MIỄN PHÍ</div>
                     <p className="text-[13px] text-gray-600 mb-8 font-medium px-2 leading-relaxed h-[60px]">
                       Trải nghiệm tính năng định hình phong cách bằng AI và bắt đầu tạo ra những thiết kế đầu tiên.
                     </p>
@@ -140,7 +140,7 @@ export function MembershipPage() {
                   </div>
                   <div>
                     <button onClick={() => navigate('/auth/register')} className="w-full py-3.5 bg-[#0011FF] text-white text-sm font-bold rounded-xl uppercase tracking-widest hover:bg-blue-800 transition-colors">
-                      GET STARTED
+                      BẮT ĐẦU NGAY
                     </button>
                     <div className="flex justify-center gap-1.5 mt-6 cursor-pointer pb-2">
                       <div onClick={() => handleDotClick(0)} className={`h-1.5 rounded-full transition-all ${currentIndex === 0 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
@@ -153,9 +153,9 @@ export function MembershipPage() {
                 {/* Card 2: PREMIUM */}
                 <div className="min-w-full w-full bg-white text-black p-8 flex flex-col justify-between snap-center border-[3px] border-[#00C8FF] rounded-[24px] shrink-0 h-full relative">
                   <div className="flex flex-col items-center text-center">
-                    <div className="bg-[#0011FF] text-white text-[11px] font-bold px-6 py-1.5 rounded-full uppercase tracking-widest mb-6">Most Popular</div>
+                    <div className="bg-[#0011FF] text-white text-[11px] font-bold px-6 py-1.5 rounded-full uppercase tracking-widest mb-6">Phổ Biến Nhất</div>
                     <h3 className="text-[#0011FF] text-xl font-black font-heading tracking-widest mb-2">PREMIUM</h3>
-                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-tighter flex items-end justify-center">59k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
+                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal flex items-end justify-center">59k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
                     <p className="text-[13px] text-gray-600 mb-8 font-medium px-2 leading-relaxed h-[60px]">
                       Trọn bộ tính năng cần thiết để định hình phong cách và sáng tạo không giới hạn.
                     </p>
@@ -168,7 +168,7 @@ export function MembershipPage() {
                   </div>
                   <div>
                     <button onClick={() => navigate('/membership/checkout', { state: { plan: 'PREMIUM', price: 59000 } })} className="w-full py-3.5 bg-[#0011FF] text-white text-sm font-bold rounded-xl uppercase tracking-widest hover:bg-blue-800 transition-colors">
-                      UPGRADE NOW
+                      NÂNG CẤP NGAY
                     </button>
                     <div className="flex justify-center gap-1.5 mt-6 cursor-pointer pb-2">
                       <div onClick={() => handleDotClick(0)} className={`h-1.5 rounded-full transition-all ${currentIndex === 0 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>
@@ -181,9 +181,9 @@ export function MembershipPage() {
                 {/* Card 3: PRO */}
                 <div className="min-w-full w-full bg-white text-black p-8 flex flex-col justify-between snap-center border-[3px] border-[#00C8FF] rounded-[24px] shrink-0 h-full relative">
                   <div className="flex flex-col items-center text-center">
-                    <div className="bg-[#0011FF] text-white text-[11px] font-bold px-6 py-1.5 rounded-full uppercase tracking-widest mb-6">Pro Plan</div>
-                    <h3 className="text-[#0011FF] text-lg font-black font-heading tracking-widest mb-2 leading-tight">FOR DESIGNERS<br/>& CREATORS</h3>
-                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-tighter flex items-end justify-center">99k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
+                    <div className="bg-[#0011FF] text-white text-[11px] font-bold px-6 py-1.5 rounded-full uppercase tracking-widest mb-6">Gói Pro</div>
+                    <h3 className="text-[#0011FF] text-base font-black font-heading tracking-normal mb-2 leading-tight uppercase">DÀNH CHO NHÀ THIẾT KẾ<br/>& SÁNG TẠO</h3>
+                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal flex items-end justify-center">99k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
                     <p className="text-[13px] text-gray-600 mb-8 font-medium px-2 leading-relaxed h-[60px]">
                       Các công cụ chuyên nghiệp dành riêng cho nhà thiết kế, người sáng tạo và tín đồ thời trang.
                     </p>
@@ -196,7 +196,7 @@ export function MembershipPage() {
                   </div>
                   <div>
                     <button onClick={() => navigate('/membership/checkout', { state: { plan: 'PRO STUDIO', price: 99000 } })} className="w-full py-3.5 bg-[#0011FF] text-white text-sm font-bold rounded-xl uppercase tracking-widest hover:bg-blue-800 transition-colors">
-                      GO PRO
+                      NÂNG CẤP NGAY
                     </button>
                     <div className="flex justify-center gap-1.5 mt-6 cursor-pointer pb-2">
                       <div onClick={() => handleDotClick(0)} className={`h-1.5 rounded-full transition-all ${currentIndex === 0 ? 'w-5 bg-[#0011FF]' : 'w-1.5 bg-[#0011FF]/30 hover:bg-[#0011FF]/50'}`}></div>

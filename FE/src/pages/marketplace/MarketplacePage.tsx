@@ -55,20 +55,37 @@ export function MarketplacePage() {
   }
 
   return <div className="bg-white text-black">
-    <section className="relative flex min-h-[390px] items-end overflow-hidden bg-neutral-900 px-6 pb-12 pt-24 text-white md:min-h-[500px] md:px-12 md:pb-16">
-      <img src={homepage2} alt="ALTERA creator marketplace" className="absolute inset-0 h-full w-full object-cover opacity-60" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/20" />
-      <div className="relative mx-auto w-full max-w-7xl">
-        <p className="mb-4 text-xs font-semibold uppercase tracking-[.24em]">ALTERA · Design Market</p>
-        <h1 className="max-w-3xl text-4xl font-black uppercase leading-[.98] tracking-tight md:text-7xl">Khám phá thiết kế độc đáo</h1>
-        <p className="mt-5 max-w-xl text-sm text-white/80 md:text-base">Những chiếc áo được tạo bởi cộng đồng sáng tạo ALTERA.</p>
-        <Link to="/design" className="mt-7 inline-flex border border-white px-5 py-3 text-xs font-semibold uppercase tracking-widest transition hover:bg-white hover:text-black">Thiết kế áo của bạn</Link>
+    <section className="relative flex min-h-[440px] items-end overflow-hidden bg-neutral-950 px-6 pb-12 pt-28 text-white md:min-h-[480px] md:px-12 md:pb-16">
+      <img
+        src={homepage2}
+        alt="ALTERA creator marketplace"
+        className="absolute inset-0 h-full w-full object-cover object-[center_18%] opacity-85"
+      />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#060B16]/90 via-[#060B16]/65 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#060B16] via-transparent to-black/20" />
+      <div className="relative mx-auto w-full max-w-7xl z-10">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[.24em] text-cyan-400">ALTERA · Design Market</p>
+        <h1 className="max-w-3xl text-4xl font-black uppercase leading-[1.05] tracking-normal md:text-6xl lg:text-7xl">
+          Khám phá thiết kế độc đáo
+        </h1>
+        <p className="mt-5 max-w-xl text-sm text-slate-200 md:text-base leading-relaxed">
+          Những chiếc áo được tạo bởi cộng đồng sáng tạo ALTERA.
+        </p>
+        <Link
+          to="/design"
+          className="mt-7 inline-flex items-center gap-2 border border-white/80 bg-white/10 backdrop-blur-sm px-6 py-3.5 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-white hover:text-black hover:border-white shadow-lg"
+        >
+          Thiết kế áo của bạn
+        </Link>
       </div>
     </section>
 
     <section className="mx-auto max-w-7xl px-4 py-10 md:px-6 md:py-14">
       <div className="mb-7 flex flex-col gap-4 border-b border-neutral-200 pb-5 md:flex-row md:items-end md:justify-between">
-        <div><p className="text-xs uppercase tracking-[.2em] text-neutral-500">Cộng đồng creator</p><h2 className="mt-2 text-2xl font-bold uppercase tracking-tight">Thiết kế mới nhất</h2></div>
+        <div>
+          <p className="text-xs uppercase tracking-[.2em] text-neutral-500">Cộng đồng creator</p>
+          <h2 className="mt-2 text-2xl font-bold uppercase tracking-normal">Thiết kế mới nhất</h2>
+        </div>
         <div className="flex flex-col gap-3 sm:flex-row">
           <label className="relative"><span className="sr-only">Tìm thiết kế</span><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"/><input value={search} onChange={(event) => { setPage(1); setSearch(event.target.value) }} placeholder="Tên thiết kế, creator, tag" className="w-full border border-neutral-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-black sm:w-64"/></label>
           <label className="flex items-center gap-2 border border-neutral-300 px-3"><SlidersHorizontal className="h-4 w-4 text-neutral-500"/><span className="sr-only">Danh mục</span><select value={category} onChange={(event) => { setPage(1); setCategory(event.target.value) }} className="bg-transparent py-2.5 text-sm outline-none"><option value="">Tất cả danh mục</option><option>T-Shirt</option><option>Hoodie</option><option>Accessory</option></select></label>

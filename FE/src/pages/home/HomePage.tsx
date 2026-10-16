@@ -53,7 +53,7 @@ export function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/25 to-transparent" />
         <motion.div className="relative mx-auto w-full max-w-7xl" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7 }}>
           <p className="mb-5 text-xs font-semibold uppercase tracking-[.24em]">ALTERA · Mặc chính ý tưởng của bạn</p>
-          <h1 className="max-w-4xl text-5xl font-black uppercase leading-[.94] tracking-tight md:text-8xl">Khám phá thiết kế độc đáo</h1>
+          <h1 className="max-w-4xl text-5xl font-black uppercase leading-[1.02] tracking-normal md:text-8xl">Khám phá thiết kế độc đáo</h1>
           <p className="mt-5 max-w-xl text-sm text-white/80 md:text-base">Chọn thiết kế từ cộng đồng hoặc tự tạo chiếc áo mang dấu ấn của bạn.</p>
           <div className="mt-8 flex flex-wrap gap-3"><Link to="/marketplace" className="bg-white px-6 py-3 text-xs font-bold uppercase tracking-widest text-black transition hover:bg-neutral-200">Khám phá ngay</Link><Link to="/design" className="border border-white px-6 py-3 text-xs font-bold uppercase tracking-widest text-white transition hover:bg-white hover:text-black">Thiết kế áo</Link></div>
         </motion.div>
@@ -61,7 +61,7 @@ export function HomePage() {
 
       <section className="bg-white px-6 py-16 md:py-24">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex items-end justify-between gap-4 border-b border-neutral-200 pb-5"><div><p className="text-xs uppercase tracking-[.2em] text-neutral-500">Từ cộng đồng sáng tạo</p><h2 className="mt-2 text-3xl font-bold uppercase tracking-tight">Thiết kế bán chạy nhất</h2></div><Link to="/marketplace" className="text-xs font-semibold uppercase tracking-widest underline">Xem tất cả thiết kế</Link></div>
+          <div className="mb-8 flex items-end justify-between gap-4 border-b border-neutral-200 pb-5"><div><p className="text-xs uppercase tracking-[.2em] text-neutral-500">Từ cộng đồng sáng tạo</p><h2 className="mt-2 text-3xl font-bold uppercase tracking-normal">Thiết kế bán chạy nhất</h2></div><Link to="/marketplace" className="text-xs font-semibold uppercase tracking-widest underline">Xem tất cả thiết kế</Link></div>
           {trending.length ? <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">{trending.map((design) => <Link to={`/design/${design.slug}`} key={design._id} className="group"><div className="aspect-[4/5] overflow-hidden bg-neutral-100"><img src={design.thumbnail} alt={design.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/></div><h3 className="mt-3 truncate text-sm font-semibold uppercase">{design.name}</h3><p className="mt-1 text-xs text-neutral-500">{design.price.toLocaleString('vi-VN')} ₫ · {design.designerId.displayName}</p></Link>)}</div> : <div className="border-y border-neutral-200 py-14 text-center text-sm text-neutral-500"><p>Chưa có thiết kế được duyệt.</p><Link to="/design" className="mt-3 inline-block font-semibold text-black underline">Tạo thiết kế đầu tiên</Link></div>}
         </div>
       </section>
@@ -163,7 +163,7 @@ export function HomePage() {
               <span className="w-3 h-3 bg-black transform rotate-45 mt-0.5"></span> TÍNH NĂNG NỔI BẬT
             </div>
             <div className="md:col-span-8 flex flex-col items-start">
-              <h2 className="heading-brand text-5xl md:text-7xl tracking-tighter leading-[0.9] text-black mb-10 max-w-3xl">
+              <h2 className="heading-brand text-5xl md:text-7xl tracking-normal leading-[1.05] text-black mb-10 max-w-3xl">
                 Mỗi thiết kế kể một câu chuyện riêng về sự đồng sáng tạo và phong cách độc bản.
               </h2>
               <Button asChild className="bg-gradient-brand text-white px-8 py-6 rounded-sm text-[10px] font-bold tracking-widest uppercase flex items-center gap-2 hover:opacity-90 border-none shadow-xl shadow-blue-500/20">
@@ -187,7 +187,7 @@ export function HomePage() {
                 className={`grid grid-cols-1 md:grid-cols-12 items-center py-10 md:py-12 border-b border-gray-200 transition-colors ${i === 0 ? 'text-black' : 'text-gray-400 hover:text-black'}`}
               >
                 <div className="md:col-span-5 mb-4 md:mb-0 relative z-30">
-                  <span className="heading-brand text-4xl md:text-5xl tracking-tighter block uppercase">{item.title}</span>
+                  <span className="heading-brand text-4xl md:text-5xl tracking-normal block uppercase">{item.title}</span>
                 </div>
                 <div className="md:col-span-6 flex flex-wrap gap-3 relative z-30">
                   {item.tags.map(tag => (

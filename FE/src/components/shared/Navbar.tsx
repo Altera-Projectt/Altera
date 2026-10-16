@@ -30,8 +30,8 @@ const NAV_LINKS: NavItem[] = [
   { label: 'Về chúng tôi', href: '/about' },
   { label: 'Marketplace', href: '/marketplace' },
   { label: 'Gợi ý AI', href: '/outfit' },
-  { label: 'AI Design', href: '/design' },
-  { label: '3D Studio', href: '/studio' },
+  { label: 'AI Design', href: '/design?tab=ai' },
+  { label: '3D Studio', href: '/design?tab=custom' },
   { label: 'Hội viên', href: '/membership' },
 ]
 
@@ -112,9 +112,14 @@ export function Navbar() {
                   <Heart className="h-[18px] w-[18px]" />
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" asChild aria-label="Thiết kế của tôi" className="text-white hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="icon" asChild aria-label="Thiết kế của tôi" title="Thiết kế của tôi" className="text-white hover:bg-white/10 hover:text-white">
                 <Link to="/my-designs">
                   <Palette className="h-[18px] w-[18px]" />
+                </Link>
+              </Button>
+              <Button variant="ghost" size="icon" asChild aria-label="Kênh Creator" title="Kênh Creator (Doanh thu & Đơn hàng)" className="text-white hover:bg-white/10 hover:text-white">
+                <Link to="/studio">
+                  <Sparkles className="h-[18px] w-[18px]" />
                 </Link>
               </Button>
               
@@ -266,6 +271,21 @@ export function Navbar() {
                   >
                     <Palette className="h-4 w-4" />
                     Bộ sưu tập thiết kế
+                  </NavLink>
+                  <NavLink
+                    to="/studio"
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2 h-10 px-3 rounded-[var(--radius-md)] text-sm font-medium transition-colors',
+                        isActive
+                          ? 'bg-black/[0.08] text-[var(--color-foreground)]'
+                          : 'text-[var(--color-muted-foreground)] hover:bg-black/[0.05] hover:text-[var(--color-foreground)]',
+                      )
+                    }
+                  >
+                    <Sparkles className="h-4 w-4 text-blue-600" />
+                    Kênh Nhà thiết kế (Creator Hub)
                   </NavLink>
                 </div>
               )}

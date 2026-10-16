@@ -9,16 +9,39 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Thin.ttf') format('truetype');
+  font-weight: 100 300;
+  font-style: normal;
+  font-display: swap;
+}
 
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Regular.ttf') format('truetype');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'PP Rader';
+  src: url('./assets/fonts/PPRader-Bold.ttf') format('truetype');
+  font-weight: 700 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ─────────────────────────────────────────────────
    ALTERA Design System — Theme Tokens (Tailwind v4)
    ───────────────────────────────────────────────── */
 @theme {
   /* ── Fonts ── */
-  --font-heading: "Montserrat", "Neue Power", "Archivo", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Montserrat", "Neue Power", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Montserrat", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-montserrat: "Montserrat", sans-serif;
+  --font-rader: "PP Rader", "Montserrat", sans-serif;
 
   /* ── Brand Colors (Tech-Fashion Brutalist) ── */
   --color-electric-blue: #002bff; /* Electric Blue for primary blocks */
@@ -138,8 +161,9 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
     font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.04em;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    word-spacing: 0.05em;
     text-transform: uppercase;
   }
 
@@ -151,7 +175,9 @@
   }
 
   button {
+    font-family: var(--font-body);
     cursor: pointer;
+    letter-spacing: normal;
   }
 
   a {
@@ -163,6 +189,7 @@
   textarea,
   select {
     font-family: var(--font-body);
+    letter-spacing: normal;
   }
 
   /* Focus ring — Bold brutalist contrast */
@@ -188,6 +215,14 @@
 
   .font-body {
     font-family: var(--font-body);
+  }
+
+  .font-rader {
+    font-family: var(--font-rader);
+  }
+
+  .font-montserrat {
+    font-family: var(--font-montserrat);
   }
 
   /* Fashion-brand text effects */
@@ -257,6 +292,7 @@
   font-family: var(--font-heading);
   font-weight: 900;
   text-transform: uppercase;
-  letter-spacing: -0.04em;
-  line-height: 1;
+  letter-spacing: 0.01em;
+  word-spacing: 0.06em;
+  line-height: 1.15;
 }

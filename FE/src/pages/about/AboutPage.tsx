@@ -12,24 +12,28 @@ export function AboutPage() {
           SECTION 1 — HERO
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="relative min-h-[90vh] flex flex-col justify-center px-6 md:px-12 pt-24 overflow-hidden bg-white">
-        <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto flex justify-between items-center mb-12 font-bold uppercase tracking-widest z-20 relative">
+        <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto flex justify-between items-center mb-10 font-bold uppercase tracking-widest z-20 relative">
           <img src={logoSvg} alt="ALTERA Logo" className="h-6 md:h-10 w-auto object-contain" />
-          <span className="text-electric-blue text-[10px]">VỀ CHÚNG TÔI</span>
+          <span className="text-[#0011FF] text-[11px] tracking-[0.2em]">VỀ ALTERA</span>
         </div>
 
-        <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto relative z-10 flex flex-col lg:flex-row justify-between items-center mt-12 md:mt-24">
+        <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto relative z-10 flex flex-col lg:flex-row justify-between items-center mt-8 md:mt-16">
           <div className="w-full lg:w-[60%] relative z-30">
+            <span className="text-[#0011FF] text-xs font-bold uppercase tracking-[0.25em] mb-4 block">
+              VỀ ALTERA
+            </span>
             <motion.h1
-              className="font-heading text-[clamp(6rem,20vw,16rem)] leading-[0.75] tracking-normal text-electric-blue uppercase font-black"
+              className="font-heading text-[clamp(5.5rem,16vw,12.5rem)] leading-[0.8] tracking-tighter text-[#0011FF] uppercase font-black"
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 1 }}
             >
-              <span className="text-transparent" style={{ WebkitTextStroke: '2px #0011FF' }}>CHÚNG TÔI</span> <br />
-              LÀ AI?
+              WHO <br />
+              WE <br />
+              ARE
             </motion.h1>
             <motion.p
-              className="mt-16 text-sm md:text-base font-medium leading-relaxed max-w-sm text-black tracking-tight ml-2"
+              className="mt-12 text-sm md:text-base font-medium leading-relaxed max-w-sm text-black tracking-tight ml-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5, duration: 1 }}
@@ -88,12 +92,12 @@ export function AboutPage() {
         <div className="max-w-[var(--spacing-contentMax)] mx-auto">
           {/* Header */}
           <div className="flex justify-between items-end mb-24 w-full">
-            <h2 className="font-heading text-[clamp(4rem,10vw,8rem)] tracking-normal leading-none text-electric-blue font-black w-full flex flex-col md:flex-row justify-between uppercase">
-              <div className="flex gap-4 md:gap-8">
-                <span className="text-transparent" style={{ WebkitTextStroke: '2px #002bff' }}>CÁCH</span>
+            <h2 className="font-heading text-[clamp(3.5rem,9vw,7.5rem)] tracking-normal leading-none text-[#0011FF] font-black w-full flex flex-col md:flex-row justify-between uppercase">
+              <div className="flex gap-4 md:gap-6">
+                <span>CÁCH</span>
                 <span>ALTERA</span>
               </div>
-              <span className="text-transparent mt-4 md:mt-0" style={{ WebkitTextStroke: '2px #002bff' }}>HOẠT ĐỘNG</span>
+              <span className="mt-4 md:mt-0">HOẠT ĐỘNG</span>
             </h2>
           </div>
 
@@ -133,55 +137,55 @@ export function AboutPage() {
             <img src={about2} alt="Values Context" className="h-full object-contain relative z-20 drop-shadow-2xl" />
 
             {/* Top Left Callout (Personalization) */}
-            <div className="absolute top-[20%] left-[10%] md:left-[15%] hidden md:flex items-center z-30 group">
-              <div className="text-[10px] text-white text-right mr-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">CÁ NHÂN HÓA</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Mỗi thiết kế đều phản ánh cá tính và phong cách độc bản của người mặc</span>
+            <div className="absolute top-[20%] left-[5%] md:left-[10%] hidden md:flex items-center z-30 group">
+              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-right mr-3 shadow-xl">
+                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">CÁ NHÂN HÓA</span>
+                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Mỗi thiết kế đều phản ánh cá tính và phong cách độc bản của người mặc</span>
               </div>
-              <div className="w-8 h-px bg-white relative">
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
+              <div className="w-8 h-px bg-white/70 relative">
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
               </div>
-              <div className="w-px h-16 bg-white"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/10 backdrop-blur-md -ml-7 -mt-16 rounded-sm shadow-sm"></div>
+              <div className="w-px h-16 bg-white/70"></div>
+              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -ml-7 -mt-16 rounded-sm shadow-sm"></div>
             </div>
 
             {/* Bottom Left Callout (Creativity) */}
-            <div className="absolute bottom-[25%] left-[5%] md:left-[10%] hidden md:flex items-center z-30 group">
-              <div className="text-[10px] text-white text-right mr-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">SÁNG TẠO</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Khuyến khích mọi người tự do thể hiện ý tưởng độc đáo không giới hạn</span>
+            <div className="absolute bottom-[25%] left-[2%] md:left-[8%] hidden md:flex items-center z-30 group">
+              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-right mr-3 shadow-xl">
+                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">SÁNG TẠO</span>
+                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Khuyến khích mọi người tự do thể hiện ý tưởng độc đáo không giới hạn</span>
               </div>
-              <div className="w-6 h-px bg-white relative">
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
+              <div className="w-6 h-px bg-white/70 relative">
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
               </div>
-              <div className="w-px h-10 bg-white"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/10 backdrop-blur-md -ml-7 mt-10 rounded-sm shadow-sm"></div>
+              <div className="w-px h-10 bg-white/70"></div>
+              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -ml-7 mt-10 rounded-sm shadow-sm"></div>
             </div>
 
             {/* Top Right Callout (Technology) */}
-            <div className="absolute top-[25%] right-[5%] md:right-[15%] hidden md:flex items-center flex-row-reverse z-30 group">
-              <div className="text-[10px] text-white text-left ml-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">CÔNG NGHỆ</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Ứng dụng AI đột phá giúp đơn giản hóa quy trình tìm kiếm và thiết kế thời trang</span>
+            <div className="absolute top-[25%] right-[2%] md:right-[10%] hidden md:flex items-center flex-row-reverse z-30 group">
+              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-left ml-3 shadow-xl">
+                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">CÔNG NGHỆ</span>
+                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Ứng dụng AI đột phá giúp đơn giản hóa quy trình tìm kiếm và thiết kế thời trang</span>
               </div>
-              <div className="w-12 h-px bg-white relative">
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
+              <div className="w-12 h-px bg-white/70 relative">
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
               </div>
-              <div className="w-px h-12 bg-white"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/10 backdrop-blur-md -mr-7 -mt-12 rounded-sm shadow-sm"></div>
+              <div className="w-px h-12 bg-white/70"></div>
+              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -mr-7 -mt-12 rounded-sm shadow-sm"></div>
             </div>
 
             {/* Bottom Right Callout (Sustainability) */}
-            <div className="absolute bottom-[20%] right-[10%] md:right-[20%] hidden md:flex items-center flex-row-reverse z-30 group">
-              <div className="text-[10px] text-white text-left ml-3 leading-tight tracking-widest uppercase">
-                <span className="font-heading font-black text-sm block mb-1">BỀN VỮNG</span>
-                <span className="opacity-80 lowercase font-medium tracking-normal text-[11px] leading-tight block w-40">Ưu tiên sản xuất theo yêu cầu thực tế, giảm thiểu tối đa tồn kho và bảo vệ môi trường</span>
+            <div className="absolute bottom-[20%] right-[5%] md:right-[15%] hidden md:flex items-center flex-row-reverse z-30 group">
+              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-left ml-3 shadow-xl">
+                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">BỀN VỮNG</span>
+                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Ưu tiên sản xuất theo yêu cầu thực tế, giảm thiểu tối đa tồn kho và bảo vệ môi trường</span>
               </div>
-              <div className="w-16 h-px bg-white relative">
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 bg-white rounded-full"></div>
+              <div className="w-16 h-px bg-white/70 relative">
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
               </div>
-              <div className="w-px h-16 bg-white"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/10 backdrop-blur-md -mr-7 -mt-16 rounded-sm shadow-sm"></div>
+              <div className="w-px h-16 bg-white/70"></div>
+              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -mr-7 -mt-16 rounded-sm shadow-sm"></div>
             </div>
 
             {/* The Rock (Simulated using a background or image placed bottom-center) */}
@@ -190,7 +194,7 @@ export function AboutPage() {
         </div>
 
         {/* Bleeding bottom text */}
-        <h2 className="absolute bottom-0 left-0 w-full text-center font-heading font-black text-[clamp(8rem,25vw,22rem)] tracking-tighter leading-[0.75] text-white z-0 opacity-100 mix-blend-overlay uppercase pointer-events-none mb-[-2rem] md:mb-[-4rem]">
+        <h2 className="absolute bottom-0 left-0 w-full text-center font-heading font-black text-[clamp(8rem,25vw,22rem)] tracking-normal leading-[0.75] text-white z-0 opacity-20 pointer-events-none mb-[-2rem] md:mb-[-4rem]">
           GIÁ TRỊ CỐT LÕI
         </h2>
       </section>
