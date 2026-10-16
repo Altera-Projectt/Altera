@@ -13,10 +13,83 @@ const pagination = (query) => {
 };
 const validId = (id) => mongoose.Types.ObjectId.isValid(id);
 
+const buildRevenueChart = (paymentsByDay, days, now = new Date()) => {
+  const byDate = new Map(
+    paymentsByDay.map((item) => [
+      item._id,
+      {
+        revenue: Number(item.revenue || 0),
+        apparelRevenue: Number(item.apparelRevenue || 0),
+        membershipRevenue: Number(item.membershipRevenue || 0),
+        transactions: Number(item.transactions || 0),
+      },
+    ])
+  );
+
+  if (days > 30) {
+    const monthMap = new Map();
+    for (let offset = 2; offset >= 0; offset -= 1) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+      const ym = d.toISOString().slice(0, 7);
+      const mm = ym.slice(5, 7);
+      const yyyy = ym.slice(0, 4);
+      monthMap.set(ym, {
+        _id: ym,
+        label: `Tháng ${mm}/${yyyy}`,
+        revenue: 0,
+        apparelRevenue: 0,
+        membershipRevenue: 0,
+        transactions: 0,
+      });
+    }
+    for (const [dateStr, values] of byDate.entries()) {
+      const ym = String(dateStr).slice(0, 7);
+      if (!monthMap.has(ym)) {
+        const mm = ym.slice(5, 7);
+        const yyyy = ym.slice(0, 4);
+        monthMap.set(ym, {
+          _id: ym,
+          label: `Tháng ${mm}/${yyyy}`,
+          revenue: 0,
+          apparelRevenue: 0,
+          membershipRevenue: 0,
+          transactions: 0,
+        });
+      }
+      const bucket = monthMap.get(ym);
+      bucket.revenue += values.revenue;
+      bucket.apparelRevenue += values.apparelRevenue;
+      bucket.membershipRevenue += values.membershipRevenue;
+      bucket.transactions += values.transactions;
+    }
+    return [...monthMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, item]) => item);
+  }
+
+  const daily = [];
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset));
+    const dateKey = d.toISOString().slice(0, 10);
+    const [, mm, dd] = dateKey.split('-');
+    const found = byDate.get(dateKey);
+    daily.push({
+      _id: dateKey,
+      label: `${dd}/${mm}`,
+      revenue: found ? found.revenue : 0,
+      apparelRevenue: found ? found.apparelRevenue : 0,
+      membershipRevenue: found ? found.membershipRevenue : 0,
+      transactions: found ? found.transactions : 0,
+    });
+  }
+  return daily;
+};
+
 exports.dashboard = async (req, res, next) => {
   try {
     const days = Math.min(Math.max(Number.parseInt(req.query.days, 10) || 30, 1), 90);
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (days - 1), 0, 0, 0, 0));
     const [totalCustomers, totalUsers, activeUsers, designerProfiles, designs, pendingDesigns, approvedDesigns,
       totalOrders, pendingOrders, activeProducts, paidPayments, membershipPayments, pendingPayments, failedPayments,
       recentOrders, recentDesigns, paymentsByDay] = await Promise.all([
@@ -45,19 +118,28 @@ exports.dashboard = async (req, res, next) => {
       Payment.aggregate([
         { $match: { paymentStatus: { $in: ['PAID', 'SUCCESS'] }, $or: [{ orderId: { $ne: null } }, { membershipOrderId: { $ne: null } }], $and: [{ $or: [{ paidAt: { $gte: since } }, { paidAt: null, createdAt: { $gte: since } }] }] } },
         { $group: { _id: { type: { $cond: [{ $ne: ['$orderId', null] }, 'ORDER', 'MEMBERSHIP'] }, entityId: { $ifNull: ['$orderId', '$membershipOrderId'] } }, amount: { $max: '$amount' }, paidAt: { $max: { $ifNull: ['$paidAt', '$createdAt'] } } } },
-        { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$paidAt' } }, revenue: { $sum: '$amount' }, transactions: { $sum: 1 } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$paidAt' } },
+            revenue: { $sum: '$amount' },
+            apparelRevenue: { $sum: { $cond: [{ $eq: ['$_id.type', 'ORDER'] }, '$amount', 0] } },
+            membershipRevenue: { $sum: { $cond: [{ $eq: ['$_id.type', 'MEMBERSHIP'] }, '$amount', 0] } },
+            transactions: { $sum: 1 },
+          },
+        },
         { $sort: { _id: 1 } },
       ]),
     ]);
     const apparelRevenue = paidPayments.reduce((sum, payment) => sum + payment.amount, 0);
     const membershipRevenue = membershipPayments.reduce((sum, payment) => sum + payment.amount, 0);
     const revenue = apparelRevenue + membershipRevenue;
+    const revenueChart = buildRevenueChart(paymentsByDay, days, now);
     res.json({ success: true, data: {
       totalCustomers, totalUsers, activeUsers,
       designerProfiles, designs, pendingDesigns, approvedDesigns, totalOrders,
       pendingOrders, activeProducts, paidTransactions: paidPayments.length + membershipPayments.length,
       pendingPayments, failedPayments, revenue, apparelRevenue, membershipRevenue,
-      recentOrders, recentDesigns, revenueByDay: paymentsByDay,
+      recentOrders, recentDesigns, revenueByDay: paymentsByDay, revenueChart,
       filters: { days, since: since.toISOString() },
     } });
   } catch (error) { next(error); }
