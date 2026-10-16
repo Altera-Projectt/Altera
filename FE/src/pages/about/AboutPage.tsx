@@ -12,58 +12,45 @@ export function AboutPage() {
           SECTION 1 — HERO
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
       <section className="relative min-h-[90vh] flex flex-col justify-center px-6 md:px-12 pt-24 overflow-hidden bg-white">
-        <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto flex justify-between items-center mb-10 font-bold uppercase tracking-widest z-20 relative">
+        <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-8 md:mb-12 font-bold uppercase tracking-widest z-20 relative">
           <img src={logoSvg} alt="ALTERA Logo" className="h-6 md:h-10 w-auto object-contain" />
           <span className="text-[#0011FF] text-[11px] tracking-[0.2em]">VỀ ALTERA</span>
         </div>
 
-        <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto relative z-10 flex flex-col lg:flex-row justify-between items-center mt-8 md:mt-16">
-          <div className="w-full lg:w-[60%] relative z-30">
+        <div className="w-full max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-4 items-center mt-4 md:mt-8">
+          <div className="lg:col-span-6 xl:col-span-6 relative z-30">
             <span className="text-[#0011FF] text-xs font-bold uppercase tracking-[0.25em] mb-4 block">
               VỀ ALTERA
             </span>
             <motion.h1
-              className="font-heading text-[clamp(5.5rem,16vw,12.5rem)] leading-[0.8] tracking-tighter text-[#0011FF] uppercase font-black"
-              initial={{ opacity: 0, x: -50 }}
+              className="font-heading text-[clamp(4.8rem,13vw,11rem)] leading-[0.82] tracking-tighter text-[#0011FF] uppercase font-black"
+              initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 1 }}
+              transition={{ duration: 0.9 }}
             >
               WHO <br />
               WE <br />
               ARE
             </motion.h1>
             <motion.p
-              className="mt-12 text-sm md:text-base font-medium leading-relaxed max-w-sm text-black tracking-tight ml-1"
+              className="mt-8 md:mt-12 text-sm md:text-base font-normal leading-relaxed max-w-md text-neutral-800 tracking-normal ml-0.5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 1 }}
+              transition={{ delay: 0.4, duration: 0.8 }}
             >
               ALTERA ứng dụng công cụ AI tiên tiến giúp bạn khám phá phong cách cá nhân, tự do thiết kế trang phục theo ý tưởng và đặt may áo đo ni đóng giày dành riêng cho chính bạn.
             </motion.p>
           </div>
 
-          {/* Desktop Huge Image */}
-          <div className="hidden lg:block absolute right-[-5%] top-1/2 -translate-y-1/2 w-[60%] max-w-[1000px] z-20">
+          {/* 3D Visual with Editorial Magazine Overlap */}
+          <div className="lg:col-span-6 xl:col-span-6 relative z-20 flex justify-center lg:justify-start -mt-4 lg:mt-0 lg:-ml-12 xl:-ml-20">
             <motion.img
               src={homepage0}
               alt="About Hero Visual"
-              className="w-full h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.3)] opacity-100 mix-blend-normal cursor-pointer"
-              initial={{ opacity: 0, scale: 0.9, x: 100, y: 0 }}
-              animate={{ opacity: 1, scale: 1.15, x: 40, y: -40 }}
-              whileHover={{ scale: 1.2, transition: { duration: 0.4 } }}
-              transition={{ duration: 1.2 }}
-            />
-          </div>
-
-          {/* Mobile version */}
-          <div className="w-full lg:hidden relative mt-16 flex justify-center z-20">
-            <motion.img
-              src={homepage0}
-              alt="About Hero Visual"
-              className="w-full max-w-[500px] object-contain drop-shadow-2xl"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1.2 }}
+              className="w-full max-w-[500px] lg:max-w-none lg:w-[125%] xl:w-[135%] h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.22)] select-none cursor-pointer transform scale-105 hover:scale-110 transition-transform duration-500"
+              initial={{ opacity: 0, scale: 0.95, x: 40 }}
+              animate={{ opacity: 1, scale: 1.05, x: 0 }}
+              transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
             />
           </div>
         </div>
@@ -193,8 +180,8 @@ export function AboutPage() {
           </div>
         </div>
 
-        {/* Bleeding bottom text */}
-        <h2 className="absolute bottom-0 left-0 w-full text-center font-heading font-black text-[clamp(8rem,25vw,22rem)] tracking-normal leading-[0.75] text-white z-0 opacity-20 pointer-events-none mb-[-2rem] md:mb-[-4rem]">
+        {/* Bleeding bottom text — Subtle Outline Watermark */}
+        <h2 className="absolute bottom-0 left-0 w-full text-center font-heading font-black text-[clamp(6.5rem,22vw,19rem)] tracking-normal leading-[0.75] text-transparent [-webkit-text-stroke:1.5px_rgba(255,255,255,0.08)] md:[-webkit-text-stroke:2px_rgba(255,255,255,0.08)] z-0 pointer-events-none select-none mb-[-1.5rem] md:mb-[-3rem]">
           GIÁ TRỊ CỐT LÕI
         </h2>
       </section>
