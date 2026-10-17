@@ -100,6 +100,7 @@ export interface CustomDesignDraft {
 
 export interface DesignTemplate {
   _id: string
+  slug?: string
   name: string
   thumbnail: string
   category: string
@@ -108,9 +109,10 @@ export interface DesignTemplate {
   description: string
   frontDesign: { layers: Record<string, unknown>[] }
   backDesign: { layers: Record<string, unknown>[] }
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
+  isActive?: boolean
+  isBuiltIn?: boolean
+  createdAt?: string
+  updatedAt?: string
 }
 
 // ── Service ────────────────────────────────────────────────────────────────

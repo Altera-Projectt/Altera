@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowUp, Copy, Eye, EyeOff, Lock, RotateCw, Trash2, Unlock, Upload, X, Save, FolderOpen, Search, CheckCircle2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, FolderOpen, Lock, RotateCw, Save, Search, Sparkles, Trash2, Unlock, Upload, X } from 'lucide-react'
 import { ProductService } from '@/services/product.api'
 import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
@@ -10,6 +10,7 @@ import { useAuthStore } from '@/store/authStore'
 import type { Product } from '@/types/product.types'
 import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
 import ShirtCanvas3D from './ShirtCanvas3D'
+import { getTemplateThumbnail, BUILTIN_PRESET_TEMPLATES } from './templateMockups'
 type ImageLayer = { 
   id: string; 
   type: 'image'; 
@@ -134,7 +135,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const [showDraftName, setShowDraftName] = useState(false)
   const [showDraftGallery, setShowDraftGallery] = useState(false)
   const [showTemplateGallery, setShowTemplateGallery] = useState(false)
-  const [templates, setTemplates] = useState<DesignTemplate[]>([])
+  const [templates, setTemplates] = useState<DesignTemplate[]>(BUILTIN_PRESET_TEMPLATES)
   const [templateLoading, setTemplateLoading] = useState(false)
   const [templateError, setTemplateError] = useState('')
   const [templateSearch, setTemplateSearch] = useState('')
@@ -385,13 +386,28 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const changeSide = (next: 'frontDesign' | 'backDesign') => { setSide(next); setSelectedId(null) }
   const loadTemplates = async () => {
     setTemplateLoading(true); setTemplateError('')
-    try { const response = await DesignService.listDesignTemplates(); setTemplates(response.data.data.templates) }
-    catch (loadError: unknown) { setTemplateError(errorMessage(loadError, 'Could not load templates.')) }
+    try { 
+      const response = await DesignService.listDesignTemplates(); 
+      const remote = response.data.data.templates;
+      setTemplates(remote && remote.length > 0 ? remote : BUILTIN_PRESET_TEMPLATES) 
+    }
+    catch { 
+      setTemplates(BUILTIN_PRESET_TEMPLATES)
+    }
     finally { setTemplateLoading(false) }
   }
   const openTemplate = async (template: DesignTemplate) => {
-    try { const response = await DesignService.getDesignTemplate(template._id); setTemplateDetail(response.data.data.template) }
-    catch (openError: unknown) { setTemplateError(errorMessage(openError, 'Could not open this template preview.')) }
+    if (template._id.startsWith('preset-') || !/^[0-9a-fA-F]{24}$/.test(template._id)) {
+      setTemplateDetail(template)
+      return
+    }
+    try { 
+      const response = await DesignService.getDesignTemplate(template._id); 
+      setTemplateDetail(response.data.data.template || template) 
+    }
+    catch { 
+      setTemplateDetail(template) 
+    }
   }
   const applyTemplate = (template: DesignTemplate) => {
     const hasDesign = design.frontDesign.layers.length > 0 || design.backDesign.layers.length > 0
@@ -722,17 +738,196 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       {draft.thumbnail ? <img src={optimizeCloudinaryUrl(draft.thumbnail, 500)} alt={`${draft.name} preview`} loading="lazy" decoding="async" className="aspect-[3/4] w-full bg-gray-100 object-contain"/> : <div className="flex aspect-[3/4] items-center justify-center bg-gray-100 text-sm text-gray-400">Chưa có ảnh</div>}
       <div className="space-y-2 p-3"><h3 className="truncate font-medium">{draft.name}</h3><p className="text-xs text-gray-500">{new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(new Date(draft.updatedAt))}</p><div className="flex flex-wrap gap-2"><button disabled={loadingProducts} onClick={() => void openDraft(draft)} className="rounded bg-black px-3 py-1.5 text-xs text-white disabled:opacity-50">{loadingProducts ? 'Đang tải…' : 'Mở'}</button><button onClick={() => void renameDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Đổi tên</button><button onClick={() => void duplicateDraft(draft)} className="rounded border px-3 py-1.5 text-xs">Nhân bản</button><button onClick={() => void deleteDraft(draft)} className="rounded border border-red-200 px-3 py-1.5 text-xs text-red-600">Xóa</button></div></div>
     </article>)}</div>}
-  </section> : showTemplateGallery ? <section className="relative space-y-5 rounded-xl border bg-white p-5">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold">Thư viện mẫu</h2><p className="text-sm text-gray-500">Chọn mẫu bắt đầu và thoải mái chỉnh sửa từng lớp.</p></div><button onClick={() => setShowTemplateGallery(false)} className="rounded border px-4 py-2 text-sm">Quay lại thiết kế</button></div>
-    <div className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_220px]"><label className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/><input aria-label="Tìm kiếm mẫu" placeholder="Tìm theo tên, danh mục, phong cách hoặc thẻ" value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} className="w-full rounded border py-2 pl-9 pr-3 text-sm"/></label><select aria-label="Lọc mẫu theo danh mục" value={templateCategory} onChange={(event) => setTemplateCategory(event.target.value)} className="rounded border px-3 py-2 text-sm"><option>Tất cả</option>{[...new Set(templates.map((template) => template.category))].sort().map((category) => <option key={category}>{category}</option>)}</select></div>
-    {templateError && <p role="status" className="text-sm text-red-600">{templateError}</p>}
-    {templateLoading ? <p className="py-10 text-center text-sm text-gray-500">Đang tải mẫu thiết kế…</p> : !filteredTemplates.length ? <p className="rounded border border-dashed p-8 text-center text-sm text-gray-500">Không tìm thấy mẫu phù hợp.</p> : <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{filteredTemplates.map((template) => <button key={template._id} onClick={() => void openTemplate(template)} className="overflow-hidden rounded-lg border text-left transition hover:border-black hover:shadow-sm"><img src={optimizeCloudinaryUrl(template.thumbnail, 500)} alt={`${template.name} preview`} loading="lazy" decoding="async" className="aspect-[4/5] w-full bg-gray-100 object-cover"/><span className="block truncate px-3 pt-2 text-sm font-semibold">{template.name}</span><span className="block px-3 pb-3 text-xs text-gray-500">{template.category} · {template.style}</span></button>)}</div>}
-    {templateDetail && <div role="dialog" aria-modal="true" aria-labelledby="template-detail-title" className="fixed inset-0 z-50 flex items-center justify-center overflow-auto bg-black/50 p-4" onClick={() => setTemplateDetail(null)}><article className="grid w-full max-w-2xl overflow-hidden rounded-xl bg-white shadow-xl md:grid-cols-2" onClick={(event) => event.stopPropagation()}><img src={optimizeCloudinaryUrl(templateDetail.thumbnail, 800)} alt={`${templateDetail.name} preview`} decoding="async" className="max-h-[70vh] min-h-64 w-full bg-gray-100 object-cover"/><div className="flex flex-col p-5"><div className="flex items-start justify-between gap-2"><h3 id="template-detail-title" className="text-lg font-semibold">{templateDetail.name}</h3><button aria-label="Đóng xem trước mẫu" onClick={() => setTemplateDetail(null)} className="rounded border p-1"><X size={16}/></button></div><p className="mt-2 text-xs font-medium uppercase tracking-wide text-gray-500">{templateDetail.category} · {templateDetail.style}</p><p className="mt-4 flex-1 text-sm text-gray-600">{templateDetail.description}</p><p className="mt-3 text-xs text-gray-500">{templateDetail.tags.join(' · ')}</p><button onClick={() => applyTemplate(templateDetail)} className="mt-5 rounded bg-black px-4 py-3 text-sm font-semibold text-white">Dùng mẫu này</button></div></article></div>}
+  </section> : showTemplateGallery ? <section className="relative space-y-6 rounded-2xl border border-blue-400/15 bg-[#060B16] p-6 text-slate-100 shadow-2xl">
+    {/* Header */}
+    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-blue-400/10 pb-5">
+      <div>
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1 text-[11px] font-semibold text-cyan-400">
+            <Sparkles size={13} className="text-cyan-400" />
+            BỘ SƯU TẬP 3D STUDIO
+          </span>
+        </div>
+        <h2 className="font-heading text-2xl font-bold tracking-normal text-white">Thư viện mẫu thiết kế</h2>
+        <p className="mt-1 text-sm text-slate-400">Chọn mẫu áo 3D mang phong cách riêng để bắt đầu tùy biến và chỉnh sửa từng chi tiết.</p>
+      </div>
+      <button 
+        type="button"
+        onClick={() => setShowTemplateGallery(false)} 
+        className="inline-flex items-center gap-2 rounded-xl border border-blue-400/20 bg-[#0F172A] px-4 py-2.5 text-sm font-medium text-slate-200 transition-all hover:border-cyan-400/50 hover:bg-[#162038] hover:text-white"
+      >
+        <ArrowLeft size={16} /> Quay lại Studio
+      </button>
+    </div>
+
+    {/* Filter and Search Bar */}
+    <div className="grid gap-3 sm:grid-cols-[minmax(240px,1fr)_220px]">
+      <label className="relative">
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <input 
+          aria-label="Tìm kiếm mẫu" 
+          placeholder="Tìm theo tên mẫu, danh mục, phong cách hoặc thẻ…" 
+          value={templateSearch} 
+          onChange={(event) => setTemplateSearch(event.target.value)} 
+          className="w-full rounded-xl border border-blue-400/20 bg-[#0F172A] py-2.5 pl-10 pr-4 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50"
+        />
+      </label>
+      <select 
+        aria-label="Lọc mẫu theo danh mục" 
+        value={templateCategory} 
+        onChange={(event) => setTemplateCategory(event.target.value)} 
+        className="rounded-xl border border-blue-400/20 bg-[#0F172A] px-3.5 py-2.5 text-sm text-slate-200 transition focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50 cursor-pointer"
+      >
+        <option value="All">Tất cả danh mục</option>
+        {[...new Set(templates.map((template) => template.category))].sort().map((category) => (
+          <option key={category} value={category}>{category}</option>
+        ))}
+      </select>
+    </div>
+
+    {templateError && <p role="status" className="rounded-lg border border-red-500/20 bg-red-950/40 p-3 text-sm text-red-400">{templateError}</p>}
+
+    {templateLoading ? (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mb-3" />
+        <p className="text-sm text-slate-400">Đang tải mẫu thiết kế 3D…</p>
+      </div>
+    ) : !filteredTemplates.length ? (
+      <div className="rounded-2xl border border-dashed border-blue-400/20 bg-[#0F172A]/50 p-12 text-center text-sm text-slate-400">
+        Không tìm thấy mẫu phù hợp với từ khóa tìm kiếm.
+      </div>
+    ) : (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {filteredTemplates.map((template) => {
+          const thumbSrc = getTemplateThumbnail(template)
+          return (
+            <button 
+              key={template._id} 
+              type="button"
+              onClick={() => void openTemplate(template)} 
+              className="group relative flex flex-col overflow-hidden rounded-xl border border-blue-400/15 bg-[#0F172A] p-2.5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-cyan-400/50 hover:shadow-[0_0_25px_rgba(6,182,212,0.18)] cursor-pointer"
+            >
+              {/* T-Shirt 3D Viewport with subtle glow */}
+              <div className="relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-[#060B16] border border-blue-400/10 flex items-center justify-center p-2">
+                {/* Ambient glow behind shirt */}
+                <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/10 via-blue-600/5 to-transparent pointer-events-none group-hover:from-cyan-500/20 transition-all duration-300" />
+                
+                {/* 3D Shirt Mockup */}
+                <img 
+                  src={thumbSrc} 
+                  alt={`${template.name} preview`} 
+                  loading="lazy" 
+                  decoding="async" 
+                  className="h-full w-full object-contain filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)] group-hover:scale-105 transition-transform duration-300 ease-out"
+                />
+
+                {/* Style badge */}
+                <span className="absolute top-2 left-2 rounded-md bg-[#0A1122]/90 backdrop-blur-md border border-cyan-400/20 px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase text-cyan-300">
+                  {template.style}
+                </span>
+              </div>
+
+              {/* Card Meta */}
+              <div className="mt-3 flex flex-1 flex-col justify-between px-1 pb-1">
+                <h3 className="truncate font-bold text-sm text-slate-100 group-hover:text-cyan-400 tracking-normal transition-colors">
+                  {template.name}
+                </h3>
+                <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
+                  <span className="truncate">{template.category}</span>
+                  <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-cyan-400 opacity-80 group-hover:opacity-100 transition-opacity">
+                    Khám phá →
+                  </span>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+    )}
+
+    {/* Detail Preview Modal */}
+    {templateDetail && (
+      <div 
+        role="dialog" 
+        aria-modal="true" 
+        aria-labelledby="template-detail-title" 
+        className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/80 backdrop-blur-sm p-4" 
+        onClick={() => setTemplateDetail(null)}
+      >
+        <article 
+          className="relative grid w-full max-w-2xl overflow-hidden rounded-2xl border border-blue-400/25 bg-[#0F172A] shadow-[0_20px_50px_rgba(0,0,0,0.85)] md:grid-cols-2 text-slate-100" 
+          onClick={(event) => event.stopPropagation()}
+        >
+          {/* Left Preview: 3D Shirt */}
+          <div className="relative flex min-h-[300px] md:min-h-[380px] items-center justify-center bg-[#060B16] p-6 border-b md:border-b-0 md:border-r border-blue-400/15">
+            <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/10 via-transparent to-transparent pointer-events-none" />
+            <img 
+              src={getTemplateThumbnail(templateDetail)} 
+              alt={`${templateDetail.name} preview`} 
+              decoding="async" 
+              className="max-h-[360px] w-full object-contain filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.8)]"
+            />
+            <span className="absolute top-3.5 left-3.5 rounded-md border border-cyan-400/30 bg-[#0A1122]/90 backdrop-blur-md px-2.5 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-300">
+              {templateDetail.style}
+            </span>
+          </div>
+
+          {/* Right Details */}
+          <div className="flex flex-col p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 id="template-detail-title" className="text-xl font-bold tracking-normal text-white">
+                  {templateDetail.name}
+                </h3>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className="rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs font-semibold text-cyan-300">
+                    {templateDetail.category}
+                  </span>
+                  <span className="rounded-md border border-blue-400/20 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-300">
+                    {templateDetail.style}
+                  </span>
+                </div>
+              </div>
+              <button 
+                type="button"
+                aria-label="Đóng xem trước mẫu" 
+                onClick={() => setTemplateDetail(null)} 
+                className="rounded-lg border border-blue-400/20 p-1.5 text-slate-400 transition hover:border-cyan-400/50 hover:bg-[#162038] hover:text-white"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-300">
+              {templateDetail.description}
+            </p>
+
+            {templateDetail.tags && templateDetail.tags.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-1.5">
+                {templateDetail.tags.map((tag) => (
+                  <span key={tag} className="rounded-md border border-blue-400/15 bg-[#060B16] px-2 py-0.5 text-[11px] text-slate-400">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <button 
+              type="button"
+              onClick={() => applyTemplate(templateDetail)} 
+              className="mt-6 w-full rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-500/25 transition-all hover:from-blue-500 hover:to-cyan-400 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              Dùng mẫu thiết kế này
+            </button>
+          </div>
+        </article>
+      </div>
+    )}
   </section> : <div className="grid gap-6 lg:grid-cols-[290px_minmax(300px,1fr)_300px]">
     <aside className="space-y-4 rounded-xl border border-[var(--color-border)] bg-white p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide">Sản phẩm</h2>
       <div className="flex flex-wrap gap-2"><button onClick={() => void openPublish()} className="flex flex-1 items-center justify-center gap-1 rounded border border-black bg-[#ffebb3] px-2 py-2 text-xs font-bold uppercase tracking-wide">Đăng Studio</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'Thiết kế áo của tôi'); setDraftError(''); setShowDraftName(true) }} className="flex flex-1 items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Lưu nháp</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex flex-1 items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Bản nháp</button></div>
-      <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded border px-3 py-2 text-sm font-medium">Thư viện mẫu</button>
+      <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded-lg border border-blue-400/25 bg-[#0F172A] px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-300 hover:bg-[#162038] flex items-center justify-center gap-1.5"><Sparkles size={14} className="text-cyan-400"/>Thư viện mẫu</button>
       {draftId && <p role="status" className="text-xs text-gray-500">{draftStatus === 'saving' ? 'Đang lưu…' : draftStatus === 'saved' ? `Đã lưu · ${draftName}` : draftStatus === 'failed' ? 'Lưu thất bại' : ''}</p>}
       {showPublish && <div role="dialog" aria-modal="true" className="space-y-2 rounded-lg border bg-white p-3"><h3 className="text-sm font-semibold">Đăng lên Marketplace</h3><p className="text-xs text-gray-500">Thiết kế của bạn sẽ xuất hiện trên trang cá nhân và Marketplace.</p><input value={publishName} onChange={(e) => setPublishName(e.target.value)} maxLength={120} className="w-full rounded border px-3 py-2 text-sm" placeholder="Tên thiết kế"/><textarea value={publishDescription} onChange={(e) => setPublishDescription(e.target.value)} maxLength={3000} className="w-full rounded border px-3 py-2 text-sm" placeholder="Mô tả thiết kế"/><select value={publishCollectionId} onChange={(e) => setPublishCollectionId(e.target.value)} className="w-full rounded border px-3 py-2 text-sm"><option value="">Không thuộc bộ sưu tập</option>{publishCollections.map((collection) => <option key={collection._id} value={collection._id}>{collection.name}</option>)}</select><div className="flex gap-2"><input value={newCollectionName} onChange={(e) => setNewCollectionName(e.target.value)} maxLength={80} className="min-w-0 flex-1 rounded border px-3 py-2 text-sm" placeholder="Tên bộ sưu tập mới"/><button type="button" disabled={creatingCollection || !newCollectionName.trim()} onClick={() => void createCollection()} className="rounded border px-3 py-2 text-xs disabled:opacity-40">{creatingCollection ? 'Đang tạo…' : 'Tạo'}</button></div><input value={publishCategory} onChange={(e) => setPublishCategory(e.target.value)} maxLength={80} className="w-full rounded border px-3 py-2 text-sm" placeholder="Danh mục"/><input value={publishTags} onChange={(e) => setPublishTags(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Thẻ (cách nhau bằng dấu phẩy)"/>
 <div className="space-y-1">
