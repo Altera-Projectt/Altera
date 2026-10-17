@@ -10,7 +10,8 @@ const startServer = async () => {
   const expiryJob = setInterval(() => membershipService.expireMemberships().catch((error) => logger.error(`Membership expiry job failed: ${error.message}`)), 60 * 60 * 1000);
 
   // Initialize Queues and Workers
-  require('./queues/aiQueue');
+  const { aiQueue, aiWorker } = require('./queues/aiQueue');
+  const redisConnection = require('./config/redis');
 
   // Keep-alive: ping server mỗi 10 phút để tránh Render Free cold start
   let keepAliveJob = null;
@@ -33,11 +34,18 @@ const startServer = async () => {
     logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 
-  // Graceful shutdown
-  const shutdown = (signal) => {
+  // Graceful shutdown (đóng sạch Worker & Redis để không bị rò rỉ kết nối ngầm)
+  const shutdown = async (signal) => {
     logger.info(`${signal} received. Shutting down gracefully...`);
     clearInterval(expiryJob);
     if (keepAliveJob) clearInterval(keepAliveJob);
+    try {
+      if (aiWorker) await aiWorker.close();
+      await aiQueue.close();
+      await redisConnection.quit();
+    } catch (err) {
+      logger.warn(`Error closing Redis/BullMQ: ${err.message}`);
+    }
     server.close(() => {
       logger.info('HTTP server closed');
       process.exit(0);

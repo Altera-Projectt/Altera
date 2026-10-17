@@ -8,6 +8,7 @@ import homepage1 from '@/assets/homepage1.jpg'
 import homepage2 from '@/assets/homepage2.jpg'
 import logoSvg from '@/assets/logo2.png'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
+import { optimizeCloudinaryUrl } from '@/utils/format'
 
 const FEATURES = [
   {
@@ -62,7 +63,7 @@ export function HomePage() {
       <section className="bg-white px-6 py-16 md:py-24">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex items-end justify-between gap-4 border-b border-neutral-200 pb-5"><div><p className="text-xs uppercase tracking-[.2em] text-neutral-500">Từ cộng đồng sáng tạo</p><h2 className="mt-2 text-3xl font-bold uppercase tracking-normal">Thiết kế bán chạy nhất</h2></div><Link to="/marketplace" className="text-xs font-semibold uppercase tracking-widest underline">Xem tất cả thiết kế</Link></div>
-          {trending.length ? <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">{trending.map((design) => <Link to={`/design/${design.slug}`} key={design._id} className="group"><div className="aspect-[4/5] overflow-hidden bg-neutral-100"><img src={design.thumbnail} alt={design.name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/></div><h3 className="mt-3 truncate text-sm font-semibold uppercase">{design.name}</h3><p className="mt-1 text-xs text-neutral-500">{design.price.toLocaleString('vi-VN')} ₫ · {design.designerId.displayName}</p></Link>)}</div> : <div className="border-y border-neutral-200 py-14 text-center text-sm text-neutral-500"><p>Chưa có thiết kế được duyệt.</p><Link to="/design" className="mt-3 inline-block font-semibold text-black underline">Tạo thiết kế đầu tiên</Link></div>}
+          {trending.length ? <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-6">{trending.map((design) => <Link to={`/design/${design.slug}`} key={design._id} className="group"><div className="aspect-[4/5] overflow-hidden bg-neutral-100"><img src={optimizeCloudinaryUrl(design.thumbnail, 600)} alt={design.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"/></div><h3 className="mt-3 truncate text-sm font-semibold uppercase">{design.name}</h3><p className="mt-1 text-xs text-neutral-500">{design.price.toLocaleString('vi-VN')} ₫ · {design.designerId.displayName}</p></Link>)}</div> : <div className="border-y border-neutral-200 py-14 text-center text-sm text-neutral-500"><p>Chưa có thiết kế được duyệt.</p><Link to="/design" className="mt-3 inline-block font-semibold text-black underline">Tạo thiết kế đầu tiên</Link></div>}
         </div>
       </section>
 

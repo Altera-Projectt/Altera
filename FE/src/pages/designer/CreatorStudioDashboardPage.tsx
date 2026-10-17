@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, CircleDollarSign, PackageCheck, Palette, ShoppingBag } from 'lucide-react'
 import api from '@/utils/axios'
+import { optimizeCloudinaryUrl } from '@/utils/format'
 
 type Profile = { username: string; displayName: string }
 type Summary = { totalDesigns: number; publishedDesigns: number; totalSales: number; grossSales: number; paidOrders: number; commissionConfigured: boolean; designerEarnings: number | null }
@@ -119,9 +120,10 @@ export function CreatorStudioDashboardPage() {
                 <article key={order._id} className="flex flex-wrap items-center gap-4 py-4 hover:bg-slate-50/50 px-2 rounded-xl transition-colors">
                   {order.items[0]?.imageUrl && (
                     <img
-                      src={order.items[0].imageUrl}
+                      src={optimizeCloudinaryUrl(order.items[0].imageUrl, 200)}
                       alt=""
                       loading="lazy"
+                      decoding="async"
                       className="h-16 w-14 rounded-lg object-contain bg-slate-100 border border-slate-200"
                     />
                   )}

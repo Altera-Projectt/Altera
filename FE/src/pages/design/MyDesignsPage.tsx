@@ -4,6 +4,7 @@ import { Palette, Trash2, ChevronLeft, ChevronRight, Calendar, ImageOff } from '
 import { Button } from '@/components/ui/Button'
 import { DesignService, type Design } from '@/services/design.api'
 import { cn } from '@/utils/cn'
+import { optimizeCloudinaryUrl } from '@/utils/format'
 import { toast } from 'sonner'
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -160,8 +161,10 @@ export function MyDesignsPage() {
               <div className="relative aspect-square w-full bg-[var(--color-muted)] overflow-hidden">
                 {(design.previewImage || design.customImage) ? (
                   <img
-                    src={design.previewImage || design.customImage}
+                    src={optimizeCloudinaryUrl(design.previewImage || design.customImage, 600)}
                     alt={design.prompt || 'Design'}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     onError={(e) => {
                       e.currentTarget.style.display = 'none'

@@ -6,7 +6,7 @@ import { OrderService } from '@/services/order.api'
 import type { Order } from '@/types/order.types'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
-import { formatVND } from '@/utils/format'
+import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -280,7 +280,7 @@ export function OrdersPage() {
                                   {/* Thumbnail */}
                                   <div className="h-12 w-12 shrink-0 rounded-[var(--radius-sm)] bg-[var(--color-muted)] overflow-hidden border border-[var(--color-border)]">
                                     {img ? (
-                                      <img src={img} alt={name} className="h-full w-full object-cover" />
+                                      <img src={optimizeCloudinaryUrl(img, 200)} alt={name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                                     ) : (
                                       <div className="h-full w-full flex items-center justify-center">
                                         <Package className="h-4 w-4 text-[var(--color-border)]" strokeWidth={1} />

@@ -232,9 +232,9 @@ export function ProfilePage() {
       <div className="flex flex-col items-center mb-56 md:mb-64 relative">
         <div className="h-48 md:h-80 w-full bg-black overflow-hidden relative group rounded-xl">
           {user.coverImage ? (
-            <img src={user.coverImage} alt="Cover" className="h-full w-full object-cover mix-blend-luminosity opacity-40 transition-transform duration-700 group-hover:scale-105" />
+            <img src={optimizeImage(user.coverImage, 1200)} alt="Cover" decoding="async" className="h-full w-full object-cover mix-blend-luminosity opacity-40 transition-transform duration-700 group-hover:scale-105" />
           ) : user.avatar ? (
-            <img src={user.avatar} alt="Cover Fallback" className="h-full w-full object-cover opacity-50 blur-xl scale-110" />
+            <img src={optimizeImage(user.avatar, 300)} alt="Cover Fallback" decoding="async" className="h-full w-full object-cover opacity-50 blur-xl scale-110" />
           ) : (
             <div className="absolute inset-0 bg-[#E5E7EB]" />
           )}
@@ -252,7 +252,7 @@ export function ProfilePage() {
         <div className="absolute top-[120px] md:top-[220px] flex flex-col items-center w-full z-10 px-4">
           <div className="group relative h-32 w-32 md:h-48 md:w-48 rounded-full overflow-hidden bg-white shrink-0 border-[6px] border-[var(--color-background)] shadow-lg">
             {user.avatar ? (
-              <img src={user.avatar} alt={user.fullName} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+              <img src={optimizeImage(user.avatar, 400)} alt={user.fullName} decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
             ) : (
               <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
                 <UserIcon className="h-16 w-16 opacity-50" />

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input'
 import { CartService } from '@/services/cart.api'
 import { OrderService } from '@/services/order.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatVND } from '@/utils/format'
+import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
 import { toast } from 'sonner'
 import type { CartItem } from '@/types/cart.types'
 import type { PaymentMethod } from '@/types/order.types'
@@ -317,8 +317,10 @@ export function CheckoutPage() {
                       <div className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-md)] bg-[var(--color-muted)] border border-[var(--color-border)] overflow-hidden">
                         {(typeof item.marketplaceDesignId === 'object' ? item.marketplaceDesignId?.thumbnail : null) || item.productId?.imageUrl ? (
                           <img
-                            src={(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.thumbnail) || item.productId.imageUrl}
+                            src={optimizeCloudinaryUrl((typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.thumbnail) || item.productId.imageUrl, 200)}
                             alt={(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.name) || item.productId.name}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover"
                           />
                         ) : (

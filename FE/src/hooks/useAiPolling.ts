@@ -23,14 +23,18 @@ export interface UseAiPollingOptions {
   onError?: (error: string) => void;
 }
 
+const POLL_INTERVAL_MS = 2500;
+const MAX_POLL_ATTEMPTS = 48; // Tối đa ~120 giây (48 lần * 2.5s) để tránh treo tab gọi Redis vô tận
+
 export const useAiPolling = (options?: UseAiPollingOptions): UseAiPollingReturn => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
 
-  // Dùng ref để giữ lại timer ID phục vụ cho việc dọn dẹp
+  // Dùng ref để giữ lại timer ID và bộ đếm số lần poll
   const pollingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollCountRef = useRef(0);
 
   // Clear timer cẩn thận
   const clearPollingTimer = useCallback(() => {
@@ -38,6 +42,7 @@ export const useAiPolling = (options?: UseAiPollingOptions): UseAiPollingReturn 
       clearTimeout(pollingTimerRef.current);
       pollingTimerRef.current = null;
     }
+    pollCountRef.current = 0;
   }, []);
 
   // Cleanup khi component unmount
@@ -48,6 +53,17 @@ export const useAiPolling = (options?: UseAiPollingOptions): UseAiPollingReturn 
   }, [clearPollingTimer]);
 
   const pollStatus = useCallback(async (jobId: string, token: string) => {
+    if (pollCountRef.current >= MAX_POLL_ATTEMPTS) {
+      const timeoutMsg = 'Quá thời gian xử lý tạo ảnh AI. Vui lòng thử lại sau.';
+      setError(timeoutMsg);
+      setIsGenerating(false);
+      clearPollingTimer();
+      if (options?.onError) options.onError(timeoutMsg);
+      return;
+    }
+
+    pollCountRef.current += 1;
+
     try {
       const response = await fetch(`${API_BASE_URL}/designs/generate/status/${jobId}`, {
         method: 'GET',
@@ -70,22 +86,29 @@ export const useAiPolling = (options?: UseAiPollingOptions): UseAiPollingReturn 
         clearPollingTimer();
         if (options?.onSuccess) options.onSuccess(result);
       } else if (state === 'failed') {
-        setError(failedReason || 'Job sinh ảnh thất bại.');
+        const failMsg = failedReason || 'Job sinh ảnh thất bại.';
+        setError(failMsg);
         setIsGenerating(false);
         clearPollingTimer();
-        if (options?.onError) options.onError(failedReason || 'Job sinh ảnh thất bại.');
+        if (options?.onError) options.onError(failMsg);
       } else if (state === 'active' || state === 'waiting' || state === 'delayed') {
-        // Tiếp tục polling sau 2.5s
+        // Tiếp tục polling sau POLL_INTERVAL_MS
         pollingTimerRef.current = setTimeout(() => {
           pollStatus(jobId, token);
-        }, 2500);
+        }, POLL_INTERVAL_MS);
+      } else {
+        // Trạng thái không xác định -> dừng polling để bảo vệ Redis
+        setIsGenerating(false);
+        clearPollingTimer();
       }
     } catch (err: any) {
-      setError(err.message || 'Lỗi mạng khi gọi API polling');
+      const errMsg = err.message || 'Lỗi mạng khi gọi API polling';
+      setError(errMsg);
       setIsGenerating(false);
       clearPollingTimer();
+      if (options?.onError) options.onError(errMsg);
     }
-  }, [clearPollingTimer]);
+  }, [clearPollingTimer, options]);
 
   const generateDesign = useCallback(async (payload: GeneratePayload, token: string) => {
     // Reset state trước khi gửi
@@ -114,10 +137,10 @@ export const useAiPolling = (options?: UseAiPollingOptions): UseAiPollingReturn 
       const jobId = json.data.jobId;
       setCurrentJobId(jobId);
 
-      // Gọi lần poll đầu tiên sau 2.5s
+      // Gọi lần poll đầu tiên sau POLL_INTERVAL_MS
       pollingTimerRef.current = setTimeout(() => {
         pollStatus(jobId, token);
-      }, 2500);
+      }, POLL_INTERVAL_MS);
 
     } catch (err: any) {
       setError(err.message || 'Lỗi mạng khi tạo request');

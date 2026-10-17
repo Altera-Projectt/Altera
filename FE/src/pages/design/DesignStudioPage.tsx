@@ -36,6 +36,7 @@ import {
   type UploadedCustomImage,
 } from '@/services/design.api'
 import { cn } from '@/utils/cn'
+import { optimizeCloudinaryUrl } from '@/utils/format'
 import { CustomDesignTab } from '@/components/studio/CustomDesignTab'
 import { useAiPolling } from '@/hooks/useAiPolling'
 import { useAuthStore } from '@/store/authStore'
@@ -227,8 +228,10 @@ function OrderModal({
         {thumbnailUrl && (
           <div className="mb-4 flex justify-center">
             <img
-              src={thumbnailUrl}
+              src={optimizeCloudinaryUrl(thumbnailUrl, 200)}
               alt="Design thumbnail"
+              loading="lazy"
+              decoding="async"
               className="rounded-[var(--radius-md)] object-cover border border-[var(--color-border)]"
               style={{ width: 80, height: 80 }}
             />
@@ -639,8 +642,10 @@ function DesignCard({
         <div className="absolute inset-0 flex items-center justify-center transition-transform duration-500 group-hover:scale-105 p-4">
           {img ? (
             <img
-              src={img}
+              src={optimizeCloudinaryUrl(img, 500)}
               alt={design.prompt ?? 'Design'}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-contain drop-shadow-md"
             />
           ) : (
@@ -1036,8 +1041,9 @@ function CreateTab({
                 {/* Design image */}
                 {(currentDesign.imageUrl || currentDesign.preview || currentDesign.design.customImage || currentDesign.design.previewImage) && (
                   <img
-                    src={currentDesign.imageUrl || currentDesign.preview || currentDesign.design.customImage || currentDesign.design.previewImage || ''}
+                    src={optimizeCloudinaryUrl(currentDesign.imageUrl || currentDesign.preview || currentDesign.design.customImage || currentDesign.design.previewImage || '', 800)}
                     alt="Generated design"
+                    decoding="async"
                     className="object-contain"
                     style={{ width: '60%', position: 'absolute', top: '25%', left: '50%', transform: 'translateX(-50%)' }}
                   />

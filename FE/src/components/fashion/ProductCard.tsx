@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { Heart, ShoppingBag } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/utils/cn'
-import { formatPrice } from '@/utils/format'
+import { formatPrice, optimizeCloudinaryUrl } from '@/utils/format'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
 import { toast } from 'sonner'
@@ -72,8 +72,10 @@ export function ProductCard({
         {/* Main image — scales subtly, crossfades to hover */}
         {mainImage ? (
           <img
-            src={mainImage}
+            src={optimizeCloudinaryUrl(mainImage, 600)}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
             className={cn(
               'absolute inset-0 h-full w-full object-cover',
               'transition-all duration-700 ease-out',
@@ -91,8 +93,10 @@ export function ProductCard({
         {/* Hover image (images[1]) — fades in */}
         {hoverImage && (
           <img
-            src={hoverImage}
+            src={optimizeCloudinaryUrl(hoverImage, 600)}
             alt={`${product.name} — alternate view`}
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover opacity-0 scale-[1.04] transition-all duration-700 ease-out group-hover:opacity-100 group-hover:scale-100"
           />
         )}

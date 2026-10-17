@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ProductService } from '@/services/product.api'
 import type { Product, ProductColor, ProductSize } from '@/types/product.types'
 import { Button } from '@/components/ui/Button'
-import { formatPrice } from '@/utils/format'
+import { formatPrice, optimizeCloudinaryUrl } from '@/utils/format'
 import { Heart } from 'lucide-react'
 import { CartService } from '@/services/cart.api'
 import { WishlistService } from '@/services/wishlist.api'
@@ -179,7 +179,7 @@ export function ProductDetailPage() {
                   )}
                   aria-label={`Xem ảnh ${i + 1}`}
                 >
-                  <img src={img} alt={`${product.name} ${i + 1}`} className="h-full w-full object-cover" />
+                  <img src={optimizeCloudinaryUrl(img, 200)} alt={`${product.name} ${i + 1}`} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>
@@ -191,8 +191,10 @@ export function ProductDetailPage() {
               allImages.map((img, i) => (
                 <div key={i} className="aspect-[3/4] w-full overflow-hidden bg-[var(--color-muted)]">
                   <img
-                    src={img}
+                    src={optimizeCloudinaryUrl(img, 1000)}
                     alt={`${product.name} — ${i + 1}`}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
                     className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.02]"
                   />
                 </div>

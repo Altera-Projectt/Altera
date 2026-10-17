@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { optimizeCloudinaryUrl } from '@/utils/format';
 
 interface ProgressiveImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -7,25 +8,26 @@ interface ProgressiveImageProps extends React.ImgHTMLAttributes<HTMLImageElement
 }
 
 export function ProgressiveImage({ src, placeholderSrc, alt, className = '', ...props }: ProgressiveImageProps) {
-  const [imgSrc, setImgSrc] = useState(placeholderSrc || src);
+  const optimizedSrc = optimizeCloudinaryUrl(src);
+  const [imgSrc, setImgSrc] = useState(placeholderSrc || optimizedSrc);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     // Reset state when src changes
     setIsLoaded(false);
-    setImgSrc(placeholderSrc || src);
+    setImgSrc(placeholderSrc || optimizedSrc);
 
-    if (placeholderSrc && src) {
+    if (placeholderSrc && optimizedSrc) {
       const img = new Image();
-      img.src = src;
+      img.src = optimizedSrc;
       img.onload = () => {
-        setImgSrc(src);
+        setImgSrc(optimizedSrc);
         setIsLoaded(true);
       };
     } else {
       setIsLoaded(true);
     }
-  }, [src, placeholderSrc]);
+  }, [optimizedSrc, placeholderSrc]);
 
   return (
     <img
@@ -39,3 +41,4 @@ export function ProgressiveImage({ src, placeholderSrc, alt, className = '', ...
     />
   );
 }
+

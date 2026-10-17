@@ -158,32 +158,83 @@ export function extractDesignLayers(thumbnail: string) {
 }
 
 /**
- * Tối ưu hoá ảnh Cloudinary bằng URL parameters
- * Tự động chuyển đổi định dạng (f_auto), nén chất lượng (q_auto), và scale kích thước.
+ * Tối ưu hoá URL ảnh Cloudinary:
+ * - Tự động chuyển đổi định dạng tối ưu cho trình duyệt (`f_auto` -> WebP / AVIF)
+ * - Tự động nén chất lượng thông minh (`q_auto`)
+ * - Giới hạn chiều rộng tối đa (`c_limit,w_${width}`) mà không phóng to ảnh nhỏ
+ * - Chống nhân đôi tham số nếu URL đã được tối ưu trước đó (idempotent)
  */
-export function optimizeImage(url: string | undefined | null, width = 600): string {
+export function optimizeCloudinaryUrl(url: string | undefined | null, width?: number): string {
   if (!url) return '';
-  if (url.startsWith('data:')) return url; // Bỏ qua base64/svg
-  if (url.includes('res.cloudinary.com')) {
-    if (url.includes('/upload/v')) {
-      return url.replace('/upload/v', `/upload/c_scale,w_${width},q_auto,f_auto/v`);
-    }
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  if (!url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
+
+  const uploadToken = '/upload/';
+  const uploadIdx = url.indexOf(uploadToken);
+  if (uploadIdx === -1) return url;
+
+  const afterUpload = url.slice(uploadIdx + uploadToken.length);
+  const firstSlashIdx = afterUpload.indexOf('/');
+  const firstSegment = firstSlashIdx !== -1 ? afterUpload.slice(0, firstSlashIdx) : '';
+
+  // Kiểm tra nếu segment ngay sau /upload/ đã là chuỗi transformation của Cloudinary
+  const hasExistingTransform =
+    firstSegment.includes('f_auto') ||
+    firstSegment.includes('q_auto') ||
+    firstSegment.includes('q_') ||
+    firstSegment.includes('c_limit') ||
+    firstSegment.includes('c_scale') ||
+    firstSegment.includes('w_') ||
+    firstSegment.includes('e_blur');
+
+  if (hasExistingTransform) {
+    return url;
   }
-  return url;
+
+  const transforms = width && width > 0
+    ? `f_auto,q_auto,c_limit,w_${width}`
+    : 'f_auto,q_auto';
+
+  return `${url.slice(0, uploadIdx + uploadToken.length)}${transforms}/${afterUpload}`;
 }
 
 /**
- * Tạo link ảnh chất lượng cực thấp (LQIP - Low Quality Image Placeholder) 
+ * Tối ưu hoá ảnh Cloudinary kèm giới hạn kích thước hiển thị (mặc định w = 600px)
+ */
+export function optimizeImage(url: string | undefined | null, width = 600): string {
+  return optimizeCloudinaryUrl(url, width);
+}
+
+/**
+ * Tạo link ảnh chất lượng cực thấp (LQIP - Low Quality Image Placeholder)
  * dùng cho hiệu ứng Blur-up
  */
 export function getLqipImage(url: string | undefined | null): string {
   if (!url) return '';
-  if (url.startsWith('data:')) return url;
-  if (url.includes('res.cloudinary.com')) {
-    if (url.includes('/upload/v')) {
-      return url.replace('/upload/v', `/upload/c_scale,w_50,e_blur:200,q_10,f_auto/v`);
-    }
-  }
-  return url;
+  if (url.startsWith('data:') || url.startsWith('blob:')) return url;
+  if (!url.includes('res.cloudinary.com') || !url.includes('/upload/')) return url;
+
+  const uploadToken = '/upload/';
+  const uploadIdx = url.indexOf(uploadToken);
+  if (uploadIdx === -1) return url;
+
+  const afterUpload = url.slice(uploadIdx + uploadToken.length);
+  const firstSlashIdx = afterUpload.indexOf('/');
+  const firstSegment = firstSlashIdx !== -1 ? afterUpload.slice(0, firstSlashIdx) : '';
+
+  const hasExistingTransform =
+    firstSegment.includes('f_auto') ||
+    firstSegment.includes('q_') ||
+    firstSegment.includes('c_limit') ||
+    firstSegment.includes('c_scale') ||
+    firstSegment.includes('w_') ||
+    firstSegment.includes('e_blur');
+
+  const cleanRest = hasExistingTransform && firstSlashIdx !== -1
+    ? afterUpload.slice(firstSlashIdx + 1)
+    : afterUpload;
+
+  return `${url.slice(0, uploadIdx + uploadToken.length)}f_auto,q_10,c_limit,w_50,e_blur:200/${cleanRest}`;
 }
+
 

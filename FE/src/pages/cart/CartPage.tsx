@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatVND } from '@/utils/format'
+import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -206,8 +206,10 @@ export function CartPage() {
                       <div className="h-20 w-20 shrink-0 overflow-hidden bg-[var(--color-muted)] border border-[var(--color-border)]">
                         {item.productId?.imageUrl ? (
                           <img
-                            src={item.productId.imageUrl}
+                            src={optimizeCloudinaryUrl(item.productId.imageUrl, 200)}
                             alt={item.productId.name}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                           />
                         ) : (

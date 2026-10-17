@@ -8,6 +8,12 @@ const queueName = 'aiGenerationQueue';
 
 const aiQueue = new Queue(queueName, {
   connection: redisConnection,
+  skipVersionCheck: true,
+  streams: {
+    events: {
+      maxLen: 50, // Giới hạn độ dài stream sự kiện để tiết kiệm bộ nhớ & lệnh Redis
+    },
+  },
   defaultJobOptions: {
     attempts: 2,
     backoff: {
@@ -25,7 +31,11 @@ const aiQueue = new Queue(queueName, {
   }
 });
 
-const aiWorker = new Worker(queueName, async (job) => {
+const isWorkerDisabled = process.env.DISABLE_AI_WORKER === 'true';
+
+const aiWorker = isWorkerDisabled
+  ? null
+  : new Worker(queueName, async (job) => {
   const { userId, payload } = job.data;
   logger.info(`[Queue] Đang xử lý job AI Generation: ${job.id} cho user: ${userId}`);
 
@@ -62,17 +72,26 @@ const aiWorker = new Worker(queueName, async (job) => {
   }
 }, {
   connection: redisConnection,
-  concurrency: 2
+  concurrency: 2,
+  skipVersionCheck: true,
+  // ⚡ TỐI ƯU CHO UPSTASH REDIS FREE TIER (giảm >90% số lệnh khi nhàn rỗi):
+  drainDelay: 60,          // Khi hàng đợi rỗng, chờ 60 giây mới kiểm tra Redis tiếp (thay vì 5 giây mặc định)
+  stalledInterval: 300000, // 5 phút mới quét stalled job 1 lần (thay vì 30 giây mặc định)
+  maxStalledCount: 1,
 });
 
-aiWorker.on('completed', (job, result) => {
-  const isBase64 = typeof result?.imageUrl === 'string' && result.imageUrl.startsWith('data:image/');
-  logger.info(`[Queue] ✅ Job ${job.id} hoàn thành. URL: ${isBase64 ? '[Base64 Image]' : result?.imageUrl}`);
-});
+if (aiWorker) {
+  aiWorker.on('completed', (job, result) => {
+    const isBase64 = typeof result?.imageUrl === 'string' && result.imageUrl.startsWith('data:image/');
+    logger.info(`[Queue] ✅ Job ${job.id} hoàn thành. URL: ${isBase64 ? '[Base64 Image]' : result?.imageUrl}`);
+  });
 
-aiWorker.on('failed', (job, err) => {
-  logger.error(`[Queue] ❌ Job ${job.id} thất bại: ${err?.message}`);
-});
+  aiWorker.on('failed', (job, err) => {
+    logger.error(`[Queue] ❌ Job ${job.id} thất bại: ${err?.message}`);
+  });
+} else {
+  logger.info('[Queue] ⏸️ AI Worker đang tắt (DISABLE_AI_WORKER=true).');
+}
 
 module.exports = {
   aiQueue,

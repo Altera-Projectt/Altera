@@ -17,6 +17,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useCartStore } from '@/store/cartStore'
 
 import { cn } from '@/utils/cn'
+import { optimizeCloudinaryUrl } from '@/utils/format'
 import logoSvg from '@/assets/logo2.png'
 
 // ── Nav links ──────────────────────────────────────────────────────────────
@@ -154,8 +155,9 @@ export function Navbar() {
                 <Link to="/profile">
                   {user?.avatar ? (
                     <img
-                      src={user.avatar}
+                      src={optimizeCloudinaryUrl(user.avatar, 120)}
                       alt={user.fullName || 'Avatar'}
+                      decoding="async"
                       className="h-7 w-7 rounded-full object-cover ring-1 ring-white/20"
                     />
                   ) : (
