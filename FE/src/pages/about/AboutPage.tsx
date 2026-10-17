@@ -9,31 +9,30 @@ export function AboutPage() {
     <div className="min-h-screen bg-white text-black overflow-hidden font-body selection:bg-electric-blue selection:text-white">
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          SECTION 1 — HERO
+          SECTION 1 — HERO ("WHO WE ARE?")
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative min-h-[90vh] flex flex-col justify-center px-6 md:px-12 pt-24 overflow-hidden bg-white">
-        <div className="w-full max-w-7xl mx-auto flex justify-between items-center mb-8 md:mb-12 font-bold uppercase tracking-widest z-20 relative">
+      <section className="relative min-h-[88vh] flex flex-col justify-center px-6 md:px-12 pt-24 pb-12 overflow-hidden bg-white">
+        <div className="w-full max-w-6xl mx-auto flex justify-between items-center mb-6 md:mb-10 font-bold uppercase tracking-widest z-20 relative">
           <img src={logoSvg} alt="ALTERA Logo" className="h-6 md:h-10 w-auto object-contain" />
           <span className="text-[#0011FF] text-[11px] tracking-[0.2em]">VỀ ALTERA</span>
         </div>
 
-        <div className="w-full max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-4 items-center mt-4 md:mt-8">
-          <div className="lg:col-span-6 xl:col-span-6 relative z-30">
-            <span className="text-[#0011FF] text-xs font-bold uppercase tracking-[0.25em] mb-4 block">
+        <div className="w-full max-w-6xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-0 items-center">
+          <div className="lg:col-span-7 relative z-30">
+            <span className="text-[#0011FF] text-xs font-bold uppercase tracking-[0.25em] mb-3 block">
               VỀ ALTERA
             </span>
             <motion.h1
-              className="font-heading text-[clamp(4.8rem,13vw,11rem)] leading-[0.82] tracking-tighter text-[#0011FF] uppercase font-black"
+              className="font-heading text-[clamp(4.2rem,10.5vw,9.2rem)] leading-[0.88] tracking-tight uppercase font-black bg-gradient-to-r from-blue-700 via-blue-500 to-cyan-400 bg-clip-text text-transparent select-none"
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.9 }}
             >
               WHO <br />
-              WE <br />
-              ARE
+              <span className="whitespace-nowrap">WE ARE?</span>
             </motion.h1>
             <motion.p
-              className="font-rader mt-8 md:mt-12 text-sm md:text-base font-normal leading-relaxed max-w-md text-neutral-800 tracking-normal ml-0.5"
+              className="font-rader mt-6 md:mt-8 text-sm md:text-base font-normal leading-relaxed max-w-lg text-blue-950/90 tracking-normal ml-0.5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.8 }}
@@ -42,13 +41,13 @@ export function AboutPage() {
             </motion.p>
           </div>
 
-          {/* 3D Visual with Editorial Magazine Overlap */}
-          <div className="lg:col-span-6 xl:col-span-6 relative z-20 flex justify-center lg:justify-start -mt-4 lg:mt-0 lg:-ml-12 xl:-ml-20">
+          {/* 3D Visual pulled closer to "WHO WE ARE?" */}
+          <div className="lg:col-span-5 relative z-20 flex justify-center lg:justify-start -mt-2 lg:mt-0 lg:-ml-16 xl:-ml-24">
             <motion.img
               src={homepage0}
               alt="About Hero Visual"
-              className="w-full max-w-[500px] lg:max-w-none lg:w-[125%] xl:w-[135%] h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.22)] select-none cursor-pointer transform scale-105 hover:scale-110 transition-transform duration-500"
-              initial={{ opacity: 0, scale: 0.95, x: 40 }}
+              className="w-full max-w-[460px] lg:max-w-none lg:w-[130%] xl:w-[140%] h-auto object-contain drop-shadow-[0_30px_60px_rgba(0,0,0,0.22)] select-none cursor-pointer transform scale-105 hover:scale-110 transition-transform duration-500"
+              initial={{ opacity: 0, scale: 0.95, x: 30 }}
               animate={{ opacity: 1, scale: 1.05, x: 0 }}
               transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
             />
@@ -114,74 +113,263 @@ export function AboutPage() {
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-          SECTION 4 — OUR VALUES
+          SECTION 4 — OUR VALUES (GIÁ TRỊ CỐT LÕI)
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="bg-gradient-to-b from-[#0011FF] to-[#00C8FF] pt-24 pb-16 px-6 overflow-hidden relative flex flex-col justify-between min-h-screen">
-        <div className="w-full max-w-[var(--spacing-contentMax)] mx-auto relative z-20 flex flex-col items-center justify-center h-full pt-10">
+      <section className="bg-gradient-to-b from-[#0011FF] via-[#0055FF] to-[#00C8FF] pt-16 md:pt-20 pb-0 px-6 overflow-hidden relative flex flex-col justify-end min-h-[820px] md:min-h-[920px]">
+        {/* Ambient tech glow */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(56,189,248,0.22),transparent_60%)] z-0" />
 
-          {/* Jacket with Precise Callouts */}
-          <div className="relative flex justify-center items-center h-[50vh] md:h-[70vh] w-full max-w-5xl mx-auto mb-16 z-30">
-            <img src={about2} alt="Values Context" className="h-full object-contain relative z-20 drop-shadow-2xl" />
+        <div className="w-full max-w-7xl mx-auto relative flex flex-col items-center justify-end flex-1">
+          {/* Interactive HUD Stage */}
+          <div className="relative flex justify-center items-end w-full max-w-[1200px] h-[560px] md:h-[780px] mx-auto">
 
-            {/* Top Left Callout (Personalization) */}
-            <div className="absolute top-[20%] left-[5%] md:left-[10%] hidden md:flex items-center z-30 group">
-              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-right mr-3 shadow-xl">
-                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">CÁ NHÂN HÓA</span>
-                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Mỗi thiết kế đều phản ánh cá tính và phong cách độc bản của người mặc</span>
+            {/* SVG HUD Connector Lines & Reticle Boxes (Desktop) */}
+            <svg
+              className="hidden md:block absolute inset-0 w-full h-full pointer-events-none z-30"
+              viewBox="0 0 1200 780"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              {/* 1. Top-Left: CÁ NHÂN HÓA */}
+              {/* Reticle square on upper-left shoulder */}
+              <rect
+                x="418"
+                y="165"
+                width="68"
+                height="68"
+                stroke="rgba(255,255,255,0.65)"
+                strokeWidth="1"
+                fill="rgba(255,255,255,0.03)"
+              />
+              {/* Title baseline extending left from reticle */}
+              <line
+                x1="280"
+                y1="210"
+                x2="418"
+                y2="210"
+                stroke="rgba(255,255,255,0.75)"
+                strokeWidth="1"
+              />
+              {/* HUD angled connector from reticle down-left to description */}
+              <polyline
+                points="418,233 386,268 175,268"
+                stroke="rgba(255,255,255,0.8)"
+                strokeWidth="1"
+              />
+              <circle cx="418" cy="210" r="2" fill="#67e8f9" />
+              <circle cx="175" cy="268" r="2" fill="rgba(255,255,255,0.9)" />
+
+              {/* 2. Bottom-Left: SÁNG TẠO */}
+              {/* Reticle square on lower-left jacket hem */}
+              <rect
+                x="398"
+                y="450"
+                width="68"
+                height="68"
+                stroke="rgba(255,255,255,0.65)"
+                strokeWidth="1"
+                fill="rgba(255,255,255,0.03)"
+              />
+              {/* HUD connector from reticle up-left to description */}
+              <polyline
+                points="398,510 345,510 315,480 140,480"
+                stroke="rgba(255,255,255,0.8)"
+                strokeWidth="1"
+              />
+              {/* Vertical drop line to title */}
+              <line
+                x1="398"
+                y1="518"
+                x2="398"
+                y2="545"
+                stroke="rgba(255,255,255,0.65)"
+                strokeWidth="1"
+              />
+              <circle cx="398" cy="510" r="2" fill="#67e8f9" />
+              <circle cx="140" cy="480" r="2" fill="rgba(255,255,255,0.9)" />
+
+              {/* 3. Top-Right: CÔNG NGHỆ */}
+              {/* Reticle square on upper-right shoulder */}
+              <rect
+                x="696"
+                y="138"
+                width="68"
+                height="68"
+                stroke="rgba(255,255,255,0.65)"
+                strokeWidth="1"
+                fill="rgba(255,255,255,0.03)"
+              />
+              {/* Title baseline extending right from reticle */}
+              <line
+                x1="764"
+                y1="194"
+                x2="885"
+                y2="194"
+                stroke="rgba(255,255,255,0.75)"
+                strokeWidth="1"
+              />
+              {/* HUD angled connector from reticle down-right to description */}
+              <polyline
+                points="748,206 780,242 1035,242"
+                stroke="rgba(255,255,255,0.8)"
+                strokeWidth="1"
+              />
+              <circle cx="764" cy="194" r="2" fill="#67e8f9" />
+              <circle cx="1035" cy="242" r="2" fill="rgba(255,255,255,0.9)" />
+
+              {/* 4. Bottom-Right: BỀN VỮNG */}
+              {/* Reticle square on lower-right jacket */}
+              <rect
+                x="638"
+                y="402"
+                width="68"
+                height="68"
+                stroke="rgba(255,255,255,0.65)"
+                strokeWidth="1"
+                fill="rgba(255,255,255,0.03)"
+              />
+              {/* Title baseline extending right from reticle */}
+              <line
+                x1="706"
+                y1="452"
+                x2="835"
+                y2="452"
+                stroke="rgba(255,255,255,0.75)"
+                strokeWidth="1"
+              />
+              {/* HUD angled connector from reticle down-right to description */}
+              <polyline
+                points="706,470 738,502 1045,502"
+                stroke="rgba(255,255,255,0.8)"
+                strokeWidth="1"
+              />
+              <circle cx="706" cy="452" r="2" fill="#67e8f9" />
+              <circle cx="1045" cy="502" r="2" fill="rgba(255,255,255,0.9)" />
+            </svg>
+
+            {/* ── Floating Tech Typography Callouts (Desktop) ── */}
+            <div className="hidden md:block absolute inset-0 w-full h-full pointer-events-none z-30">
+              {/* 1. Top-Left: CÁ NHÂN HÓA */}
+              <div
+                className="absolute text-right"
+                style={{ left: '21.5%', top: '23.8%', width: '190px' }}
+              >
+                <span className="font-heading font-semibold text-xs lg:text-sm uppercase tracking-normal text-white block">
+                  CÁ NHÂN HÓA
+                </span>
               </div>
-              <div className="w-8 h-px bg-white/70 relative">
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
+              <div
+                className="absolute text-right"
+                style={{ left: '11.5%', top: '35.5%', width: '235px' }}
+              >
+                <p className="text-white/90 font-light tracking-normal text-[11px] lg:text-xs leading-relaxed">
+                  Mỗi thiết kế đều phản ánh cá tính và phong cách độc bản của người mặc
+                </p>
               </div>
-              <div className="w-px h-16 bg-white/70"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -ml-7 -mt-16 rounded-sm shadow-sm"></div>
+
+              {/* 2. Bottom-Left: SÁNG TẠO */}
+              <div
+                className="absolute text-right"
+                style={{ left: '9.5%', top: '55.5%', width: '220px' }}
+              >
+                <p className="text-white/90 font-light tracking-normal text-[11px] lg:text-xs leading-relaxed">
+                  Khuyến khích mọi người tự do thể hiện ý tưởng độc đáo không giới hạn
+                </p>
+              </div>
+              <div
+                className="absolute text-right"
+                style={{ left: '21.5%', top: '67.5%', width: '175px' }}
+              >
+                <span className="font-heading font-semibold text-xs lg:text-sm uppercase tracking-normal text-white block">
+                  SÁNG TẠO
+                </span>
+              </div>
+
+              {/* 3. Top-Right: CÔNG NGHỆ */}
+              <div
+                className="absolute text-left"
+                style={{ left: '64.5%', top: '21.8%', width: '180px' }}
+              >
+                <span className="font-heading font-semibold text-xs lg:text-sm uppercase tracking-normal text-white block">
+                  CÔNG NGHỆ
+                </span>
+              </div>
+              <div
+                className="absolute text-left"
+                style={{ left: '66.5%', top: '32%', width: '235px' }}
+              >
+                <p className="text-white/90 font-light tracking-normal text-[11px] lg:text-xs leading-relaxed">
+                  Ứng dụng AI đột phá giúp đơn giản hóa quy trình tìm kiếm và thiết kế thời trang
+                </p>
+              </div>
+
+              {/* 4. Bottom-Right: BỀN VỮNG */}
+              <div
+                className="absolute text-left"
+                style={{ left: '59.8%', top: '54.8%', width: '180px' }}
+              >
+                <span className="font-heading font-semibold text-xs lg:text-sm uppercase tracking-normal text-white block">
+                  BỀN VỮNG
+                </span>
+              </div>
+              <div
+                className="absolute text-left"
+                style={{ left: '62.5%', top: '65.5%', width: '245px' }}
+              >
+                <p className="text-white/90 font-light tracking-normal text-[11px] lg:text-xs leading-relaxed">
+                  Ưu tiên sản xuất theo yêu cầu thực tế, giảm thiểu tối đa tồn kho và bảo vệ môi trường
+                </p>
+              </div>
             </div>
 
-            {/* Bottom Left Callout (Creativity) */}
-            <div className="absolute bottom-[25%] left-[2%] md:left-[8%] hidden md:flex items-center z-30 group">
-              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-right mr-3 shadow-xl">
-                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">SÁNG TẠO</span>
-                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Khuyến khích mọi người tự do thể hiện ý tưởng độc đáo không giới hạn</span>
-              </div>
-              <div className="w-6 h-px bg-white/70 relative">
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
-              </div>
-              <div className="w-px h-10 bg-white/70"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -ml-7 mt-10 rounded-sm shadow-sm"></div>
-            </div>
+            {/* Centerpiece Jacket & Rock Pedestal (z-20 sits IN FRONT of bottom watermark) */}
+            <img
+              src={about2}
+              alt="Giá trị cốt lõi ALTERA"
+              className="h-[88%] md:h-[96%] w-auto object-contain object-bottom relative z-20 drop-shadow-[0_28px_50px_rgba(0,0,0,0.45)] select-none"
+            />
+          </div>
 
-            {/* Top Right Callout (Technology) */}
-            <div className="absolute top-[25%] right-[2%] md:right-[10%] hidden md:flex items-center flex-row-reverse z-30 group">
-              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-left ml-3 shadow-xl">
-                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">CÔNG NGHỆ</span>
-                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Ứng dụng AI đột phá giúp đơn giản hóa quy trình tìm kiếm và thiết kế thời trang</span>
-              </div>
-              <div className="w-12 h-px bg-white/70 relative">
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
-              </div>
-              <div className="w-px h-12 bg-white/70"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -mr-7 -mt-12 rounded-sm shadow-sm"></div>
+          {/* Mobile Responsive Floating Callouts */}
+          <div className="grid grid-cols-2 gap-6 w-full max-w-lg mx-auto pb-16 md:hidden relative z-30">
+            <div className="border-t border-white/40 pt-3">
+              <span className="font-heading font-semibold text-xs uppercase tracking-normal text-white block mb-1">
+                CÁ NHÂN HÓA
+              </span>
+              <p className="text-white/85 font-light text-xs leading-relaxed">
+                Mỗi thiết kế đều phản ánh cá tính và phong cách độc bản của người mặc
+              </p>
             </div>
-
-            {/* Bottom Right Callout (Sustainability) */}
-            <div className="absolute bottom-[20%] right-[5%] md:right-[15%] hidden md:flex items-center flex-row-reverse z-30 group">
-              <div className="bg-[#060B16]/50 backdrop-blur-md border border-white/20 rounded-xl p-4 text-white text-left ml-3 shadow-xl">
-                <span className="font-heading font-black text-sm block mb-1 tracking-wide text-cyan-300">BỀN VỮNG</span>
-                <span className="text-white/90 font-normal tracking-normal text-[11px] leading-relaxed block w-44">Ưu tiên sản xuất theo yêu cầu thực tế, giảm thiểu tối đa tồn kho và bảo vệ môi trường</span>
-              </div>
-              <div className="w-16 h-px bg-white/70 relative">
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-cyan-400 rounded-full"></div>
-              </div>
-              <div className="w-px h-16 bg-white/70"></div>
-              <div className="w-14 h-14 border border-white/40 bg-black/20 backdrop-blur-md -mr-7 -mt-16 rounded-sm shadow-sm"></div>
+            <div className="border-t border-white/40 pt-3">
+              <span className="font-heading font-semibold text-xs uppercase tracking-normal text-white block mb-1">
+                CÔNG NGHỆ
+              </span>
+              <p className="text-white/85 font-light text-xs leading-relaxed">
+                Ứng dụng AI đột phá giúp đơn giản hóa quy trình tìm kiếm và thiết kế thời trang
+              </p>
             </div>
-
-            {/* The Rock (Simulated using a background or image placed bottom-center) */}
-            <div className="absolute bottom-[-15%] md:bottom-[-20%] left-1/2 -translate-x-1/2 w-[80%] md:w-[60%] h-48 bg-black rounded-[50%] blur-3xl opacity-50 z-10"></div>
+            <div className="border-t border-white/40 pt-3">
+              <span className="font-heading font-semibold text-xs uppercase tracking-normal text-white block mb-1">
+                SÁNG TẠO
+              </span>
+              <p className="text-white/85 font-light text-xs leading-relaxed">
+                Khuyến khích mọi người tự do thể hiện ý tưởng độc đáo không giới hạn
+              </p>
+            </div>
+            <div className="border-t border-white/40 pt-3">
+              <span className="font-heading font-semibold text-xs uppercase tracking-normal text-white block mb-1">
+                BỀN VỮNG
+              </span>
+              <p className="text-white/85 font-light text-xs leading-relaxed">
+                Ưu tiên sản xuất theo yêu cầu thực tế, giảm thiểu tối đa tồn kho và bảo vệ môi trường
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Bleeding bottom text — Subtle Outline Watermark */}
-        <h2 className="absolute bottom-0 left-0 w-full text-center font-heading font-black text-[clamp(6.5rem,22vw,19rem)] tracking-normal leading-[0.75] text-transparent [-webkit-text-stroke:1.5px_rgba(255,255,255,0.08)] md:[-webkit-text-stroke:2px_rgba(255,255,255,0.08)] z-0 pointer-events-none select-none mb-[-1.5rem] md:mb-[-3rem]">
+        {/* Bottom Watermark "GIÁ TRỊ CỐT LÕI" — sits at the very bottom behind the rock pedestal (z-10) */}
+        <h2 className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full text-center font-heading font-black text-[clamp(3.2rem,10.2vw,9.6rem)] whitespace-nowrap tracking-normal leading-[0.82] text-white/20 z-10 pointer-events-none select-none pb-1 md:pb-2">
           GIÁ TRỊ CỐT LÕI
         </h2>
       </section>
