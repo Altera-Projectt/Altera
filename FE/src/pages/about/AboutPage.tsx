@@ -58,17 +58,17 @@ export function AboutPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           SECTION 2 — MASSIVE BLOCK
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="bg-electric-blue text-white py-32 md:py-48 px-6">
-        <div className="max-w-[var(--spacing-contentMax)] mx-auto flex flex-col items-start">
-          <p className="font-rader max-w-3xl text-xl md:text-3xl leading-[1.4] tracking-normal mb-24 md:mb-40 font-normal text-left text-white/95">
+      <section className="relative overflow-hidden min-h-screen flex flex-col justify-between bg-gradient-to-b from-cyan-400 via-blue-600 to-cyan-500 text-white py-24 md:py-36 px-6 md:px-12">
+        <div className="max-w-[var(--spacing-contentMax)] w-full mx-auto relative z-10">
+          <p className="font-rader max-w-3xl text-xl md:text-3xl leading-[1.6] md:leading-[1.8] tracking-wide font-light text-left text-white/90">
             Thời trang không chỉ là những gì bạn mặc, đó là cách bạn thể hiện bản sắc của chính mình. <br /><br />
             ALTERA ra đời từ mong muốn đơn giản hóa việc sáng tạo thời trang. Chúng tôi tin rằng mỗi người đều xứng đáng sở hữu trang phục mang đậm dấu ấn cá nhân thay vì chỉ chọn từ những khuôn mẫu may sẵn. <br /><br />
             Với sự đồng hành của AI, việc định hình phong cách, thiết kế áo và đặt in may theo yêu cầu trở nên nhanh chóng, trực quan và dễ dàng hơn bao giờ hết.
           </p>
-          <h2 className="heading-brand text-[clamp(5rem,20vw,16rem)] tracking-tighter leading-none text-white w-full text-right self-end">
-            ALTERA
-          </h2>
         </div>
+        <h2 className="font-heading font-black uppercase tracking-tighter leading-none text-white absolute bottom-0 right-4 md:right-8 lg:right-12 text-[7rem] sm:text-[10rem] md:text-[14rem] lg:text-[18rem] xl:text-[22rem] select-none pointer-events-none translate-y-[6%] md:translate-y-[8%]">
+          ALTERA
+        </h2>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
