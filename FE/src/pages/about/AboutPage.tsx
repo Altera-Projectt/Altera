@@ -58,17 +58,27 @@ export function AboutPage() {
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           SECTION 2 — MASSIVE BLOCK
       ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <section className="relative overflow-hidden min-h-screen flex flex-col justify-between bg-gradient-to-b from-cyan-400 via-blue-600 to-cyan-500 text-white py-24 md:py-36 px-6 md:px-12">
-        <div className="max-w-[var(--spacing-contentMax)] w-full mx-auto relative z-10">
-          <p className="font-rader max-w-3xl text-xl md:text-3xl leading-[1.6] md:leading-[1.8] tracking-wide font-light text-left text-white/90">
-            Thời trang không chỉ là những gì bạn mặc, đó là cách bạn thể hiện bản sắc của chính mình. <br /><br />
-            ALTERA ra đời từ mong muốn đơn giản hóa việc sáng tạo thời trang. Chúng tôi tin rằng mỗi người đều xứng đáng sở hữu trang phục mang đậm dấu ấn cá nhân thay vì chỉ chọn từ những khuôn mẫu may sẵn. <br /><br />
-            Với sự đồng hành của AI, việc định hình phong cách, thiết kế áo và đặt in may theo yêu cầu trở nên nhanh chóng, trực quan và dễ dàng hơn bao giờ hết.
-          </p>
+      <section id="section2" className="relative overflow-hidden min-h-[85vh] lg:min-h-screen flex flex-col justify-between bg-gradient-to-b from-[#0017FF] via-[#008DFF] to-[#00CBFF] text-white pt-20 md:pt-28 pb-4 md:pb-6 px-6 md:px-12 lg:px-16">
+        <div className="max-w-[var(--spacing-contentMax)] w-full mx-auto relative z-10 my-auto">
+          <div className="max-w-xl lg:max-w-2xl space-y-6 md:space-y-8">
+            <p className="font-rader text-base sm:text-lg md:text-xl lg:text-2xl leading-relaxed md:leading-[1.7] tracking-normal font-normal text-white text-left">
+              Thời trang không chỉ là những gì bạn mặc, đó là cách bạn thể hiện bản sắc của chính mình.
+            </p>
+            <p className="font-rader text-base sm:text-lg md:text-xl lg:text-2xl leading-relaxed md:leading-[1.7] tracking-normal font-normal text-white text-left">
+              ALTERA ra đời từ mong muốn đơn giản hóa việc sáng tạo thời trang. Chúng tôi tin rằng mỗi người đều xứng đáng sở hữu trang phục mang đậm dấu ấn cá nhân thay vì chỉ chọn từ những khuôn mẫu may sẵn.
+            </p>
+            <p className="font-rader text-base sm:text-lg md:text-xl lg:text-2xl leading-relaxed md:leading-[1.7] tracking-normal font-normal text-white text-left">
+              Với sự đồng hành của AI, việc định hình phong cách, thiết kế áo và đặt in may theo yêu cầu trở nên nhanh chóng, trực quan và dễ dàng hơn bao giờ hết.
+            </p>
+          </div>
         </div>
-        <h2 className="font-heading font-black uppercase tracking-tighter leading-none text-white absolute bottom-0 right-4 md:right-8 lg:right-12 text-[7rem] sm:text-[10rem] md:text-[14rem] lg:text-[18rem] xl:text-[22rem] select-none pointer-events-none translate-y-[6%] md:translate-y-[8%]">
-          ALTERA
-        </h2>
+
+        {/* Giant ALTERA text - bottom right, perfectly separated from paragraph text */}
+        <div className="max-w-[var(--spacing-contentMax)] w-full mx-auto flex justify-end items-end relative z-0 select-none pointer-events-none mt-8 md:mt-0">
+          <h2 className="font-heading font-black uppercase tracking-tighter leading-none text-white text-[clamp(4.5rem,12vw,12rem)] text-right translate-y-[4%]">
+            ALTERA
+          </h2>
+        </div>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
