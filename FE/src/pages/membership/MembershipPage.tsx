@@ -68,15 +68,15 @@ export function MembershipPage() {
           <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent"></div>
         </div>
 
-        <div className="max-w-[var(--spacing-contentMax)] mx-auto w-full relative z-10 flex flex-col lg:flex-row justify-between items-center px-6 gap-12">
+        <div className="max-w-[var(--spacing-contentMax)] mx-auto w-full relative z-10 flex flex-col lg:flex-row justify-between items-center px-8 md:px-14 lg:px-20 gap-12">
           {/* Left Text Content */}
-          <div className="w-full lg:w-[50%]">
-            <h2 className="text-[clamp(2.5rem,5vw,4rem)] font-heading font-black mb-6 leading-[1.15] tracking-normal">
+          <div className="w-full lg:flex-1 lg:max-w-2xl">
+            <h2 className="text-[clamp(2.2rem,3.6vw,3.5rem)] font-heading font-black mb-6 leading-[1.15] tracking-normal uppercase">
               Trải nghiệm Trọn vẹn <br />
               Tiện ích cùng ALTERA
             </h2>
             <div className="w-24 h-1 bg-white mb-6"></div>
-            <p className="text-lg font-medium mb-10 text-gray-300 max-w-md leading-relaxed">
+            <p className="text-base md:text-lg font-medium mb-10 text-gray-300 max-w-lg leading-relaxed">
               Khai phá toàn bộ sức mạnh của ALTERA. Đặc quyền sử dụng các công cụ thiết kế cao cấp, nhận gợi ý thông minh hơn từ AI và sở hữu các bộ sưu tập thời trang giới hạn dành riêng cho thành viên.
             </p>
             <ul className="space-y-4">
@@ -97,7 +97,7 @@ export function MembershipPage() {
           </div>
 
           {/* Right Cards Slider - EXACTLY 1 CARD VISIBLE AT A TIME */}
-          <div className="w-full lg:w-[45%] flex justify-center">
+          <div className="w-full lg:w-auto flex justify-center lg:justify-end shrink-0">
             {/* The wrapper that defines the bounds */}
             <div 
               className="relative w-full max-w-[380px] group/slider"
