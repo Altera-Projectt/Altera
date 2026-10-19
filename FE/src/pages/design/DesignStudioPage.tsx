@@ -1236,6 +1236,12 @@ export function DesignStudioPage() {
       setIsSaved(false)
       startCooldown()
       setGenerating(false)
+
+      if (result.isBackgroundRemoved) {
+        showToast('Ảnh AI đã được tạo và tự động tách nền thành công!', 'success')
+      } else if (result.backgroundRemovalStatus === 'pending') {
+        showToast(result.message || 'Ảnh đã được tạo. Quá trình tách nền đang tiếp tục chạy ngầm...', 'success')
+      }
     },
     onError: (err) => {
       setGenerateError(err)

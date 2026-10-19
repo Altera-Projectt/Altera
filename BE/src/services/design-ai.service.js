@@ -1,6 +1,7 @@
 const Design = require('../models/Design');
 const Order = require('../models/Order');
 const { uploadImage } = require('../utils/cloudinary');
+const { removeBackground } = require('../utils/removeBackground');
 const OpenAI = require('openai');
 const logger = require('../utils/logger');
 
@@ -136,10 +137,21 @@ const generateOpenAIImage = async (prompt) => {
   }
 };
 
-const uploadGeneratedImage = async (imageBuffer) => {
-  const dataUri = `data:image/png;base64,${imageBuffer.toString('base64')}`;
-  const uploaded = await uploadImage(dataUri, 'designs/generated');
-  return uploaded.url;
+const uploadGeneratedImage = async (imageBuffer, options = {}) => {
+  let processedBuffer = imageBuffer;
+  try {
+    const bgRes = await removeBackground(imageBuffer);
+    if (bgRes.isRemoved) {
+      processedBuffer = bgRes.buffer;
+      logger.info(`[removeBackground] Đã tách nền tự động (${bgRes.durationMs}ms, ${bgRes.transparentPixelsCount}px trong suốt).`);
+    }
+  } catch (err) {
+    logger.warn(`[removeBackground] Bỏ qua tách nền do lỗi: ${err.message}`);
+  }
+
+  const dataUri = `data:image/png;base64,${processedBuffer.toString('base64')}`;
+  const uploaded = await uploadImage(dataUri, 'altera/designs/generated', options);
+  return uploaded;
 };
 
 const generateDesign = async (userId, payload) => {
@@ -161,7 +173,9 @@ const generateDesign = async (userId, payload) => {
 
   const prompt = buildDesignPrompt({ idea, style, globalShirtColor });
   const imageBuffer = await generateOpenAIImage(prompt);
-  const imageUrl = await uploadGeneratedImage(imageBuffer);
+  const uploadResult = await uploadGeneratedImage(imageBuffer);
+  const imageUrl = uploadResult.url;
+  let publicId = uploadResult.publicId;
 
   const design = await Design.create({
     userId,
@@ -191,9 +205,20 @@ const generateDesign = async (userId, payload) => {
     }
 
     try {
-      logger.info(`[AI Service] Bắt đầu upload chuỗi Base64 lên Cloudinary...`);
-      const uploaded = await uploadImage(finalImageUrl, 'altera/designs/generated');
+      logger.info(`[AI Service] Tự động tách nền và upload chuỗi Base64 lên Cloudinary...`);
+      let base64ToUpload = finalImageUrl;
+      try {
+        const bgRes = await removeBackground(finalImageUrl);
+        if (bgRes.isRemoved) {
+          base64ToUpload = `data:image/png;base64,${bgRes.buffer.toString('base64')}`;
+        }
+      } catch (e) {
+        logger.warn(`[AI Service] Bỏ qua tách nền: ${e.message}`);
+      }
+
+      const uploaded = await uploadImage(base64ToUpload, 'altera/designs/generated');
       finalImageUrl = uploaded.url;
+      publicId = uploaded.publicId;
 
       // Không in chuỗi Base64 ra terminal nếu URL trả về vẫn là Base64
       const isBase64 = typeof finalImageUrl === 'string' && finalImageUrl.startsWith('data:image/');
@@ -207,16 +232,16 @@ const generateDesign = async (userId, payload) => {
     }
   }
 
-  // Tối ưu object return (Tránh tràn Redis)
+  // Tối ưu object return
   return {
-    imageUrl: finalImageUrl, // Đã là link HTTP (hoặc Base64 nếu Cloudinary lỗi)
+    imageUrl: finalImageUrl,
     preview: finalImageUrl,
+    publicId,
+    uploadResult,
     printSide,
     prompt,
     designId: design._id,
-    // TUYỆT ĐỐI KHÔNG return object design và history
-    // design,
-    // history,
+    design,
   };
 };
 
@@ -233,7 +258,8 @@ const refineDesign = async (designId, userId, role, { prompt }) => {
     style: design.style || 'Graphic Art',
     globalShirtColor: design.shirtColor || '#ffffff',
   }));
-  const imageUrl = await uploadGeneratedImage(imageBuffer);
+  const uploadResult = await uploadGeneratedImage(imageBuffer);
+  const imageUrl = uploadResult.url;
 
   design.prompt = `${design.prompt || ''}\nRefine: ${prompt.trim()}`.trim();
   design.customImage = imageUrl;

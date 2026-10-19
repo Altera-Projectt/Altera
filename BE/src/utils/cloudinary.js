@@ -104,7 +104,43 @@ const uploadImage = async (filePath, folder = 'altera', options = {}) => {
   // Tuyệt đối không nuốt lỗi, ném trực tiếp lỗi ra ngoài nếu upload thất bại
   const result = await cloudinary.uploader.upload(filePath, uploadOptions);
 
-  return { url: result.secure_url, publicId: result.public_id };
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+    info: result.info,
+    format: result.format,
+    version: result.version,
+    rawResult: result,
+  };
+};
+
+/**
+ * Đợi Cloudinary hoàn tất xử lý background_removal (Pixelz) cho public_id
+ * @param {string} publicId
+ * @param {number} maxWaitMs - Thời gian tối đa chờ (mặc định 15s)
+ * @param {number} intervalMs - Khoảng thời gian giữa các lần kiểm tra (mặc định 2s)
+ * @returns {Promise<{ completed: boolean, url: string | null, status: string }>}
+ */
+const waitForBackgroundRemoval = async (publicId, maxWaitMs = 15000, intervalMs = 2000) => {
+  if (!publicId) return { completed: false, url: null, status: 'missing_id' };
+  const startTime = Date.now();
+  while (Date.now() - startTime < maxWaitMs) {
+    try {
+      const res = await cloudinary.api.resource(publicId);
+      const bgInfo = res.info?.background_removal?.pixelz || res.info?.background_removal?.cloudinary_ai;
+      const status = bgInfo?.status;
+      if (status === 'complete' || status === 'success') {
+        return { completed: true, url: res.secure_url, status: 'complete' };
+      }
+      if (status && status !== 'pending') {
+        return { completed: false, url: res.secure_url, status };
+      }
+    } catch (err) {
+      console.warn(`[Cloudinary] Kiểm tra background_removal (${publicId}):`, err.message || err);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return { completed: false, url: null, status: 'pending' };
 };
 
 /**
@@ -179,4 +215,5 @@ module.exports = {
   ensureCloudinaryUrl,
   sanitizeDesignLayers,
   deleteImage,
+  waitForBackgroundRemoval,
 };

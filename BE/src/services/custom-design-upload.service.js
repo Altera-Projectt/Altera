@@ -30,11 +30,32 @@ const validateImageFile = (file) => {
   return { filename, mimeType: type.mime };
 };
 
+/** Upload ảnh xem trước/thumbnail của cả phôi áo lên Cloudinary, không lưu vào UploadedImage */
+const uploadPreview = async (userId, file) => {
+  const { filename, mimeType } = validateImageFile(file);
+  const result = await uploadImage(`data:${mimeType};base64,${file.buffer.toString('base64')}`, 'altera/previews', {
+    resource_type: 'image',
+  });
+  return {
+    url: result.url,
+    thumbnailUrl: toThumbnail(result.url),
+    publicId: result.publicId,
+    filename,
+    mimeType,
+  };
+};
+
 /** BE-3 (upload thủ công): user upload file lên thư viện với source=UPLOAD */
 const upload = async (userId, file, imageType = 'UPLOADED') => {
   const normalizedImageType = String(imageType || 'UPLOADED').toUpperCase();
-  if (!['AI', 'UPLOADED'].includes(normalizedImageType)) fail('imageType must be AI or UPLOADED.');
   const { filename, mimeType } = validateImageFile(file);
+
+  // Nếu là preview hoặc tên file là thumbnail/design-preview thì không lưu vào UploadedImage
+  if (normalizedImageType === 'PREVIEW' || /^(thumbnail|design-preview)/i.test(filename)) {
+    return uploadPreview(userId, file);
+  }
+
+  if (!['AI', 'UPLOADED'].includes(normalizedImageType)) fail('imageType must be AI or UPLOADED.');
   const result = await uploadImage(`data:${mimeType};base64,${file.buffer.toString('base64')}`, 'altera/designs/uploads', {
     resource_type: 'image',
   });
@@ -49,14 +70,19 @@ const list = async (userId, { source = 'ALL', page = 1, limit = 24 } = {}) => {
   const safeSource = ['UPLOAD', 'AI', 'ALL'].includes(String(source).toUpperCase()) ? String(source).toUpperCase() : 'ALL';
   const safePage = Math.max(1, parseInt(page, 10) || 1);
   const safeLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 24));
-  const filter = { userId };
+  const filter = {
+    userId,
+    filename: { $not: /^(thumbnail|design-preview)/i },
+  };
   if (safeSource === 'AI') filter.source = 'AI';
   if (safeSource === 'UPLOAD') filter.source = { $ne: 'AI' };
   const [images, total] = await Promise.all([
     UploadedImage.find(filter).sort({ createdAt: -1 }).skip((safePage - 1) * safeLimit).limit(safeLimit).select('_id url thumbnailUrl filename source imageType prompt createdAt').lean(),
     UploadedImage.countDocuments(filter),
   ]);
-  const normalizedImages = images.map((image) => ({ ...image, imageType: image.imageType || (image.source === 'AI' ? 'AI' : 'UPLOADED') }));
+  const normalizedImages = images
+    .filter((image) => !/^(thumbnail|design-preview)/i.test(image.filename || ''))
+    .map((image) => ({ ...image, imageType: image.imageType || (image.source === 'AI' ? 'AI' : 'UPLOADED') }));
   return { images: normalizedImages, total, page: safePage, totalPages: Math.ceil(total / safeLimit) };
 };
 
@@ -81,4 +107,4 @@ const remove = async (userId, id, preserveFile = false) => {
   return { message: 'Uploaded image deleted successfully.' };
 };
 
-module.exports = { upload, list, addFromGenerated, remove, validateImageFile, sanitizeFilename, MAX_IMAGE_BYTES };
+module.exports = { upload, uploadPreview, list, addFromGenerated, remove, validateImageFile, sanitizeFilename, MAX_IMAGE_BYTES };

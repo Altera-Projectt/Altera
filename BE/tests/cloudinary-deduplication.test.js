@@ -83,3 +83,26 @@ test('ensureCloudinaryUrl uses deduplicated hash when uploading base64 data URIs
     cloudinary.uploader.upload = originalUpload;
   }
 });
+
+test('uploadImage passes background_removal option to cloudinary', async () => {
+  const originalUpload = cloudinary.uploader.upload;
+  let capturedOptions = null;
+
+  cloudinary.uploader.upload = async (filePath, options) => {
+    capturedOptions = options;
+    return {
+      secure_url: 'https://res.cloudinary.com/test/image/upload/sample.png',
+      public_id: options.public_id,
+      info: { background_removal: { pixelz: { status: 'pending' } } },
+    };
+  };
+
+  try {
+    const dataUri = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const res = await uploadImage(dataUri, 'altera/designs/generated', { background_removal: 'pixelz' });
+    assert.equal(capturedOptions.background_removal, 'pixelz');
+    assert.equal(res.info.background_removal.pixelz.status, 'pending');
+  } finally {
+    cloudinary.uploader.upload = originalUpload;
+  }
+});

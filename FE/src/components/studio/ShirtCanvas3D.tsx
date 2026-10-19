@@ -12,6 +12,7 @@ export type CanvasDesignLayer = {
   scaleX?: number;
   scaleY?: number;
   opacity?: number;
+  blendMode?: 'normal' | 'screen' | 'multiply';
   locked?: boolean;
   zIndex?: number;
   visible?: boolean;
@@ -47,6 +48,7 @@ function DesignDecal({
   rotation, 
   scale,
   opacity = 1,
+  blendMode = 'normal',
   polygonOffsetFactor = -1
 }: { 
   image: string; 
@@ -54,6 +56,7 @@ function DesignDecal({
   rotation: [number, number, number]; 
   scale: [number, number, number];
   opacity?: number;
+  blendMode?: 'normal' | 'screen' | 'multiply';
   polygonOffsetFactor?: number;
 }) {
   // Optimize Cloudinary URL for WebGL memory if applicable
@@ -67,6 +70,12 @@ function DesignDecal({
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 16;
 
+  const threeBlending = useMemo(() => {
+    if (blendMode === 'screen') return THREE.AdditiveBlending;
+    if (blendMode === 'multiply') return THREE.MultiplyBlending;
+    return THREE.NormalBlending;
+  }, [blendMode]);
+
   return (
     <Decal 
       position={position} 
@@ -77,6 +86,7 @@ function DesignDecal({
         map={texture} 
         transparent={true} 
         opacity={opacity}
+        blending={threeBlending}
         depthTest={true} 
         depthWrite={false} 
         polygonOffset 
@@ -300,6 +310,7 @@ function ShirtModel({
                           rotation={rotation}
                           scale={scale}
                           opacity={layer.opacity ?? 1}
+                          blendMode={layer.blendMode ?? 'normal'}
                           polygonOffsetFactor={-1 - (index * 2)}
                         />
                       );

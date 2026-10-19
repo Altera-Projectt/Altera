@@ -4,6 +4,19 @@ const customDesignUploadService = require('../services/custom-design-upload.serv
 
 const uploadCustomImage = async (req, res, next) => {
   try {
+    const isPreview =
+      req.body.isPreview === 'true' ||
+      req.body.isPreview === true ||
+      req.query.isPreview === 'true' ||
+      req.body.type === 'preview' ||
+      req.query.type === 'preview' ||
+      String(req.body.imageType || '').toUpperCase() === 'PREVIEW';
+
+    if (isPreview) {
+      const image = await customDesignUploadService.uploadPreview(req.user._id, req.file);
+      return res.status(201).json({ success: true, message: 'Preview image uploaded successfully.', data: { image } });
+    }
+
     const image = await customDesignUploadService.upload(req.user._id, req.file, req.body.imageType);
     res.status(201).json({ success: true, message: 'Image uploaded successfully.', data: { image } });
   } catch (error) { next(error); }

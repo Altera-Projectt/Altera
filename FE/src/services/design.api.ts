@@ -133,11 +133,22 @@ export const DesignService = {
   }) => api.post<ApiResponse<{ design: any }>>('/designers/me/designs', payload),
   getMyDesignerProfile: () => api.get<ApiResponse<{ profile: { username: string } }>>('/designers/me/profile'),
   getDesignerCollections: (username: string) => api.get<ApiResponse<{ collections: { _id: string; name: string }[] }>>(`/designers/${username}`),
-  uploadCustomImage: (file: File, imageType: ImageType = 'UPLOADED') => {
+  uploadCustomImage: (file: File, imageType: ImageType = 'UPLOADED', isPreview = false) => {
     const body = new FormData()
     body.append('image', file)
     body.append('imageType', imageType)
+    if (isPreview) {
+      body.append('isPreview', 'true')
+      body.append('type', 'preview')
+    }
     return api.post<ApiResponse<{ image: UploadedCustomImage }>>('/designs/custom/uploads', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 })
+  },
+  uploadPreviewImage: (file: File) => {
+    const body = new FormData()
+    body.append('image', file)
+    body.append('isPreview', 'true')
+    body.append('type', 'preview')
+    return api.post<ApiResponse<{ image: { url: string; thumbnailUrl?: string; filename?: string } }>>('/designs/custom/uploads', body, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 60_000 })
   },
   getCustomImages: (source?: AssetSource) => api.get<ApiResponse<{ images: UploadedCustomImage[] }>>('/designs/custom/uploads', { params: source ? { source } : undefined }),
   /** Save an AI-generated design image into the personal asset library (idempotent). */

@@ -27,10 +27,12 @@ type ImageLayer = {
   opacity: number;
   position3D?: [number, number, number];
   rotation3D?: [number, number, number];
+  blendMode?: 'normal' | 'screen' | 'multiply';
 }
 type DesignLayer = ImageLayer
 type DesignState = { frontDesign: { layers: DesignLayer[] }; backDesign: { layers: DesignLayer[] } }
 const isAIAsset = (image: UploadedCustomImage) => image.imageType === 'AI' || image.source === 'AI'
+const isPreviewFilename = (filename?: string) => /^(thumbnail|design-preview)/i.test(filename || '')
 
 const makeImage = (src: string, offsetIndex = 0): ImageLayer => {
   const xOffset = ((offsetIndex % 5) - 2) * 8;
@@ -52,7 +54,8 @@ const makeImage = (src: string, offsetIndex = 0): ImageLayer => {
     scaleY: 1, 
     opacity: 1,
     position3D: [posX, posY, 0.155],
-    rotation3D: [Math.PI / 2, 0, 0]
+    rotation3D: [Math.PI / 2, 0, 0],
+    blendMode: 'normal'
   };
 }
 
@@ -99,7 +102,7 @@ async function uploadCanvasThumbnail() {
     }
   })
   const image = new File([blob], 'design-preview.webp', { type: blob.type || 'image/webp' })
-  const response = await DesignService.uploadCustomImage(image)
+  const response = await DesignService.uploadPreviewImage(image)
   return response.data.data.image.url
 }
 
@@ -221,10 +224,11 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
 
         if (!active) return
 
-        const fetchedImages: UploadedCustomImage[] = uploadsRes.data.data.images || []
+        const fetchedImages: UploadedCustomImage[] = (uploadsRes.data.data.images || [])
+          .filter((img) => !isPreviewFilename(img.filename))
         // Safely merge with existing state (to preserve pendingAsset or inflight uploads)
         setUploads(prev => {
-          const merged = [...prev];
+          const merged = [...prev.filter((img) => !isPreviewFilename(img.filename))];
           for (const img of fetchedImages) {
             if (!merged.some(m => m.url === img.url || m._id === img._id)) {
               merged.push(img);
@@ -298,7 +302,9 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       const { data } = await DesignService.uploadCustomImage(file)
       const image = data.data.image
       // Keep the file in the personal library and place it on the canvas right away.
-      setUploads((currentUploads) => [image, ...currentUploads.filter((item) => item._id !== image._id)])
+      if (!isPreviewFilename(image.filename)) {
+        setUploads((currentUploads) => [image, ...currentUploads.filter((item) => item._id !== image._id)])
+      }
       addUploadedImage(image)
       setError('')
     } catch (uploadError: unknown) { setError(errorMessage(uploadError, 'Could not upload this image.')) }
@@ -315,7 +321,9 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     setSelectedId(layer.id); 
     setError('') 
   }
-  const visibleAssets = uploads.filter((image) => assetFilter === 'ALL' || (assetFilter === 'AI' ? isAIAsset(image) : !isAIAsset(image)))
+  const visibleAssets = uploads
+    .filter((image) => !isPreviewFilename(image.filename))
+    .filter((image) => assetFilter === 'ALL' || (assetFilter === 'AI' ? isAIAsset(image) : !isAIAsset(image)))
   // Place an asset handed over from the AI tab exactly once.
   const consumedAssetRef = useRef<string | null>(null)
   useEffect(() => {
@@ -532,7 +540,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
           const res = await fetch(thumbnailBase64)
           const blob = await res.blob()
           const file = new File([blob], 'thumbnail.webp', { type: blob.type })
-          const { data } = await DesignService.uploadCustomImage(file)
+          const { data } = await DesignService.uploadPreviewImage(file)
           thumbnailUrl = data.data.image.url
         } else {
           console.error('Failed to target WebGL canvas for snapshot.')
@@ -954,7 +962,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         <div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-gray-500">THƯ VIỆN ẢNH (AI & UPLOAD)</p><span className="text-[10px] text-gray-400">{visibleAssets.length} ảnh</span></div>
         <div role="tablist" className="grid grid-cols-3 gap-1 rounded-lg bg-gray-100 p-1">{([['ALL', 'Tất cả'], ['UPLOADED', 'Tải lên'], ['AI', 'AI Tạo']] as const).map(([value, label]) => <button key={value} id={`asset-filter-${value.toLowerCase()}`} role="tab" aria-selected={assetFilter === value} type="button" onClick={() => setAssetFilter(value as any)} className={`rounded-md px-2 py-1 text-xs transition ${assetFilter === value ? 'bg-white font-semibold shadow-sm' : 'text-gray-500 hover:text-black'}`}>{label}</button>)}</div>
         {!isAuthenticated ? <p className="text-xs text-gray-500">Đăng nhập để lưu ảnh tải lên và ảnh tạo bằng AI vào thư viện của bạn.</p> : visibleAssets.length === 0 ? <p className="text-xs text-gray-500">{assetFilter === 'AI' ? 'Tạo ảnh tại tab “Phác thảo mới” và bấm “Lưu vào thư viện ảnh”.' : 'Ảnh bạn tải lên và ảnh AI sẽ hiển thị tại đây.'}</p> : <div className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto pr-1">{visibleAssets.map((image) => <div key={image._id} className="group relative min-w-0 rounded border p-1 transition hover:border-black">
-          <button type="button" onClick={() => addUploadedImage(image)} title={isAIAsset(image) && image.prompt ? `AI: ${image.prompt}` : `Thêm ${image.filename} vào ${side === 'frontDesign' ? 'mặt trước' : 'mặt sau'}`} className="block w-full text-left"><img src={optimizeCloudinaryUrl(image.thumbnailUrl || image.url, 240)} alt={isAIAsset(image) ? (image.prompt || 'AI design') : image.filename} loading="lazy" decoding="async" className="aspect-square w-full rounded bg-gray-50 object-cover"/><span className="mt-1 block truncate text-[10px]">{isAIAsset(image) ? (image.prompt || 'AI design') : image.filename}</span></button>
+          <button type="button" onClick={() => addUploadedImage(image)} title={isAIAsset(image) && image.prompt ? `AI: ${image.prompt}` : `Thêm ${image.filename} vào ${side === 'frontDesign' ? 'mặt trước' : 'mặt sau'}`} className="block w-full text-left"><img src={optimizeCloudinaryUrl(image.thumbnailUrl || image.url, 240)} alt={isAIAsset(image) ? (image.prompt || 'AI design') : image.filename} loading="lazy" decoding="async" className="aspect-square w-full rounded bg-[repeating-conic-gradient(#cbd5e1_0%_25%,#f1f5f9_0%_50%)] [background-size:12px_12px] object-contain p-0.5 border border-slate-200"/><span className="mt-1 block truncate text-[10px]">{isAIAsset(image) ? (image.prompt || 'AI design') : image.filename}</span></button>
           {isAIAsset(image) && <span className="pointer-events-none absolute left-1 top-1 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500 px-1.5 py-0.5 text-[9px] font-bold text-white shadow">AI</span>}
           <button type="button" onClick={() => void deleteUploadedImage(image)} aria-label={`Xóa ${image.filename} khỏi thư viện`} className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-600 opacity-0 shadow transition group-hover:opacity-100 focus:opacity-100"><X size={13}/></button>
         </div>)}</div>}
@@ -993,6 +1001,27 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
         <label className="block text-sm">Độ mờ · {Math.round(selected.opacity * 100)}%<input className="w-full" type="range" min="0" max="1" step="0.01" value={selected.opacity} onChange={(e) => update(selected.id, { opacity: Number(e.target.value) })}/></label>
         <label className="block text-sm">Xoay · {selected.rotation}°<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="-180" max="180" value={selected.rotation} onChange={(e) => update(selected.id, { rotation: Number(e.target.value) })}/></label>
         <label className="block text-sm">Thu phóng · {selected.scaleX.toFixed(1)}×<input disabled={selected.locked} className="w-full disabled:opacity-40" type="range" min="0.3" max="3" step="0.1" value={selected.scaleX} onChange={(e) => update(selected.id, { scaleX: Number(e.target.value), scaleY: Number(e.target.value) })}/></label>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">Chế độ nền (Background Mode)</label>
+          <select 
+            aria-label="Chế độ nền"
+            disabled={selected.locked}
+            value={selected.blendMode ?? 'normal'} 
+            onChange={(e) => update(selected.id, { blendMode: e.target.value as 'normal' | 'screen' | 'multiply' })} 
+            className="w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-800 transition focus:border-blue-500 focus:outline-none disabled:opacity-40"
+          >
+            <option value="normal">Mặc định (Giữ nguyên PNG trong suốt)</option>
+            <option value="screen">Khử nền đen (Screen / Luma Key)</option>
+            <option value="multiply">Khử nền trắng (Multiply / Luma Key)</option>
+          </select>
+          <p className="mt-1 text-[11px] text-slate-500">
+            {selected.blendMode === 'screen' 
+              ? 'Tự động hòa tách nền đen vào màu vải áo.' 
+              : selected.blendMode === 'multiply' 
+                ? 'Tự động hòa tách nền trắng vào thớ vải áo.' 
+                : 'Hiển thị chuẩn PNG kênh Alpha trong suốt.'}
+          </p>
+        </div>
       </> : <p className="text-sm text-gray-500">Chọn một lớp để chỉnh sửa thuộc tính.</p>}
       {selected && <button onClick={() => removeLayer(selected.id)} className="flex items-center gap-2 rounded border border-red-200 px-3 py-2 text-sm text-red-600"><Trash2 size={16}/>Xóa lớp</button>}
       <div className="flex items-center gap-2 border-t pt-3 text-xs text-gray-500"><RotateCw size={14}/>Kéo trên khung áo để di chuyển · dùng thanh trượt để xoay và thu phóng</div>
