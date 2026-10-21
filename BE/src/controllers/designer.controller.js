@@ -151,10 +151,10 @@ exports.getSummary = async (req, res, next) => {
     const grossSales = revenue[0]?.grossSales || 0;
     const configuredRate = process.env.DESIGNER_COMMISSION_RATE;
     const parsedRate = configuredRate === undefined || configuredRate.trim() === '' ? null : Number(configuredRate);
-    const commissionRate = Number.isFinite(parsedRate) && parsedRate >= 0 && parsedRate <= 1 ? parsedRate : 0.10;
-    // Creator nhận tiền bản quyền thiết kế (Design Royalty - 10%)
+    const commissionRate = Number.isFinite(parsedRate) && parsedRate >= 0 && parsedRate <= 1 ? parsedRate : 0.05;
+    // Creator nhận tiền bản quyền thiết kế (Design Royalty - 5%)
     const designerEarnings = Math.round(grossSales * commissionRate);
-    // Sàn ALTERA giữ chi phí sản xuất phôi áo, in ấn DTF/DTG và phí nền tảng (90%)
+    // Sàn ALTERA giữ chi phí sản xuất phôi áo, in ấn DTF/DTG và phí nền tảng (95%)
     const platformFee = grossSales - designerEarnings;
     res.json({ success: true, data: {
       totalDesigns, publishedDesigns, grossSales, totalSales: revenue[0]?.totalSales || 0,

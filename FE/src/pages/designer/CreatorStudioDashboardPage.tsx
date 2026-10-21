@@ -38,7 +38,7 @@ export function CreatorStudioDashboardPage() {
   if (!data) return <div aria-label="Đang tải studio" className="mx-auto max-w-7xl px-6 py-24 text-center text-sm text-neutral-500">Đang tải studio…</div>
 
   const { summary, profile } = data
-  const commissionPercent = Math.round((summary.commissionRate ?? 0.10) * 100)
+  const commissionPercent = Math.round((summary.commissionRate ?? 0.05) * 100)
   const earnings = summary.designerEarnings ?? Math.round(summary.grossSales * (commissionPercent / 100))
 
   const metrics = [
