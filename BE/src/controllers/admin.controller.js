@@ -108,16 +108,16 @@ exports.dashboard = async (req, res, next) => {
         { $group: { _id: '$orderId', amount: { $max: '$amount' }, paidAt: { $max: { $ifNull: ['$paidAt', '$createdAt'] } } } },
       ]),
       Payment.aggregate([
-        { $match: { paymentStatus: { $in: ['PAID', 'SUCCESS'] }, membershipOrderId: { $ne: null }, $or: [{ paidAt: { $gte: since } }, { paidAt: null, createdAt: { $gte: since } }] } },
-        { $group: { _id: '$membershipOrderId', amount: { $max: '$amount' } } },
+        { $match: { paymentStatus: { $in: ['PAID', 'SUCCESS'] }, $or: [{ membershipOrderId: { $ne: null } }, { membershipPlanId: { $ne: null } }], $and: [{ $or: [{ paidAt: { $gte: since } }, { paidAt: null, createdAt: { $gte: since } }] }] } },
+        { $group: { _id: { $ifNull: ['$membershipOrderId', '$_id'] }, amount: { $max: '$amount' } } },
       ]),
       Payment.countDocuments({ paymentStatus: { $in: ['PENDING', 'PROCESSING'] } }),
       Payment.countDocuments({ paymentStatus: 'FAILED' }),
       Order.find().select('_id createdAt totalPrice status paymentStatus userId').populate('userId', 'fullName email').sort({ createdAt: -1 }).limit(6).lean(),
       MarketplaceDesign.find({ status: 'PENDING_REVIEW' }).select('_id name thumbnail thumbnailUrl category price status createdAt designerId').populate('designerId', 'displayName username').sort({ createdAt: 1 }).limit(6).lean(),
       Payment.aggregate([
-        { $match: { paymentStatus: { $in: ['PAID', 'SUCCESS'] }, $or: [{ orderId: { $ne: null } }, { membershipOrderId: { $ne: null } }], $and: [{ $or: [{ paidAt: { $gte: since } }, { paidAt: null, createdAt: { $gte: since } }] }] } },
-        { $group: { _id: { type: { $cond: [{ $ne: ['$orderId', null] }, 'ORDER', 'MEMBERSHIP'] }, entityId: { $ifNull: ['$orderId', '$membershipOrderId'] } }, amount: { $max: '$amount' }, paidAt: { $max: { $ifNull: ['$paidAt', '$createdAt'] } } } },
+        { $match: { paymentStatus: { $in: ['PAID', 'SUCCESS'] }, $or: [{ orderId: { $ne: null } }, { membershipOrderId: { $ne: null } }, { membershipPlanId: { $ne: null } }], $and: [{ $or: [{ paidAt: { $gte: since } }, { paidAt: null, createdAt: { $gte: since } }] }] } },
+        { $group: { _id: { type: { $cond: [{ $ne: ['$orderId', null] }, 'ORDER', 'MEMBERSHIP'] }, entityId: { $ifNull: ['$orderId', { $ifNull: ['$membershipOrderId', '$_id'] }] } }, amount: { $max: '$amount' }, paidAt: { $max: { $ifNull: ['$paidAt', '$createdAt'] } } } },
         {
           $group: {
             _id: { $dateToString: { format: '%Y-%m-%d', date: '$paidAt' } },

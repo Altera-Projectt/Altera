@@ -231,7 +231,7 @@ async function upgrade(userId, body = {}) {
 
   if (plan) {
     user.membershipPlanId = plan._id;
-    await MembershipOrder.create({
+    const memOrder = await MembershipOrder.create({
       userId: user._id,
       membershipPlanId: plan._id,
       fullName: user.fullName || 'Hội viên ALTERA',
@@ -245,6 +245,7 @@ async function upgrade(userId, body = {}) {
       expiresAt,
     });
     await Payment.create({
+      membershipOrderId: memOrder._id,
       membershipPlanId: plan._id,
       userId: user._id,
       paymentMethod: body.paymentMethod || 'BANK_TRANSFER',
