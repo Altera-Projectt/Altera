@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ShoppingBag, MapPin, CreditCard, Truck, ArrowLeft, CheckCircle, QrCode } from 'lucide-react'
+import { ShoppingBag, MapPin, CreditCard, Truck, ArrowLeft, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { CartService } from '@/services/cart.api'
@@ -15,9 +15,6 @@ import { toast } from 'sonner'
 import type { CartItem } from '@/types/cart.types'
 import type { PaymentMethod } from '@/types/order.types'
 
-const ADMIN_BANK_ID = import.meta.env.VITE_ADMIN_BANK_ID || 'MB'
-const ADMIN_BANK_ACCOUNT = import.meta.env.VITE_ADMIN_BANK_ACCOUNT || '0384431663'
-const ADMIN_BANK_NAME = import.meta.env.VITE_ADMIN_BANK_NAME || 'HUYNH ANH KHOI'
 
 // ── Validation Schema ──────────────────────────────────────────────────────
 
@@ -320,39 +317,6 @@ export function CheckoutPage() {
                   )
                 })}
               </div>
-
-              {/* Bank Transfer Info Box */}
-              {paymentMethod === 'BANK_TRANSFER' && (
-                <div className="mx-6 mb-6 rounded-[var(--radius-lg)] border border-cyan-400/30 bg-[#0F172A] p-5 text-slate-100">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#162038] text-cyan-400 border border-cyan-400/20">
-                      <QrCode className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <p className="text-xs font-bold uppercase tracking-wider text-cyan-400">
-                        Hướng dẫn chuyển khoản ngân hàng (VietQR)
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
-                        <div className="rounded-md bg-[#162038] px-3 py-2 border border-white/5">
-                          <span className="block text-[10px] uppercase text-slate-400">Ngân hàng</span>
-                          <strong className="text-slate-100">{ADMIN_BANK_ID} (MBBank)</strong>
-                        </div>
-                        <div className="rounded-md bg-[#162038] px-3 py-2 border border-white/5">
-                          <span className="block text-[10px] uppercase text-slate-400">Số tài khoản</span>
-                          <strong className="font-mono text-cyan-400">{ADMIN_BANK_ACCOUNT}</strong>
-                        </div>
-                        <div className="rounded-md bg-[#162038] px-3 py-2 border border-white/5">
-                          <span className="block text-[10px] uppercase text-slate-400">Chủ tài khoản</span>
-                          <strong className="text-slate-100">{ADMIN_BANK_NAME}</strong>
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-400 leading-relaxed pt-1">
-                        Mã QR chuyển khoản tự động kèm đúng số tiền <strong className="text-slate-100">{formatVND(totalPrice)}</strong> và nội dung đơn hàng sẽ hiển thị ngay sau khi bạn bấm <strong className="text-cyan-400">Đặt hàng ngay</strong>.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
           </div>
