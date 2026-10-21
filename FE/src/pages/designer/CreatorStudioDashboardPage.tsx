@@ -5,7 +5,17 @@ import api from '@/utils/axios'
 import { optimizeCloudinaryUrl } from '@/utils/format'
 
 type Profile = { username: string; displayName: string }
-type Summary = { totalDesigns: number; publishedDesigns: number; totalSales: number; grossSales: number; paidOrders: number; commissionConfigured: boolean; designerEarnings: number | null }
+type Summary = {
+  totalDesigns: number
+  publishedDesigns: number
+  totalSales: number
+  grossSales: number
+  paidOrders: number
+  commissionConfigured: boolean
+  commissionRate?: number
+  platformFee?: number | null
+  designerEarnings: number | null
+}
 type CreatorOrder = { _id: string; status: string; createdAt: string; items: { name: string; quantity: number; price: number; imageUrl?: string }[] }
 
 export function CreatorStudioDashboardPage() {
@@ -28,16 +38,27 @@ export function CreatorStudioDashboardPage() {
   if (!data) return <div aria-label="Đang tải studio" className="mx-auto max-w-7xl px-6 py-24 text-center text-sm text-neutral-500">Đang tải studio…</div>
 
   const { summary, profile } = data
+  const commissionPercent = Math.round((summary.commissionRate ?? 0.10) * 100)
+  const earnings = summary.designerEarnings ?? Math.round(summary.grossSales * (commissionPercent / 100))
+
   const metrics = [
     { label: 'Tổng thiết kế', value: summary.totalDesigns, icon: Palette },
     { label: 'Đang bán', value: summary.publishedDesigns, icon: PackageCheck },
     { label: 'Đơn đã thanh toán', value: summary.paidOrders, icon: ShoppingBag },
     { label: 'Sản phẩm đã bán', value: summary.totalSales, icon: ShoppingBag },
-    { label: 'Tổng doanh thu', value: `${summary.grossSales.toLocaleString('vi-VN')} ₫`, icon: CircleDollarSign },
     {
-      label: 'Thu nhập của bạn',
-      value: summary.commissionConfigured ? `${summary.designerEarnings?.toLocaleString('vi-VN')} ₫` : 'Chưa cấu hình',
+      label: 'Tổng doanh số bán',
+      sublabel: 'Tổng tiền khách trả',
+      value: `${summary.grossSales.toLocaleString('vi-VN')} ₫`,
       icon: CircleDollarSign,
+      highlight: false,
+    },
+    {
+      label: `Hoa hồng thiết kế (${commissionPercent}%)`,
+      sublabel: 'Thu nhập thực nhận',
+      value: `${earnings.toLocaleString('vi-VN')} ₫`,
+      icon: CircleDollarSign,
+      highlight: true,
     },
   ]
 
@@ -52,7 +73,7 @@ export function CreatorStudioDashboardPage() {
               KÊNH NHÀ THIẾT KẾ (CREATOR HUB)
             </div>
             <h1 className="text-3xl md:text-5xl font-black uppercase tracking-normal text-white">
-              Xin chào, {profile.displayName}
+              Xin chào, <span className="text-yellow-400 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_2px_14px_rgba(250,204,21,0.35)]">{profile.displayName}</span>
             </h1>
             <p className="mt-3 max-w-2xl text-sm md:text-base text-slate-300 leading-relaxed font-normal">
               Quản lý tác phẩm đã đăng bán, theo dõi đơn hàng và doanh thu bản quyền của bạn trên Marketplace.
@@ -73,25 +94,47 @@ export function CreatorStudioDashboardPage() {
       <div className="mx-auto max-w-7xl px-5 md:px-8 mt-10">
         {/* ── Stat Cards ── */}
         <section aria-label="Tóm tắt doanh số" className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {metrics.map(({ label, value, icon: Icon }) => (
+          {metrics.map(({ label, sublabel, value, icon: Icon, highlight }) => (
             <article
               key={label}
-              className="group rounded-2xl border border-blue-100 bg-white p-5 shadow-sm transition-all hover:border-blue-300 hover:shadow-md hover:-translate-y-0.5"
+              className={`group rounded-2xl border p-5 shadow-sm transition-all hover:-translate-y-0.5 ${
+                highlight
+                  ? 'border-cyan-400/50 bg-gradient-to-b from-cyan-50/60 to-blue-50/30 hover:border-cyan-400 hover:shadow-md'
+                  : 'border-blue-100 bg-white hover:border-blue-300 hover:shadow-md'
+              }`}
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
+                  highlight
+                    ? 'bg-cyan-500 text-white shadow-sm'
+                    : 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
+                }`}
+              >
                 <Icon className="h-5 w-5" />
               </div>
-              <p className="mt-4 text-xl md:text-2xl font-black text-slate-900 tracking-normal">{value}</p>
-              <p className="mt-1 text-xs font-medium text-slate-500">{label}</p>
+              <p className={`mt-4 text-xl md:text-2xl font-black tracking-normal ${highlight ? 'text-cyan-700' : 'text-slate-900'}`}>
+                {value}
+              </p>
+              <p className="mt-1 text-xs font-bold text-slate-800">{label}</p>
+              {sublabel && <p className="text-[10px] text-slate-500 mt-0.5">{sublabel}</p>}
             </article>
           ))}
         </section>
 
-        {!summary.commissionConfigured && (
-          <div className="mt-4 rounded-xl border border-blue-200/60 bg-blue-50/60 px-4 py-3 text-xs text-blue-800 flex items-center gap-2">
-            <span className="font-bold">Lưu ý:</span> Thu nhập của nhà thiết kế sẽ được tính tự động khi hệ thống kích hoạt tỷ lệ hoa hồng (DESIGNER_COMMISSION_RATE).
+        <div className="mt-5 rounded-2xl border border-cyan-500/20 bg-slate-900 p-4 text-xs text-slate-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-cyan-400/20 text-cyan-400 font-bold text-xs shrink-0">
+              ✓
+            </span>
+            <span>
+              <strong className="text-cyan-400">Chính sách bản quyền ALTERA:</strong> Nhà thiết kế nhận{' '}
+              <strong className="text-white">{commissionPercent}% hoa hồng bản quyền</strong> trên mỗi áo bán thành công (ví dụ: áo 379.000 đ nhận {((379000 * commissionPercent) / 100).toLocaleString('vi-VN')} đ). Sàn ALTERA chịu toàn bộ chi phí sản xuất phôi áo, in ấn DTF công nghệ cao, đóng gói và vận chuyển.
+            </span>
           </div>
-        )}
+          <span className="text-[11px] font-mono text-slate-400 shrink-0">
+            Đối soát chuyển khoản định kỳ
+          </span>
+        </div>
 
         {/* ── Orders section ── */}
         <section className="mt-12 rounded-2xl border border-slate-200/80 bg-white p-6 md:p-8 shadow-sm">

@@ -6,7 +6,8 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { OrderService, PaymentService } from '@/services/order.api'
-import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
+import { formatVND } from '@/utils/format'
+import { CartItemThumbnail, resolveCartItemVisual } from '@/components/cart/CartItemThumbnail'
 import type { Order } from '@/types/order.types'
 
 const ADMIN_BANK_ID = import.meta.env.VITE_ADMIN_BANK_ID || 'MB'
@@ -275,25 +276,21 @@ export function OrderSuccessPage() {
               <div className="space-y-4">
                 {items.map((item: any, idx: number) => {
                   const product = item.product ?? item.productId ?? {}
-                  const name = product.name ?? item.name ?? `Sản phẩm ${idx + 1}`
+                  const visual = resolveCartItemVisual({ ...item, productId: product })
                   const qty = item.quantity ?? 1
                   const price = item.price ?? product.price ?? 0
-                  const img = product.imageUrl
 
                   return (
                     <div key={idx} className="flex items-center gap-4">
                       {/* Thumbnail */}
-                      <div className="h-14 w-14 shrink-0 rounded-[var(--radius-sm)] bg-[var(--color-muted)] overflow-hidden border border-[var(--color-border)]">
-                        {img ? (
-                          <img src={optimizeCloudinaryUrl(img, 200)} alt={name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center">
-                            <Package className="h-4 w-4 text-[var(--color-border)]" strokeWidth={1} />
-                          </div>
-                        )}
+                      <div className="h-14 w-14 shrink-0 rounded-[var(--radius-sm)] bg-[#0A1122] overflow-hidden border border-[var(--color-border)]">
+                        <CartItemThumbnail item={{ ...item, productId: product }} width={160} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium line-clamp-1">{name}</p>
+                        <p className="text-sm font-medium line-clamp-1">{visual.displayName}</p>
+                        {visual.subtitle && (
+                          <p className="text-[10px] text-[var(--color-muted-foreground)] truncate">{visual.subtitle}</p>
+                        )}
                         <p className="text-xs text-[var(--color-muted-foreground)]">SL: {qty}</p>
                       </div>
                       <span className="text-sm font-bold whitespace-nowrap">{formatVND(price * qty)}</span>

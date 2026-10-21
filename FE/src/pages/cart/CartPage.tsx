@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/Button'
 import { CartService } from '@/services/cart.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
+import { formatVND } from '@/utils/format'
+import { CartItemThumbnail, resolveCartItemVisual } from '@/components/cart/CartItemThumbnail'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,7 @@ export function CartPage() {
               const itemKey = item._id ?? productId
               const isUpdating = updating === itemKey
               const lineTotal = (item.price ?? item.productId?.price ?? 0) * item.quantity
+              const visual = resolveCartItemVisual(item)
 
               return (
                 <motion.div
@@ -203,27 +205,20 @@ export function CartPage() {
                     {/* ── Product info ── */}
                     <div className="flex items-center gap-5">
                       {/* Thumbnail */}
-                      <div className="h-20 w-20 shrink-0 overflow-hidden bg-[var(--color-muted)] border border-[var(--color-border)]">
-                        {item.productId?.imageUrl ? (
-                          <img
-                            src={optimizeCloudinaryUrl(item.productId.imageUrl, 200)}
-                            alt={item.productId.name}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
-                          />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center">
-                            <ShoppingBag className="h-5 w-5 text-[var(--color-border)]" strokeWidth={1} />
-                          </div>
-                        )}
+                      <div className="h-20 w-20 shrink-0 overflow-hidden bg-[#0A1122] border border-[var(--color-border)]">
+                        <CartItemThumbnail item={item} width={240} />
                       </div>
 
                       {/* Meta */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-bold line-clamp-2 leading-snug mb-1">
-                          {item.productId?.name || 'Sản phẩm không xác định'}
+                        <h3 className="text-sm font-bold line-clamp-1 leading-snug mb-0.5">
+                          {visual.displayName}
                         </h3>
+                        {visual.subtitle && (
+                          <p className="text-[11px] text-[var(--color-muted-foreground)] mb-1 truncate">
+                            {visual.subtitle}
+                          </p>
+                        )}
 
                         {/* Customization pills */}
                         {item.customization && (

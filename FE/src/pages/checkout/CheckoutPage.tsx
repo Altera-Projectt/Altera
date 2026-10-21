@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/Input'
 import { CartService } from '@/services/cart.api'
 import { OrderService } from '@/services/order.api'
 import { useCartStore } from '@/store/cartStore'
-import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
+import { formatVND } from '@/utils/format'
+import { CartItemThumbnail, resolveCartItemVisual } from '@/components/cart/CartItemThumbnail'
 import { toast } from 'sonner'
 import type { CartItem } from '@/types/cart.types'
 import type { PaymentMethod } from '@/types/order.types'
@@ -371,25 +372,17 @@ export function CheckoutPage() {
               <div className="px-6 py-5 space-y-4 max-h-64 overflow-y-auto scrollbar-none">
                 {cartItems.map((item) => {
                   const productId = item.productId?._id
+                  const visual = resolveCartItemVisual(item)
                   return (
                     <div key={item._id ?? productId} className="flex items-center gap-3">
-                      <div className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-md)] bg-[var(--color-muted)] border border-[var(--color-border)] overflow-hidden">
-                        {(typeof item.marketplaceDesignId === 'object' ? item.marketplaceDesignId?.thumbnail : null) || item.productId?.imageUrl ? (
-                          <img
-                            src={optimizeCloudinaryUrl((typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.thumbnail) || item.productId.imageUrl, 200)}
-                            alt={(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.name) || item.productId.name}
-                            loading="lazy"
-                            decoding="async"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center">
-                            <ShoppingBag className="h-4 w-4 text-[var(--color-border)]" />
-                          </div>
-                        )}
+                      <div className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-md)] bg-[#0A1122] border border-[var(--color-border)] overflow-hidden">
+                        <CartItemThumbnail item={item} width={160} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium line-clamp-1">{(typeof item.marketplaceDesignId === 'object' && item.marketplaceDesignId?.name) || item.productId?.name}</p>
+                        <p className="text-sm font-medium line-clamp-1">{visual.displayName}</p>
+                        {visual.subtitle && (
+                          <p className="text-[10px] text-[var(--color-muted-foreground)] truncate">{visual.subtitle}</p>
+                        )}
                         <p className="text-xs text-[var(--color-muted-foreground)]">SL: {item.quantity}</p>
                       </div>
                       <span className="text-sm font-semibold whitespace-nowrap">

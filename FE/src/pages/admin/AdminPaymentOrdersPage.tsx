@@ -114,18 +114,19 @@ export function AdminPaymentOrdersPage() {
 
   const confirmOrder = async (payment: AdminPayment) => {
     if (!payment.orderId) return
-    const transactionId = window.prompt('Nhập mã tham chiếu giao dịch ngân hàng:')
+    const defaultRef = payment.paymentReference || `TXN-${Date.now().toString().slice(-6)}`
+    const transactionId = window.prompt(
+      'Xác nhận đã nhận tiền chuyển khoản đơn hàng?\nNhập mã giao dịch ngân hàng (hoặc nhấn OK để duyệt ngay):',
+      defaultRef
+    )
     if (transactionId === null) return
-    if (!transactionId.trim()) {
-      setError('Vui lòng nhập mã tham chiếu giao dịch.')
-      return
-    }
+    const finalTxId = transactionId.trim() || defaultRef
     setBusyId(payment._id)
     setError('')
     setNotice('')
     try {
-      await AdminService.confirmPayment(payment.orderId, transactionId.trim())
-      setNotice('Đã xác nhận thanh toán đơn hàng.')
+      await AdminService.confirmPayment(payment.orderId, finalTxId)
+      setNotice('Đã xác nhận thanh toán đơn hàng thành công.')
       load()
     } catch (err: unknown) {
       setError(errorMessage(err, 'Không thể xác nhận thanh toán.'))

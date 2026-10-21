@@ -8,6 +8,7 @@ import {
   User,
   Heart,
   Sparkles,
+  BarChart3,
   LogOut,
   LayoutDashboard,
   Palette,
@@ -130,9 +131,9 @@ export function Navbar() {
                   <Palette className="h-[18px] w-[18px]" />
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" asChild aria-label="Kênh Creator" title="Kênh Creator (Doanh thu & Đơn hàng)" className="text-white hover:bg-white/10 hover:text-white">
+              <Button variant="ghost" size="icon" asChild aria-label="Kênh Creator" title="Kênh Creator (Doanh thu & Thống kê đơn hàng)" className="text-white hover:bg-white/10 hover:text-white">
                 <Link to="/studio">
-                  <Sparkles className="h-[18px] w-[18px]" />
+                  <BarChart3 className="h-[18px] w-[18px]" />
                 </Link>
               </Button>
               
@@ -315,7 +316,7 @@ export function Navbar() {
                       )
                     }
                   >
-                    <Sparkles className="h-4 w-4 text-blue-600" />
+                    <BarChart3 className="h-4 w-4 text-blue-600" />
                     Kênh Nhà thiết kế (Creator Hub)
                   </NavLink>
                 </div>
