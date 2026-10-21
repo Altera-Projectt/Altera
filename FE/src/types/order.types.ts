@@ -2,6 +2,8 @@ export interface OrderItem {
   productId: string
   quantity: number
   cartItemId?: string
+  marketplaceDesignId?: string | null
+  customization?: any
 }
 
 export interface ShippingAddress {
@@ -21,6 +23,7 @@ export interface CreateOrderPayload {
   shippingAddress: ShippingAddress
   paymentMethod?: PaymentMethod
   checkoutKey?: string
+  isBuyNow?: boolean
 }
 
 export interface Order {

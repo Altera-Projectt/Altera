@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useNavigate } from 'react-router-dom'
 import api from '@/utils/axios'
 import { CartService } from '@/services/cart.api'
+import { useCartStore } from '@/store/cartStore'
 import { optimizeImage, getLqipImage } from '@/utils/format'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { CheckCircle2, X } from 'lucide-react'
@@ -10,7 +11,7 @@ type Side={layers:Layer[]}
 type Detail={_id:string;name:string;description:string;thumbnail:string;price:number;color:{name?:string;hex?:string};size:string;printSide:'FRONT'|'BACK'|'BOTH';printingTechnique:string;category:string;frontDesign:Side;backDesign:Side;designerId:{username:string;displayName:string;avatar?:string};productId:{_id:string;name:string;colors:{name:string;hex:string;stock:number}[];sizes:{label:string;stock:number}[];printingTechniques:{code:string}[];isActive:boolean}}
 type Result={design:Detail;likesCount:number;salesCount:number;isLiked:boolean}
 export function DesignDetailPage(){
- const {slug=''}=useParams();const [data,setData]=useState<Result|null>(null);const [side,setSide]=useState<'FRONT'|'BACK'>('FRONT');const [error,setError]=useState('');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false)
+ const {slug=''}=useParams();const navigate=useNavigate();const {fetchCart}=useCartStore();const [data,setData]=useState<Result|null>(null);const [side,setSide]=useState<'FRONT'|'BACK'>('FRONT');const [error,setError]=useState('');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false)
  const [selectedColor, setSelectedColor] = useState<{name:string;hex:string}|null>(null)
  const [selectedSize, setSelectedSize] = useState('')
  const [showCartSuccess, setShowCartSuccess] = useState(false)
@@ -24,21 +25,50 @@ export function DesignDetailPage(){
  const add=async(buyNow=false)=>{
    if(!data)return;
    if(!selectedColor || !selectedSize) { setMessage('Vui lòng chọn màu và size.'); return; }
+   const customization = {
+     color: { name: selectedColor.name, hex: selectedColor.hex },
+     size: selectedSize,
+     printSide: data.design.printSide,
+     printingTechnique: data.design.printingTechnique || data.design.productId?.printingTechniques?.[0]?.code || 'DTF',
+     frontDesign: { layers: data.design.frontDesign?.layers || [], background: null },
+     backDesign: { layers: data.design.backDesign?.layers || [], background: null }
+   };
+   if(buyNow){
+     const buyNowItem = {
+       _id: 'buy-now-' + Date.now(),
+       productId: {
+         _id: data.design.productId._id,
+         id: data.design.productId._id,
+         name: data.design.productId.name,
+         imageUrl: data.design.thumbnail,
+         price: data.design.price,
+         stock: 99,
+       },
+       marketplaceDesignId: {
+         _id: data.design._id,
+         name: data.design.name,
+         slug,
+         thumbnail: data.design.thumbnail,
+         price: data.design.price,
+         status: 'PUBLISHED',
+       },
+       quantity: 1,
+       price: data.design.price,
+       customization,
+     };
+     navigate('/checkout', { state: { buyNowItem } });
+     return;
+   }
    setBusy(true);
    try{
      await CartService.addToCart({
        marketplaceDesignId:data.design._id,
        quantity:1,
-       customization: {
-         color: { name: selectedColor.name, hex: selectedColor.hex },
-         size: selectedSize,
-         printSide: data.design.printSide,
-         printingTechnique: data.design.printingTechnique || data.design.productId?.printingTechniques?.[0]?.code || 'DTF',
-         frontDesign: { layers: data.design.frontDesign?.layers || [], background: null },
-         backDesign: { layers: data.design.backDesign?.layers || [], background: null }
-       }
+       customization
      });
-     if(buyNow)window.location.assign('/checkout');else { setMessage(''); setShowCartSuccess(true); }
+     await fetchCart();
+     setMessage('');
+     setShowCartSuccess(true);
    }catch{setMessage('Không thể thêm thiết kế vào giỏ hàng.')}finally{setBusy(false)}
  }
  const like=async()=>{if(!data)return;try{await api.request({method:data.isLiked?'DELETE':'POST',url:'/designers/'+data.design._id+'/like'});await load()}catch{setMessage('Đăng nhập để thích thiết kế.')}}

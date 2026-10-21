@@ -720,20 +720,38 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       return
     }
     setError('')
+    const customization = {
+      color: { name: selectedColor?.name ?? colorName, hex: selectedColor?.hex ?? '#ffffff' },
+      size,
+      printSide,
+      printingTechnique: selectedTechnique.code,
+      frontDesign: { layers: design.frontDesign.layers, background: null },
+      backDesign: { layers: design.backDesign.layers, background: null },
+    }
+    if (orderNow) {
+      const buyNowItem = {
+        _id: 'buy-now-' + Date.now(),
+        productId: {
+          _id: product._id,
+          id: product._id,
+          name: product.name,
+          imageUrl: product.imageUrl,
+          price: estimatedPrice,
+          stock,
+        },
+        quantity,
+        price: estimatedPrice,
+        customization,
+      }
+      navigate('/checkout', { state: { buyNowItem } })
+      return
+    }
     setSubmitting(true)
     try {
-      await CartService.addToCart({ productId: product._id, quantity, customization: {
-        color: { name: selectedColor?.name ?? colorName, hex: selectedColor?.hex ?? '#ffffff' }, size, printSide,
-        printingTechnique: selectedTechnique.code,
-        frontDesign: { layers: design.frontDesign.layers, background: null },
-        backDesign: { layers: design.backDesign.layers, background: null },
-      } })
+      await CartService.addToCart({ productId: product._id, quantity, customization })
       await fetchCart()
-      if (orderNow) navigate('/checkout')
-      else {
-        setError('')
-        setShowCartSuccess(true)
-      }
+      setError('')
+      setShowCartSuccess(true)
     } catch (requestError: unknown) {
       setError(errorMessage(requestError, 'Không thể thêm thiết kế này vào giỏ hàng.'))
     } finally { setSubmitting(false) }

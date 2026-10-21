@@ -11,7 +11,7 @@ const { incrementPaidOrderDesignSales } = require('./marketplace-sales.service')
 /**
  * Create a new order
  */
-const createOrder = async (userId, { items, shippingAddress, note, paymentMethod = 'COD', checkoutKey }) => {
+const createOrder = async (userId, { items, shippingAddress, note, paymentMethod = 'COD', checkoutKey, isBuyNow = false }) => {
   paymentService.assertConfigured(paymentMethod);
   if (checkoutKey) {
     const existing = await Order.findOne({ userId, checkoutKey }).select('+checkoutKey');
@@ -21,28 +21,34 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
       return { order: await existing.populate('userId', 'fullName email'), payment: payment ? { paymentReference: payment.paymentReference, paymentMethod, paymentStatus: payment.paymentStatus, transfer: paymentMethod === 'BANK_TRANSFER' ? paymentService.transferDetails(payment) : null } : null };
     }
   }
-  const cart = await Cart.findOne({ userId });
-  if (!cart || cart.items.length === 0) { const error = new Error('Giỏ hàng của bạn đang trống.'); error.statusCode = 400; throw error; }
-  const requestedByLine = new Map((items || []).filter((item) => item.cartItemId).map((item) => [String(item.cartItemId), item]));
-  const usesCartLineIds = requestedByLine.size > 0;
-  if (usesCartLineIds && (requestedByLine.size !== cart.items.length || cart.items.some((item) => Number(requestedByLine.get(String(item._id))?.quantity) !== item.quantity))) {
-    const error = new Error('Giỏ hàng đã thay đổi. Vui lòng tải lại trang và thử lại.'); error.statusCode = 409; throw error;
-  }
-  if (!usesCartLineIds) {
-    const requested = new Map();
-    for (const item of items || []) requested.set(String(item.productId), (requested.get(String(item.productId)) || 0) + Number(item.quantity));
-    const cartItems = new Map();
-    for (const item of cart.items) cartItems.set(String(item.productId), (cartItems.get(String(item.productId)) || 0) + item.quantity);
-    if (requested.size !== cartItems.size || [...cartItems].some(([id, quantity]) => requested.get(id) !== quantity)) {
+  let cartLines = [];
+  if (isBuyNow) {
+    if (!items || items.length === 0) { const error = new Error('Đơn hàng không có sản phẩm nào.'); error.statusCode = 400; throw error; }
+    cartLines = items.map((item) => ({ ...item, productId: item.productId }));
+  } else {
+    const cart = await Cart.findOne({ userId });
+    if (!cart || cart.items.length === 0) { const error = new Error('Giỏ hàng của bạn đang trống.'); error.statusCode = 400; throw error; }
+    const requestedByLine = new Map((items || []).filter((item) => item.cartItemId).map((item) => [String(item.cartItemId), item]));
+    const usesCartLineIds = requestedByLine.size > 0;
+    if (usesCartLineIds && (requestedByLine.size !== cart.items.length || cart.items.some((item) => Number(requestedByLine.get(String(item._id))?.quantity) !== item.quantity))) {
       const error = new Error('Giỏ hàng đã thay đổi. Vui lòng tải lại trang và thử lại.'); error.statusCode = 409; throw error;
     }
+    if (!usesCartLineIds) {
+      const requested = new Map();
+      for (const item of items || []) requested.set(String(item.productId), (requested.get(String(item.productId)) || 0) + Number(item.quantity));
+      const cartItems = new Map();
+      for (const item of cart.items) cartItems.set(String(item.productId), (cartItems.get(String(item.productId)) || 0) + item.quantity);
+      if (requested.size !== cartItems.size || [...cartItems].some(([id, quantity]) => requested.get(id) !== quantity)) {
+        const error = new Error('Giỏ hàng đã thay đổi. Vui lòng tải lại trang và thử lại.'); error.statusCode = 409; throw error;
+      }
+    }
+    cartLines = usesCartLineIds ? cart.items : [...new Map((items || []).map((item) => [String(item.productId), item])).values()].map((item) => ({ ...item, productId: item.productId }));
   }
   // Validate products and calculate total
   const orderItems = [];
   let totalPrice = 0;
 
   const quantities = new Map();
-  const cartLines = usesCartLineIds ? cart.items : [...new Map((items || []).map((item) => [String(item.productId), item])).values()].map((item) => ({ ...item, productId: item.productId }));
   for (const item of cartLines) quantities.set(String(item.productId?._id || item.productId), (quantities.get(String(item.productId?._id || item.productId)) || 0) + Number(item.quantity));
   const products = new Map();
   for (const [productId, quantity] of quantities) {
@@ -115,7 +121,9 @@ const createOrder = async (userId, { items, shippingAddress, note, paymentMethod
     const payment = await paymentService.createPayment(order, paymentMethod);
     order.paymentReference = payment.paymentReference;
     const transfer = paymentMethod === 'BANK_TRANSFER' ? paymentService.transferDetails(payment) : null;
-    await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
+    if (!isBuyNow) {
+      await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
+    }
     return { order: await order.populate('userId', 'fullName email'), payment: { paymentReference: payment.paymentReference, paymentMethod, paymentStatus: payment.paymentStatus, transfer } };
   } catch (error) {
     if (order) { await Payment.deleteMany({ orderId: order._id }); await Order.deleteOne({ _id: order._id }); }

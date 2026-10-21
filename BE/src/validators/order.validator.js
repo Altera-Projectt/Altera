@@ -4,6 +4,7 @@ const { handleValidationErrors } = require('./auth.validator');
 const createOrderValidator = [
   body('paymentMethod').optional().isIn(['COD', 'BANK_TRANSFER', 'MOMO']).withMessage('Phương thức thanh toán không hợp lệ'),
   body('checkoutKey').optional().isUUID().withMessage('Mã thanh toán không hợp lệ'),
+  body('isBuyNow').optional().isBoolean().withMessage('Trạng thái mua ngay không hợp lệ'),
   body('items')
     .isArray({ min: 1 }).withMessage('Đơn hàng phải có ít nhất một sản phẩm'),
 
@@ -13,6 +14,9 @@ const createOrderValidator = [
 
   body('items.*.cartItemId')
     .optional().isMongoId().withMessage('ID mục giỏ hàng không hợp lệ'),
+
+  body('items.*.marketplaceDesignId')
+    .optional({ nullable: true }).isMongoId().withMessage('ID thiết kế không hợp lệ'),
 
   body('items.*.quantity')
     .notEmpty().withMessage('Số lượng không được để trống')

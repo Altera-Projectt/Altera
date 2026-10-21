@@ -28,8 +28,7 @@ const expireAttempt = async (payment, session) => {
 };
 
 const assertConfigured = (method) => {
-  if (method !== 'COD' && env.NODE_ENV === 'production' && env.PAYMENT_ENV !== 'production') throw paymentError('Online payments are disabled until PAYMENT_ENV=production is configured.', 503);
-  if (method === 'BANK_TRANSFER' && !(env.BANK_CODE && env.BANK_ACCOUNT_NUMBER && env.BANK_ACCOUNT_NAME && env.PAYMENT_WEBHOOK_TOKEN)) throw paymentError('Bank transfer is not fully configured on the server.', 503);
+  if (method === 'MOMO' && env.NODE_ENV === 'production' && env.PAYMENT_ENV !== 'production') throw paymentError('Online payments are disabled until PAYMENT_ENV=production is configured.', 503);
   if (method === 'MOMO' && !(env.MOMO_PARTNER_CODE && env.MOMO_ACCESS_KEY && env.MOMO_SECRET_KEY && env.MOMO_IPN_URL)) throw paymentError('MoMo payment is not configured on the server.', 503);
   if (method === 'MOMO' && env.NODE_ENV === 'production' && env.MOMO_ENDPOINT.includes('test-payment.momo.vn')) throw paymentError('Production cannot use the MoMo sandbox endpoint.', 503);
 };
@@ -45,9 +44,13 @@ const createPayment = async (order, method) => {
 };
 
 const transferDetails = (payment) => {
-  assertConfigured('BANK_TRANSFER');
-  const imageUrl = `https://img.vietqr.io/image/${encodeURIComponent(env.BANK_CODE)}-${encodeURIComponent(env.BANK_ACCOUNT_NUMBER)}-compact2.png?amount=${payment.amount}&addInfo=${encodeURIComponent(payment.paymentReference)}&accountName=${encodeURIComponent(env.BANK_ACCOUNT_NAME)}`;
-  return { bankCode: env.BANK_CODE, bankName: env.BANK_NAME || env.BANK_CODE, accountNumber: env.BANK_ACCOUNT_NUMBER, accountName: env.BANK_ACCOUNT_NAME, amount: payment.amount, orderId: payment.orderId, paymentContent: payment.paymentReference, paymentReference: payment.paymentReference, qrCodeUrl: imageUrl, paymentStatus: payment.paymentStatus };
+  const bankCode = env.BANK_CODE || 'MB';
+  const bankName = env.BANK_NAME || 'MBBank';
+  const accountNumber = env.BANK_ACCOUNT_NUMBER || '0384431663';
+  const accountName = env.BANK_ACCOUNT_NAME || 'HUYNH ANH KHOI';
+  const paymentContent = `ALTERA ${payment.paymentReference || String(payment.orderId || '').slice(-8).toUpperCase()}`;
+  const imageUrl = `https://img.vietqr.io/image/${encodeURIComponent(bankCode)}-${encodeURIComponent(accountNumber)}-compact2.png?amount=${payment.amount}&addInfo=${encodeURIComponent(paymentContent)}&accountName=${encodeURIComponent(accountName)}`;
+  return { bankCode, bankName, accountNumber, accountName, amount: payment.amount, orderId: payment.orderId, paymentContent, paymentReference: payment.paymentReference, qrCodeUrl: imageUrl, paymentStatus: payment.paymentStatus };
 };
 
 const createMomoRequest = async (payment) => {

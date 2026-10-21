@@ -2,11 +2,16 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { CheckCircle, Package, MapPin, CreditCard, Truck, ArrowRight, Copy, Clock } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { OrderService, PaymentService } from '@/services/order.api'
 import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
 import type { Order } from '@/types/order.types'
+
+const ADMIN_BANK_ID = import.meta.env.VITE_ADMIN_BANK_ID || 'MB'
+const ADMIN_BANK_ACCOUNT = import.meta.env.VITE_ADMIN_BANK_ACCOUNT || '0384431663'
+const ADMIN_BANK_NAME = import.meta.env.VITE_ADMIN_BANK_NAME || 'HUYNH ANH KHOI'
 
 // ── Helper to format payment method ───────────────────────────────────────
 
@@ -67,8 +72,12 @@ export function OrderSuccessPage() {
         // Handle both { order: Order } and Order directly
         const orderData = (data as any)?.order ?? data
         setOrder(orderData)
-        const paymentResponse = await PaymentService.status(id)
-        setPayment(paymentResponse.data.data)
+        try {
+          const paymentResponse = await PaymentService.status(id)
+          setPayment(paymentResponse.data.data)
+        } catch {
+          // Fallback to order data if payment endpoint is unavailable
+        }
       } catch (err: any) {
         setError(err?.response?.data?.message || 'Không tìm thấy đơn hàng')
       } finally {
@@ -165,6 +174,20 @@ export function OrderSuccessPage() {
   const items: any[] = order.items || (order as any).orderItems || []
   const totalPrice = order.totalPrice ?? (order as any).totalAmount ?? 0
   const paymentStatus = payment?.paymentStatus || (order as any).paymentStatus || 'PENDING'
+  const orderCode = payment?.paymentReference || (order as any).paymentReference || order._id?.slice(-8).toUpperCase() || ''
+
+  const transferInfo =
+    payment?.transfer ||
+    (order.paymentMethod === 'BANK_TRANSFER'
+      ? {
+          bankName: `${ADMIN_BANK_ID} (MBBank)`,
+          accountNumber: ADMIN_BANK_ACCOUNT,
+          accountName: ADMIN_BANK_NAME,
+          amount: totalPrice,
+          paymentContent: `ALTERA ${orderCode}`,
+          qrCodeUrl: `https://img.vietqr.io/image/${encodeURIComponent(ADMIN_BANK_ID)}-${encodeURIComponent(ADMIN_BANK_ACCOUNT)}-compact2.png?amount=${totalPrice}&addInfo=${encodeURIComponent(`ALTERA ${orderCode}`)}&accountName=${encodeURIComponent(ADMIN_BANK_NAME)}`,
+        }
+      : null)
 
   const headlineText =
     order.paymentMethod === 'COD'
@@ -355,18 +378,18 @@ export function OrderSuccessPage() {
           </div>
 
           {/* ── Bank transfer QR block ── */}
-          {payment?.transfer && paymentStatus !== 'PAID' && (
+          {transferInfo && paymentStatus !== 'PAID' && (
             <div className="border-t border-[var(--color-border)] p-6">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-5">
-                Thanh toán chuyển khoản
+                Thanh toán chuyển khoản (VietQR)
               </p>
               <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6">
                 {/* QR Code with premium glow border */}
                 <div className="shrink-0">
-                  <div className="p-1 rounded-[var(--radius-lg)] bg-white shadow-[0_0_30px_rgba(255,255,255,0.08)] border border-white/10">
+                  <div className="p-1.5 rounded-[var(--radius-lg)] bg-white shadow-[0_0_30px_rgba(6,182,212,0.12)] border border-cyan-400/30">
                     <img
-                      src={payment.transfer.qrCodeUrl}
-                      alt="VietQR payment code"
+                      src={transferInfo.qrCodeUrl}
+                      alt="Mã QR thanh toán VietQR"
                       className="h-48 w-48 rounded-[var(--radius-md)] object-contain"
                     />
                   </div>
@@ -379,18 +402,22 @@ export function OrderSuccessPage() {
                 <div className="space-y-3 text-sm flex-1">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-0.5">
-                      Ngân hàng
+                      Ngân hàng thụ hưởng
                     </p>
-                    <p className="font-bold text-[var(--color-foreground)]">{payment.transfer.bankName}</p>
+                    <p className="font-bold text-[var(--color-foreground)]">{transferInfo.bankName}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-0.5">
-                      Số tài khoản
+                      Số tài khoản (ALTERA Admin)
                     </p>
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-[var(--color-foreground)] font-mono">{payment.transfer.accountNumber}</p>
+                      <p className="font-bold text-cyan-400 font-mono">{transferInfo.accountNumber}</p>
                       <button
-                        onClick={() => navigator.clipboard.writeText(payment.transfer.accountNumber)}
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(transferInfo.accountNumber)
+                          toast.success('Đã sao chép số tài khoản')
+                        }}
                         className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
                       >
                         <Copy className="h-3 w-3" />
@@ -399,24 +426,28 @@ export function OrderSuccessPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-0.5">
-                      Tên tài khoản
+                      Tên chủ tài khoản
                     </p>
-                    <p className="font-bold text-[var(--color-foreground)]">{payment.transfer.accountName}</p>
+                    <p className="font-bold text-[var(--color-foreground)]">{transferInfo.accountName}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-0.5">
-                      Số tiền
+                      Số tiền chuyển khoản
                     </p>
-                    <p className="font-bold text-[var(--color-foreground)]">{formatVND(payment.transfer.amount)}</p>
+                    <p className="font-bold text-[var(--color-foreground)]">{formatVND(transferInfo.amount)}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-0.5">
                       Nội dung chuyển khoản
                     </p>
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-[var(--color-foreground)] font-mono text-xs">{payment.transfer.paymentContent}</p>
+                      <p className="font-bold text-cyan-400 font-mono text-xs">{transferInfo.paymentContent}</p>
                       <button
-                        onClick={() => navigator.clipboard.writeText(payment.transfer.paymentContent)}
+                        type="button"
+                        onClick={() => {
+                          void navigator.clipboard.writeText(transferInfo.paymentContent)
+                          toast.success('Đã sao chép nội dung chuyển khoản')
+                        }}
                         className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
                       >
                         <Copy className="h-3 w-3" />
@@ -424,8 +455,8 @@ export function OrderSuccessPage() {
                     </div>
                   </div>
                   <p className="text-xs text-[var(--color-warning)] pt-1 flex items-center gap-1.5">
-                    <Clock className="h-3 w-3" />
-                    Đang chờ ngân hàng xác nhận…
+                    <Clock className="h-3 w-3 shrink-0" />
+                    Admin ALTERA sẽ xác nhận đơn hàng ngay sau khi nhận được chuyển khoản.
                   </p>
                 </div>
               </div>
