@@ -174,31 +174,63 @@ exports.listDesigns = async (req, res, next) => {
 
 exports.listUsers = async (req, res, next) => {
   try {
+    const { getEffectiveTier, getDaysRemaining, checkAndExpireUserMembership } = require('../utils/membership');
     const { page, limit, skip } = pagination(req.query);
     const query = {};
     if (req.query.role && ['USER', 'ADMIN'].includes(req.query.role)) query.role = req.query.role;
+    if (req.query.tier && ['FREE', 'PREMIUM', 'PRO'].includes(String(req.query.tier).toUpperCase())) {
+      query.membershipTier = String(req.query.tier).toUpperCase();
+    }
     if (req.query.status === 'active') query.isActive = { $ne: false };
     if (req.query.status === 'inactive') query.isActive = false;
     if (req.query.search) {
       const search = String(req.query.search).slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [{ fullName: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }];
     }
-    const [users, total] = await Promise.all([User.find(query).select('fullName email phone role isActive avatar createdAt').sort({ createdAt: -1 }).skip(skip).limit(limit), User.countDocuments(query)]);
+    const [rawUsers, total] = await Promise.all([
+      User.find(query)
+        .select('fullName email phone role isActive avatar createdAt membershipTier membershipStartedAt membershipExpiresAt isLifetimeMembership membershipStatus')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      User.countDocuments(query),
+    ]);
+
+    const users = await Promise.all(
+      rawUsers.map(async (u) => {
+        await checkAndExpireUserMembership(u);
+        const doc = typeof u.toObject === 'function' ? u.toObject() : { ...u };
+        const effectiveTier = getEffectiveTier(doc);
+        const daysRemaining = getDaysRemaining(doc);
+        return {
+          ...doc,
+          effectiveTier,
+          daysRemaining,
+        };
+      })
+    );
+
     res.json({ success: true, data: { users, pagination: { total, page, limit, totalPages: Math.ceil(total / limit) } } });
   } catch (error) { next(error); }
 };
 
 exports.getUser = async (req, res, next) => {
   try {
+    const { getEffectiveTier, getDaysRemaining, checkAndExpireUserMembership } = require('../utils/membership');
     if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user ID' });
     const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    res.json({ success: true, data: { user } });
+    await checkAndExpireUserMembership(user);
+    const doc = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+    doc.effectiveTier = getEffectiveTier(doc);
+    doc.daysRemaining = getDaysRemaining(doc);
+    res.json({ success: true, data: { user: doc } });
   } catch (error) { next(error); }
 };
 
 exports.updateUser = async (req, res, next) => {
   try {
+    const { getEffectiveTier, getDaysRemaining } = require('../utils/membership');
     if (!validId(req.params.id)) return res.status(400).json({ success: false, message: 'Invalid user ID' });
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
@@ -209,8 +241,37 @@ exports.updateUser = async (req, res, next) => {
     if (req.body.isActive !== undefined && typeof req.body.isActive !== 'boolean') return res.status(400).json({ success: false, message: 'isActive must be a boolean.' });
     if (req.body.fullName !== undefined && (typeof req.body.fullName !== 'string' || req.body.fullName.trim().length < 1 || req.body.fullName.length > 120)) return res.status(400).json({ success: false, message: 'fullName must be between 1 and 120 characters.' });
     for (const field of allowed) if (req.body[field] !== undefined) user[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+
+    // Membership tier manual update by admin
+    if (req.body.isLifetimeMembership === true) {
+      user.isLifetimeMembership = true;
+      user.membershipTier = 'PRO';
+      user.membershipExpiresAt = null;
+      user.membershipStatus = 'ACTIVE';
+    } else if (req.body.isLifetimeMembership === false) {
+      user.isLifetimeMembership = false;
+    }
+
+    if (req.body.membershipTier && ['FREE', 'PREMIUM', 'PRO'].includes(String(req.body.membershipTier).toUpperCase())) {
+      const targetTier = String(req.body.membershipTier).toUpperCase();
+      user.membershipTier = targetTier;
+      if (targetTier === 'FREE') {
+        user.isLifetimeMembership = false;
+        user.membershipExpiresAt = null;
+        user.membershipStatus = 'ACTIVE';
+      } else {
+        const days = Number(req.body.durationDays) || 30;
+        user.membershipStartedAt = new Date();
+        user.membershipExpiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+        user.membershipStatus = 'ACTIVE';
+      }
+    }
+
     await user.save();
-    res.json({ success: true, data: { user } });
+    const doc = typeof user.toObject === 'function' ? user.toObject() : { ...user };
+    doc.effectiveTier = getEffectiveTier(doc);
+    doc.daysRemaining = getDaysRemaining(doc);
+    res.json({ success: true, data: { user: doc } });
   } catch (error) { next(error); }
 };
 
