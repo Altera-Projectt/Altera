@@ -1,6 +1,7 @@
 const designService = require('../services/design.service');
 const designAiService = require('../services/design-ai.service');
 const customDesignUploadService = require('../services/custom-design-upload.service');
+const { enforceAiQuota } = require('../utils/membership');
 
 const uploadCustomImage = async (req, res, next) => {
   try {
@@ -103,6 +104,7 @@ const uploadDesign = async (req, res, next) => {
 
 const generateDesign = async (req, res, next) => {
   try {
+    await enforceAiQuota(req.user);
     // Thay vì gọi trực tiếp service gây nghẽn, ta đưa vào hàng đợi BullMQ
     const { aiQueue } = require('../queues/aiQueue');
     const job = await aiQueue.add('generate-design', {

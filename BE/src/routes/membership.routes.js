@@ -5,6 +5,7 @@ const membership = require('../controllers/membership.controller');
 router.get('/plans', membership.plans);
 router.get('/current', protect, membership.current);
 router.post('/checkout', protect, membership.checkout);
+router.post('/upgrade', protect, membership.upgrade);
 router.get('/payments/history', protect, membership.history);
 router.patch('/admin/payments/:id/verify', protect, restrictTo('ADMIN'), membership.adminVerify);
 module.exports = router;

@@ -9,6 +9,18 @@ export interface User {
   email: string
   authProvider?: 'LOCAL' | 'GOOGLE'
   phone?: string | null
+  membershipTier?: 'FREE' | 'PREMIUM' | 'PRO'
+  effectiveTier?: 'FREE' | 'PREMIUM' | 'PRO'
+  membershipStartedAt?: string | null
+  membershipExpiresAt?: string | null
+  isLifetimeMembership?: boolean
+  daysRemaining?: number | null
+  weeklyAiUsed?: number
+  weeklyPublishedUsed?: number
+  weeklyUsage?: {
+    aiGenerationsUsed: number
+    publishedProductsUsed: number
+  }
   membershipPlanId?: string | null
   membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | 'PENDING'
   membershipStartDate?: string | null

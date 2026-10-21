@@ -105,7 +105,16 @@ async function settle(order, payment, adminId, transactionId) {
     const user = await User.findById(order.userId).session(session);
     const plan = await MembershipPlan.findById(order.membershipPlanId).session(session);
     const start = user.membershipStatus === 'ACTIVE' && user.membershipEndDate > now ? user.membershipEndDate : now;
-    user.membershipPlanId = plan._id; user.membershipStatus = 'ACTIVE'; user.membershipStartDate = now; user.membershipEndDate = addCycle(start, plan.billingCycle); user.membershipAutoRenew = false;
+    const endDate = addCycle(start, plan.billingCycle);
+    const normalizedTier = plan.code === 'PRO_STUDIO' || plan.code === 'PRO' ? 'PRO' : plan.code === 'PREMIUM' ? 'PREMIUM' : 'FREE';
+    user.membershipPlanId = plan._id;
+    user.membershipStatus = 'ACTIVE';
+    user.membershipStartDate = now;
+    user.membershipEndDate = endDate;
+    user.membershipTier = normalizedTier;
+    user.membershipStartedAt = now;
+    user.membershipExpiresAt = endDate;
+    user.membershipAutoRenew = false;
     await user.save({ session }); return { payment: p, membership: user };
   }); } finally { await session.endSession(); }
 }
@@ -199,4 +208,67 @@ async function result(referenceValue, userId) {
   const user = await User.findById(userId).select('membershipStatus membershipPlanId membershipEndDate');
   return { order, payment, membership: user };
 }
-module.exports = { listPlans, current, checkout, vnpayReturn, vnpayIpn, momoIpn, verifyBank, bankWebhook, history, result, formatDate, expireMemberships };
+
+async function upgrade(userId, body = {}) {
+  const { enrichUserResponse } = require('../utils/membership');
+  const rawTier = String(body.tier || '').toUpperCase();
+  const normalizedTier = rawTier === 'PRO_STUDIO' || rawTier === 'PRO' ? 'PRO' : rawTier === 'PREMIUM' ? 'PREMIUM' : null;
+  if (!normalizedTier) {
+    throw fail('Gói hội viên không hợp lệ. Vui lòng chọn PREMIUM hoặc PRO.', 400);
+  }
+
+  await listPlans();
+  const planCode = normalizedTier === 'PRO' ? 'PRO_STUDIO' : 'PREMIUM';
+  const plan = await MembershipPlan.findOne({ code: planCode });
+
+  const user = await User.findById(userId);
+  if (!user) throw fail('Không tìm thấy tài khoản người dùng.', 404);
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const amount = normalizedTier === 'PRO' ? 99000 : 59000;
+  const ref = reference();
+
+  if (plan) {
+    user.membershipPlanId = plan._id;
+    await MembershipOrder.create({
+      userId: user._id,
+      membershipPlanId: plan._id,
+      fullName: user.fullName || 'Hội viên ALTERA',
+      email: user.email,
+      phone: user.phone || '0900000000',
+      amount,
+      paymentMethod: body.paymentMethod || 'BANK_TRANSFER',
+      paymentReference: ref,
+      status: 'SUCCESS',
+      paidAt: now,
+      expiresAt,
+    });
+    await Payment.create({
+      membershipPlanId: plan._id,
+      userId: user._id,
+      paymentMethod: body.paymentMethod || 'BANK_TRANSFER',
+      paymentStatus: 'SUCCESS',
+      amount,
+      currency: 'VND',
+      paymentReference: ref,
+      provider: 'VIETQR',
+      providerOrderId: ref,
+      paidAt: now,
+      expiresAt,
+    });
+  }
+
+  user.membershipTier = normalizedTier;
+  user.membershipStartedAt = now;
+  user.membershipExpiresAt = expiresAt;
+  user.membershipStatus = 'ACTIVE';
+  user.membershipStartDate = now;
+  user.membershipEndDate = expiresAt;
+  await user.save();
+
+  const enrichedUser = await enrichUserResponse(user);
+  return { user: enrichedUser };
+}
+
+module.exports = { listPlans, current, checkout, upgrade, vnpayReturn, vnpayIpn, momoIpn, verifyBank, bankWebhook, history, result, formatDate, expireMemberships };

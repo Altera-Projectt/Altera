@@ -28,6 +28,14 @@ const UserSchema = new mongoose.Schema(
       enum: ['USER', 'ADMIN'],
       default: 'USER',
     },
+    membershipTier: {
+      type: String,
+      enum: ['FREE', 'PREMIUM', 'PRO'],
+      default: 'FREE',
+    },
+    membershipStartedAt: { type: Date, default: null },
+    membershipExpiresAt: { type: Date, default: null },
+    isLifetimeMembership: { type: Boolean, default: false },
     membershipPlanId: { type: mongoose.Schema.Types.ObjectId, ref: 'MembershipPlan', default: null },
     membershipStatus: { type: String, enum: ['ACTIVE', 'EXPIRED', 'CANCELLED', 'PENDING'], default: 'ACTIVE' },
     membershipStartDate: { type: Date, default: null },
@@ -98,11 +106,45 @@ UserSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Remove sensitive fields from JSON output
+const getEffectiveTier = (user) => {
+  if (!user) return 'FREE';
+  if (String(user.role || '').toUpperCase() === 'ADMIN' || user.isLifetimeMembership === true) {
+    return 'PRO';
+  }
+  const tier = user.membershipTier || 'FREE';
+  if (tier !== 'FREE') {
+    const expiresAt = user.membershipExpiresAt || user.membershipEndDate;
+    if (expiresAt && new Date() > new Date(expiresAt)) {
+      return 'FREE';
+    }
+    return tier;
+  }
+  return 'FREE';
+};
+
+const getDaysRemaining = (user) => {
+  if (!user) return 0;
+  if (String(user.role || '').toUpperCase() === 'ADMIN' || user.isLifetimeMembership === true) {
+    return null;
+  }
+  const effective = getEffectiveTier(user);
+  if (effective === 'FREE') return 0;
+  const expiresAt = user.membershipExpiresAt || user.membershipEndDate;
+  if (!expiresAt) return 30;
+  const diffMs = new Date(expiresAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+};
+
+UserSchema.statics.getEffectiveTier = getEffectiveTier;
+UserSchema.statics.getDaysRemaining = getDaysRemaining;
+
+// Remove sensitive fields from JSON output and enrich membership fields
 UserSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
   delete obj.__v;
+  obj.effectiveTier = getEffectiveTier(obj);
+  obj.daysRemaining = getDaysRemaining(obj);
   return obj;
 };
 

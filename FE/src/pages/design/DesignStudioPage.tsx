@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Palette,
@@ -13,6 +13,7 @@ import {
   Download,
   ImagePlus,
   Shirt,
+  Crown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -40,6 +41,7 @@ import { optimizeCloudinaryUrl } from '@/utils/format'
 import { CustomDesignTab } from '@/components/studio/CustomDesignTab'
 import { useAiPolling } from '@/hooks/useAiPolling'
 import { useAuthStore } from '@/store/authStore'
+import { AuthService } from '@/services/auth.api'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -351,8 +353,19 @@ function GenerateForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {/* Error banner */}
       {error && (
-        <div className="flex items-center gap-2 border border-[var(--color-error)]/50 bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-[var(--radius-md)] px-3 py-2.5 text-xs">
-          <span className="font-semibold">!</span> {error}
+        <div className="flex flex-col gap-2 border border-[var(--color-error)]/50 bg-[var(--color-error)]/10 text-[var(--color-error)] rounded-[var(--radius-md)] px-3 py-2.5 text-xs">
+          <div className="flex items-start gap-2">
+            <span className="font-semibold">!</span>
+            <span>{error}</span>
+          </div>
+          {(error.toLowerCase().includes('nâng cấp') || error.toLowerCase().includes('gói miễn phí')) && (
+            <Link
+              to="/membership"
+              className="mt-1 inline-flex items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow hover:bg-blue-700 transition"
+            >
+              <Crown className="h-3.5 w-3.5 text-amber-300" /> Nâng cấp gói Hội viên ngay
+            </Link>
+          )}
         </div>
       )}
 
@@ -1212,6 +1225,12 @@ export function DesignStudioPage() {
   }, [])
 
   const token = useAuthStore((state) => state.token)
+  const storeUser = useAuthStore((state) => state.user)
+  const updateUser = useAuthStore((state) => state.updateUser)
+  const effectiveTier = storeUser?.effectiveTier || (storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership ? 'PRO' : storeUser?.membershipTier || 'FREE')
+  const isLifetime = Boolean(storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership)
+  const aiUsed = storeUser?.weeklyUsage?.aiGenerationsUsed ?? 0
+  const publishUsed = storeUser?.weeklyUsage?.publishedProductsUsed ?? 0
   
   const { generateDesign } = useAiPolling({
     onSuccess: (result) => {
@@ -1236,6 +1255,13 @@ export function DesignStudioPage() {
       setIsSaved(false)
       startCooldown()
       setGenerating(false)
+
+      AuthService.getMe()
+        .then((res) => {
+          const fetched = (res.data.data as any)?.user || res.data.data
+          if (fetched) updateUser(fetched)
+        })
+        .catch(() => undefined)
 
       if (result.isBackgroundRemoved) {
         showToast('Ảnh AI đã được tạo và tự động tách nền thành công!', 'success')
@@ -1437,16 +1463,58 @@ export function DesignStudioPage() {
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
       {/* ── Header ── */}
-      <div className="mb-8">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
-          ALTERA — Xưởng thiết kế
-        </p>
-        <h1 className="heading-brand text-4xl md:text-5xl">
-          Phòng Thiết Kế
-        </h1>
-        <p className="mt-3 text-sm text-[var(--color-muted-foreground)] max-w-md">
-          Phác thảo ý tưởng, để AI tạo nên một thiết kế thời trang độc đáo cho bạn.
-        </p>
+      <div className="mb-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+            ALTERA — Xưởng thiết kế
+          </p>
+          <h1 className="heading-brand text-4xl md:text-5xl tracking-normal">
+            Phòng Thiết Kế
+          </h1>
+          <p className="mt-3 text-sm text-[var(--color-muted-foreground)] max-w-md">
+            Phác thảo ý tưởng, để AI tạo nên một thiết kế thời trang độc đáo cho bạn.
+          </p>
+        </div>
+
+        {storeUser && (
+          <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-cyan-400/30 bg-[#0F172A] px-4 py-3 text-xs text-slate-100 shadow-lg">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-[#162038] px-3 py-1 font-bold text-cyan-400">
+              <Crown className="h-3.5 w-3.5 text-amber-400" />
+              {isLifetime
+                ? '👑 ADMIN • PRO VĨNH VIỄN'
+                : effectiveTier === 'PRO'
+                ? `👑 GÓI PRO (Còn ${storeUser.daysRemaining ?? 30} ngày)`
+                : effectiveTier === 'PREMIUM'
+                ? `💎 GÓI PREMIUM (Còn ${storeUser.daysRemaining ?? 30} ngày)`
+                : 'GÓI MIỄN PHÍ'}
+            </span>
+            <span className="text-slate-300">
+              AI tuần này:{' '}
+              <strong className="text-cyan-400">
+                {effectiveTier === 'FREE' ? `${aiUsed} / 1` : 'Không giới hạn'}
+              </strong>
+            </span>
+            <span className="text-slate-600">•</span>
+            <span className="text-slate-300">
+              Đăng bán tuần này:{' '}
+              <strong className="text-cyan-400">
+                {effectiveTier === 'FREE'
+                  ? 'Khóa'
+                  : effectiveTier === 'PREMIUM' && !isLifetime
+                  ? `${publishUsed} / 3`
+                  : 'Không giới hạn'}
+              </strong>
+            </span>
+            {effectiveTier === 'FREE' && (
+              <Link
+                to="/membership"
+                className="ml-1 rounded-lg bg-blue-500 px-3 py-1 font-bold text-slate-100 hover:bg-blue-600 transition"
+              >
+                Nâng cấp VIP
+              </Link>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Tabs ── */}

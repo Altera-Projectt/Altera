@@ -1,6 +1,7 @@
-﻿const { verifyToken } = require('../utils/jwt');
+const { verifyToken } = require('../utils/jwt');
 const User = require('../models/User');
 const logger = require('../utils/logger');
+const { checkAndExpireUserMembership } = require('../utils/membership');
 
 /**
  * Protect route - require valid JWT
@@ -34,6 +35,7 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'This account has been deactivated.' });
     }
 
+    await checkAndExpireUserMembership(user);
     req.user = user;
     next();
   } catch (error) {

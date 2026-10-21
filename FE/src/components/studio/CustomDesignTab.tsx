@@ -5,6 +5,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, FolderO
 import { ProductService } from '@/services/product.api'
 import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
+import { AuthService } from '@/services/auth.api'
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import type { Product } from '@/types/product.types'
@@ -179,7 +180,12 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const navigate = useNavigate()
   const fetchCart = useCartStore((state) => state.fetchCart)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const authenticatedUserId = useAuthStore((state) => state.user?._id)
+  const storeUser = useAuthStore((state) => state.user)
+  const updateUser = useAuthStore((state) => state.updateUser)
+  const authenticatedUserId = storeUser?._id
+  const effectiveTier = storeUser?.effectiveTier || (storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership ? 'PRO' : storeUser?.membershipTier || 'FREE')
+  const isLifetime = Boolean(storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership)
+  const publishUsed = storeUser?.weeklyUsage?.publishedProductsUsed ?? 0
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
   const visibleImageLayers = current.filter((layer) => layer.type === 'image' && layer.visible) as ImageLayer[]
   const selected = current.find((layer) => layer.id === selectedId) ?? null
@@ -570,6 +576,13 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       setDraftError('');
       toast.success(status === 'PUBLISHED' ? 'Đã đăng thiết kế thành công lên Marketplace!' : 'Thiết kế đã được gửi để duyệt.');
       
+      AuthService.getMe()
+        .then((res) => {
+          const fetched = (res.data.data as any)?.user || res.data.data;
+          if (fetched) updateUser(fetched);
+        })
+        .catch(() => undefined);
+
       // Reset form state
       setPublishName('');
       setPublishDescription('');
@@ -603,10 +616,25 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
     } catch (err) { setDraftError(errorMessage(err, 'Không thể tạo bộ sưu tập này.')) } finally { setCreatingCollection(false) }
   }
   const openPublish = async () => {
+    if (!isAuthenticated) {
+      navigate('/auth/login', { state: { from: { pathname: '/design' } } })
+      return
+    }
+    if (effectiveTier === 'FREE') {
+      const msg = 'Tính năng thiết kế 3D Studio và đăng bán sản phẩm chỉ dành cho hội viên Premium (59k/Tháng) và Pro (99k/Tháng). Vui lòng nâng cấp để sử dụng!'
+      setDraftError(msg)
+      toast.error(msg)
+      return
+    }
+    if (effectiveTier === 'PREMIUM' && !isLifetime && publishUsed >= 3) {
+      const msg = 'Gói Premium tối đa đăng bán 3 sản phẩm / tuần (Đã dùng 3/3). Vui lòng nâng cấp lên gói Pro (99k/Tháng) để đăng bán không giới hạn!'
+      setDraftError(msg)
+      toast.error(msg)
+      return
+    }
     setPublishName(draftName || draftNameInput || '')
     setDraftError('')
     setShowPublish(true)
-    if (!isAuthenticated) return
     try {
       const { data: profileResponse } = await DesignService.getMyDesignerProfile()
       const { data: designerResponse } = await DesignService.getDesignerCollections(profileResponse.data.profile.username)
@@ -952,8 +980,22 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   </section> : <div className="grid gap-6 lg:grid-cols-[290px_minmax(300px,1fr)_300px]">
     <aside className="space-y-4 rounded-xl border border-[var(--color-border)] bg-white p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide">Sản phẩm</h2>
-      <div className="flex flex-wrap gap-2"><button onClick={() => void openPublish()} className="flex flex-1 items-center justify-center gap-1 rounded border border-black bg-[#ffebb3] px-2 py-2 text-xs font-bold uppercase tracking-wide">Đăng Studio</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'Thiết kế áo của tôi'); setDraftError(''); setShowDraftName(true) }} className="flex flex-1 items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Lưu nháp</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex flex-1 items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Bản nháp</button></div>
+      <div className="flex flex-wrap gap-2"><button onClick={() => void openPublish()} className="flex flex-1 items-center justify-center gap-1 rounded border border-black bg-[#ffebb3] px-2 py-2 text-xs font-bold uppercase tracking-wide">Đăng Studio</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } if (effectiveTier === 'FREE') { const msg = 'Tính năng thiết kế 3D Studio và lưu phôi áo chỉ dành cho hội viên Premium (59k/Tháng) và Pro (99k/Tháng). Vui lòng nâng cấp để sử dụng!'; setDraftError(msg); toast.error(msg); return; } setDraftNameInput(draftName || 'Thiết kế áo của tôi'); setDraftError(''); setShowDraftName(true) }} className="flex flex-1 items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Lưu nháp</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex flex-1 items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Bản nháp</button></div>
       <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded-lg border border-blue-400/25 bg-[#0F172A] px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-300 hover:bg-[#162038] flex items-center justify-center gap-1.5"><Sparkles size={14} className="text-cyan-400"/>Thư viện mẫu</button>
+      {!showPublish && !showDraftName && draftError && (
+        <div role="status" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 space-y-2">
+          <p>{draftError}</p>
+          {draftError.toLowerCase().includes('nâng cấp') && (
+            <button
+              type="button"
+              onClick={() => navigate('/membership')}
+              className="w-full rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 transition"
+            >
+              Nâng cấp gói Hội viên ngay →
+            </button>
+          )}
+        </div>
+      )}
       {draftId && <p role="status" className="text-xs text-gray-500">{draftStatus === 'saving' ? 'Đang lưu…' : draftStatus === 'saved' ? `Đã lưu · ${draftName}` : draftStatus === 'failed' ? 'Lưu thất bại' : ''}</p>}
       {showPublish && <div role="dialog" aria-modal="true" className="space-y-2 rounded-lg border bg-white p-3"><h3 className="text-sm font-semibold">Đăng lên Marketplace</h3><p className="text-xs text-gray-500">Thiết kế của bạn sẽ xuất hiện trên trang cá nhân và Marketplace.</p><input value={publishName} onChange={(e) => setPublishName(e.target.value)} maxLength={120} className="w-full rounded border px-3 py-2 text-sm" placeholder="Tên thiết kế"/><textarea value={publishDescription} onChange={(e) => setPublishDescription(e.target.value)} maxLength={3000} className="w-full rounded border px-3 py-2 text-sm" placeholder="Mô tả thiết kế"/><select value={publishCollectionId} onChange={(e) => setPublishCollectionId(e.target.value)} className="w-full rounded border px-3 py-2 text-sm"><option value="">Không thuộc bộ sưu tập</option>{publishCollections.map((collection) => <option key={collection._id} value={collection._id}>{collection.name}</option>)}</select><div className="flex gap-2"><input value={newCollectionName} onChange={(e) => setNewCollectionName(e.target.value)} maxLength={80} className="min-w-0 flex-1 rounded border px-3 py-2 text-sm" placeholder="Tên bộ sưu tập mới"/><button type="button" disabled={creatingCollection || !newCollectionName.trim()} onClick={() => void createCollection()} className="rounded border px-3 py-2 text-xs disabled:opacity-40">{creatingCollection ? 'Đang tạo…' : 'Tạo'}</button></div><input value={publishCategory} onChange={(e) => setPublishCategory(e.target.value)} maxLength={80} className="w-full rounded border px-3 py-2 text-sm" placeholder="Danh mục"/><input value={publishTags} onChange={(e) => setPublishTags(e.target.value)} className="w-full rounded border px-3 py-2 text-sm" placeholder="Thẻ (cách nhau bằng dấu phẩy)"/>
 <div className="space-y-1">

@@ -143,10 +143,12 @@ export const useAiPolling = (options?: UseAiPollingOptions): UseAiPollingReturn 
       }, POLL_INTERVAL_MS);
 
     } catch (err: any) {
-      setError(err.message || 'Lỗi mạng khi tạo request');
+      const errMsg = err.message || 'Lỗi mạng khi tạo request';
+      setError(errMsg);
       setIsGenerating(false);
+      if (options?.onError) options.onError(errMsg);
     }
-  }, [clearPollingTimer, pollStatus]);
+  }, [clearPollingTimer, pollStatus, options]);
 
   const reset = useCallback(() => {
     clearPollingTimer();

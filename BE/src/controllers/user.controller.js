@@ -3,12 +3,18 @@ const Order = require('../models/Order');
 const Design = require('../models/Design');
 const OutfitRecommendation = require('../models/OutfitRecommendation');
 const { uploadImage, ensureCloudinaryUrl } = require('../utils/cloudinary');
+const { enrichUserResponse } = require('../utils/membership');
 
-const getProfile = async (req, res) => {
-  res.status(200).json({
-    success: true,
-    data: { user: req.user },
-  });
+const getProfile = async (req, res, next) => {
+  try {
+    const user = await enrichUserResponse(req.user);
+    res.status(200).json({
+      success: true,
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const updateProfile = async (req, res, next) => {
@@ -32,10 +38,11 @@ const updateProfile = async (req, res, next) => {
       updates.avatar = await ensureCloudinaryUrl(req.body.avatar, 'altera/users/avatars');
     }
 
-    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+    const updated = await User.findByIdAndUpdate(req.user._id, updates, {
       new: true,
       runValidators: true,
     });
+    const user = await enrichUserResponse(updated);
 
     res.status(200).json({
       success: true,
@@ -63,7 +70,8 @@ const updateBasic = async (req, res, next) => {
       updates.coverImage = await ensureCloudinaryUrl(req.body.coverImage, 'altera/users/covers');
     }
 
-    const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
+    const updated = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
+    const user = await enrichUserResponse(updated);
     res.status(200).json({ success: true, message: 'Basic profile updated successfully', data: { user } });
   } catch (error) {
     next(error);

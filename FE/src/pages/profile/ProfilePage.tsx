@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/authStore'
 import type { User, UpdateMeasurementsPayload, UpdatePreferencesPayload } from '@/types/user.types'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { User as UserIcon, Camera, Ruler, Scale, Shirt, Footprints, Edit2, Trash2 } from 'lucide-react'
+import { User as UserIcon, Camera, Ruler, Scale, Shirt, Footprints, Edit2, Trash2, Crown, Sparkles } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import api from '@/utils/axios'
 import { toast } from 'sonner'
@@ -207,6 +207,13 @@ export function ProfilePage() {
     )
   }
 
+  const effectiveTier = user.effectiveTier || (user.role?.toUpperCase() === 'ADMIN' || user.isLifetimeMembership ? 'PRO' : user.membershipTier || 'FREE')
+  const isLifetime = Boolean(user.role?.toUpperCase() === 'ADMIN' || user.isLifetimeMembership)
+  const daysRemaining = user.daysRemaining ?? null
+  const formattedExpiry = user.membershipExpiresAt ? new Date(user.membershipExpiresAt).toLocaleDateString('vi-VN') : null
+  const aiUsed = user.weeklyUsage?.aiGenerationsUsed ?? 0
+  const publishUsed = user.weeklyUsage?.publishedProductsUsed ?? 0
+
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
       <input
@@ -229,7 +236,7 @@ export function ProfilePage() {
       />
 
       {/* ── Cinematic Cover & Header ────────────────────────────────── */}
-      <div className="flex flex-col items-center mb-56 md:mb-64 relative">
+      <div className="flex flex-col items-center mb-80 md:mb-96 relative">
         <div className="h-48 md:h-80 w-full bg-black overflow-hidden relative group rounded-xl">
           {user.coverImage ? (
             <img src={optimizeImage(user.coverImage, 1200)} alt="Cover" decoding="async" className="h-full w-full object-cover mix-blend-luminosity opacity-40 transition-transform duration-700 group-hover:scale-105" />
@@ -250,35 +257,117 @@ export function ProfilePage() {
 
         {/* Avatar & Info */}
         <div className="absolute top-[120px] md:top-[220px] flex flex-col items-center w-full z-10 px-4">
-          <div className="group relative h-32 w-32 md:h-48 md:w-48 rounded-full overflow-hidden bg-white shrink-0 border-[6px] border-[var(--color-background)] shadow-lg">
-            {user.avatar ? (
-              <img src={optimizeImage(user.avatar, 400)} alt={user.fullName} decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
-            ) : (
-              <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
-                <UserIcon className="h-16 w-16 opacity-50" />
+          <div className="relative flex flex-col items-center shrink-0">
+            {/* Crown Badge on top of Avatar */}
+            {(effectiveTier === 'PRO' || isLifetime) && (
+              <div
+                title={isLifetime ? 'Vương miện Hoàng Kim — Admin & Pro Vĩnh Viễn' : 'Vương miện Hoàng Kim — Gói Pro VIP'}
+                className="absolute -top-5 z-20 flex items-center justify-center rounded-full bg-[#0F172A] border-2 border-amber-400 p-2 shadow-[0_0_20px_rgba(251,191,36,0.8)]"
+              >
+                <Crown className="w-6 h-6 text-amber-400 fill-amber-400" />
+              </div>
+            )}
+            {effectiveTier === 'PREMIUM' && !isLifetime && (
+              <div
+                title="Vương miện Bạc/Xanh — Gói Premium VIP"
+                className="absolute -top-4 z-20 flex items-center justify-center rounded-full bg-[#0F172A] border-2 border-cyan-400 p-1.5 shadow-[0_0_15px_rgba(34,211,238,0.7)]"
+              >
+                <Crown className="w-5 h-5 text-cyan-400 fill-cyan-400" />
               </div>
             )}
 
             <div
-              onClick={() => avatarInputRef.current?.click()}
-              className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+              className={cn(
+                'group relative h-32 w-32 md:h-48 md:w-48 rounded-full overflow-hidden bg-white shrink-0 transition-all',
+                effectiveTier === 'PRO' || isLifetime
+                  ? 'ring-4 ring-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)] border-4 border-[#060B16]'
+                  : effectiveTier === 'PREMIUM'
+                  ? 'ring-4 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)] border-4 border-[#060B16]'
+                  : 'border-[6px] border-[var(--color-background)] shadow-lg'
+              )}
             >
-              <Camera className="w-8 h-8 text-white" />
+              {user.avatar ? (
+                <img src={optimizeImage(user.avatar, 400)} alt={user.fullName} decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+              ) : (
+                <div className="flex items-center justify-center h-full w-full bg-gray-100 text-gray-400">
+                  <UserIcon className="h-16 w-16 opacity-50" />
+                </div>
+              )}
+
+              <div
+                onClick={() => avatarInputRef.current?.click()}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+              >
+                <Camera className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <h1 className="text-3xl md:text-5xl font-black font-heading uppercase tracking-widest text-[var(--color-foreground)]">{user.fullName}</h1>
-            <div className="text-[var(--color-muted-foreground)] text-[10px] font-bold mt-3 flex items-center justify-center gap-3 flex-wrap uppercase tracking-widest">
+          <div className="mt-6 text-center flex flex-col items-center">
+            <h1 className="text-3xl md:text-5xl font-black font-heading uppercase tracking-normal text-[var(--color-foreground)] flex items-center justify-center gap-2.5">
+              <span>{user.fullName}</span>
+            </h1>
+
+            <div className="text-[var(--color-muted-foreground)] text-[10px] font-bold mt-2.5 flex items-center justify-center gap-3 flex-wrap uppercase tracking-widest">
               <span>{user.email}</span>
-              <span>•</span>
-              <span>Quyền: {user.role}</span>
               <span>•</span>
               <span>{user.location || 'Chưa cập nhật vị trí'}</span>
             </div>
+
+            {/* VIP Membership Badge & Countdown */}
+            <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
+              {isLifetime ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-gradient-to-r from-[#0F172A] via-[#162038] to-[#0F172A] px-4 py-1.5 text-xs font-extrabold tracking-normal text-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)]">
+                  <Crown className="h-4 w-4 text-amber-400 fill-amber-400" />
+                  👑 ADMIN • PRO VĨNH VIỄN
+                </span>
+              ) : effectiveTier === 'PRO' ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-[#0F172A] px-4 py-1.5 text-xs font-extrabold tracking-normal text-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.3)]">
+                  <Crown className="h-4 w-4 text-amber-400 fill-amber-400" />
+                  👑 GÓI PRO • Còn {daysRemaining ?? 30} ngày{formattedExpiry ? ` (Hết hạn: ${formattedExpiry})` : ''}
+                </span>
+              ) : effectiveTier === 'PREMIUM' ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/50 bg-[#0F172A] px-4 py-1.5 text-xs font-extrabold tracking-normal text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.25)]">
+                  <Crown className="h-4 w-4 text-cyan-400 fill-cyan-400" />
+                  💎 GÓI PREMIUM • Còn {daysRemaining ?? 30} ngày{formattedExpiry ? ` (Hết hạn: ${formattedExpiry})` : ''}
+                </span>
+              ) : (
+                <div className="inline-flex flex-wrap items-center justify-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-3.5 py-1 text-xs font-bold tracking-normal text-slate-700">
+                    GÓI MIỄN PHÍ (1 ảnh AI/tuần • Chỉ mua hàng)
+                  </span>
+                  <Link
+                    to="/membership"
+                    className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-3.5 py-1 text-xs font-bold text-white shadow hover:bg-blue-700 transition-colors"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" /> Nâng cấp VIP
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Weekly Quota Usage Bar */}
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5 text-[11px] font-medium">
+              <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
+                Lượt tạo ảnh AI tuần này:{' '}
+                <strong className="text-cyan-400">
+                  {effectiveTier === 'FREE' ? `${aiUsed} / 1` : `Không giới hạn (Đã tạo ${aiUsed})`}
+                </strong>
+              </div>
+              <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
+                Lượt đăng bán tuần này:{' '}
+                <strong className="text-cyan-400">
+                  {effectiveTier === 'FREE'
+                    ? 'Khóa (Cần nâng cấp)'
+                    : effectiveTier === 'PREMIUM' && !isLifetime
+                    ? `${publishUsed} / 3`
+                    : `Không giới hạn (Đã đăng ${publishUsed})`}
+                </strong>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-6 flex gap-3">
+          <div className="mt-5 flex gap-3">
             <Button variant="primary" className="bg-[#0011FF] hover:bg-[#0011FF]/90 text-white uppercase tracking-widest text-xs font-bold px-8 rounded-full h-10" onClick={() => setActiveTab('overview')}>
               Thiết lập
             </Button>

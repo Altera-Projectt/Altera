@@ -11,10 +11,13 @@ import {
   LogOut,
   LayoutDashboard,
   Palette,
+  Crown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { useAuth } from '@/hooks/useAuth'
+import { useAuthStore } from '@/store/authStore'
 import { useCartStore } from '@/store/cartStore'
+import { AuthService } from '@/services/auth.api'
 
 import { cn } from '@/utils/cn'
 import { optimizeCloudinaryUrl } from '@/utils/format'
@@ -53,10 +56,19 @@ export function Navbar() {
     navigate('/')
   }
 
-  // Fetch cart data on mount so badge is in sync globally
+  const effectiveTier = user?.effectiveTier || (isAdmin || user?.isLifetimeMembership ? 'PRO' : user?.membershipTier || 'FREE')
+  const isLifetime = Boolean(isAdmin || user?.isLifetimeMembership)
+
+  // Fetch cart & fresh membership status on mount so badge is in sync globally
   React.useEffect(() => {
     if (isAuthenticated) {
       useCartStore.getState().fetchCart()
+      AuthService.getMe()
+        .then((res) => {
+          const fetchedUser = (res.data.data as any)?.user || res.data.data
+          if (fetchedUser) useAuthStore.getState().updateUser(fetchedUser)
+        })
+        .catch(() => undefined)
     }
   }, [isAuthenticated])
 
@@ -150,15 +162,32 @@ export function Navbar() {
                 size="icon"
                 asChild
                 aria-label={`Tài khoản — ${user?.fullName || user?.email || 'Hồ sơ'}`}
-                className="text-white hover:bg-white/10 hover:text-white ml-2"
+                className="relative text-white hover:bg-white/10 hover:text-white ml-2"
               >
-                <Link to="/profile">
+                <Link to="/profile" className="relative">
+                  {(effectiveTier === 'PRO' || isLifetime) && (
+                    <span className="absolute -top-2 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-[#0F172A] border border-amber-400 shadow">
+                      <Crown className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
+                    </span>
+                  )}
+                  {effectiveTier === 'PREMIUM' && !isLifetime && (
+                    <span className="absolute -top-2 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-[#0F172A] border border-cyan-400 shadow">
+                      <Crown className="h-2.5 w-2.5 text-cyan-400 fill-cyan-400" />
+                    </span>
+                  )}
                   {user?.avatar ? (
                     <img
                       src={optimizeCloudinaryUrl(user.avatar, 120)}
                       alt={user.fullName || 'Avatar'}
                       decoding="async"
-                      className="h-7 w-7 rounded-full object-cover ring-1 ring-white/20"
+                      className={cn(
+                        'h-7 w-7 rounded-full object-cover',
+                        effectiveTier === 'PRO' || isLifetime
+                          ? 'ring-2 ring-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]'
+                          : effectiveTier === 'PREMIUM'
+                          ? 'ring-2 ring-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]'
+                          : 'ring-1 ring-white/20'
+                      )}
                     />
                   ) : (
                     <User className="h-[18px] w-[18px]" />

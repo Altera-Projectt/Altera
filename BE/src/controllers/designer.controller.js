@@ -10,6 +10,7 @@ const User = require('../models/User');
 const Product = require('../models/Product');
 const normalizeDecalTransform = require('../utils/decal-transform');
 const { uploadImage, ensureCloudinaryUrl, sanitizeDesignLayers } = require('../utils/cloudinary');
+const { enforcePublishQuota } = require('../utils/membership');
 const slugify = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const fail = (status, message) => Object.assign(new Error(message), { statusCode: status });
 // No admin moderation yet: designs go live immediately. Set MARKETPLACE_REQUIRE_REVIEW=true to require review.
@@ -248,6 +249,7 @@ exports.deleteCollection = async (req, res, next) => {
 
 exports.createDesign = async (req, res, next) => {
   try {
+    await enforcePublishQuota(req.user);
     console.log("RECEIVED BODY:", { ...req.body, thumbnailBase64: req.body.thumbnailBase64 ? 'BASE64_STRING_PRESENT' : undefined });
     
     const profile = await profileForUser(req.user._id), draft = await CustomDesignDraft.findOne({ _id: req.body.draftId, userId: req.user._id });
