@@ -481,7 +481,7 @@ export function MembershipPage() {
           onClick={() => !upgrading && setUpgradeModalTier(null)}
         >
           <div
-            className="relative w-full max-w-xl rounded-2xl border border-cyan-400/30 bg-[#0F172A] p-6 md:p-8 text-slate-100 shadow-[0_25px_70px_rgba(0,0,0,0.85)]"
+            className="relative w-full max-w-2xl rounded-2xl border border-cyan-400/30 bg-[#0F172A] p-6 md:p-8 text-slate-100 shadow-[0_25px_70px_rgba(0,0,0,0.85)]"
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -508,9 +508,9 @@ export function MembershipPage() {
               Quét mã VietQR bên dưới để thanh toán và mở khóa ngay toàn bộ đặc quyền trong 30 ngày.
             </p>
 
-            <div className="mt-6 grid gap-5 md:grid-cols-[220px_1fr] items-center rounded-xl border border-cyan-400/20 bg-[#0A1122] p-4">
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-6 items-center rounded-xl border border-cyan-400/20 bg-[#0A1122] p-5 overflow-hidden">
               {/* QR Code */}
-              <div className="flex flex-col items-center rounded-xl bg-white p-3 shadow-lg mx-auto">
+              <div className="flex flex-col items-center rounded-xl bg-white p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.4)] mx-auto w-full max-w-[210px]">
                 {loadingTransfer ? (
                   <div className="flex h-44 w-44 flex-col items-center justify-center gap-2 text-slate-600">
                     <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
@@ -523,59 +523,59 @@ export function MembershipPage() {
                     className="h-44 w-44 object-contain"
                   />
                 )}
-                <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-slate-700">
-                  <QrCode className="h-3.5 w-3.5 text-blue-600" /> Quét mã bằng App Ngân hàng
+                <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-slate-700 whitespace-nowrap">
+                  <QrCode className="h-3.5 w-3.5 text-blue-600 shrink-0" /> Quét mã bằng App Ngân hàng
                 </span>
               </div>
 
               {/* Payment details */}
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Gói đăng ký:</span>
-                  <span className="font-bold text-cyan-400">
+              <div className="min-w-0 w-full space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400 shrink-0 whitespace-nowrap">Gói đăng ký:</span>
+                  <span className="font-bold text-cyan-400 text-right whitespace-nowrap">
                     {upgradeModalTier === 'PRO' ? 'GÓI PRO (99k/Tháng)' : 'GÓI PREMIUM (59k/Tháng)'}
                   </span>
                 </div>
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Thời hạn sử dụng:</span>
-                  <span className="font-semibold text-slate-100">30 ngày (1 Tháng)</span>
+                <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400 shrink-0 whitespace-nowrap">Thời hạn sử dụng:</span>
+                  <span className="font-semibold text-slate-100 text-right whitespace-nowrap">30 ngày (1 Tháng)</span>
                 </div>
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Ngân hàng nhận:</span>
-                  <span className="font-semibold text-slate-100">{activeBankName}</span>
+                <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400 shrink-0 whitespace-nowrap">Ngân hàng nhận:</span>
+                  <span className="font-semibold text-slate-100 text-right truncate">{activeBankName}</span>
                 </div>
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Chủ tài khoản:</span>
-                  <span className="font-semibold text-slate-100">{activeAccountName}</span>
+                <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400 shrink-0 whitespace-nowrap">Chủ tài khoản:</span>
+                  <span className="font-semibold text-slate-100 text-right truncate">{activeAccountName}</span>
                 </div>
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Số tài khoản:</span>
+                <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400 shrink-0 whitespace-nowrap">Số tài khoản:</span>
                   <button
                     type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(activeBankAccount);
                       toast.success('Đã sao chép số tài khoản');
                     }}
-                    className="inline-flex items-center gap-1.5 font-mono font-bold text-cyan-400 hover:underline"
+                    className="inline-flex items-center gap-1.5 font-mono font-bold text-cyan-400 hover:underline shrink-0"
                   >
                     {activeBankAccount} <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">Tổng thanh toán:</span>
-                  <span className="text-base font-black text-amber-400">{formatVND(modalPrice)}</span>
+                <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
+                  <span className="text-slate-400 shrink-0 whitespace-nowrap">Tổng thanh toán:</span>
+                  <span className="text-base font-black text-amber-400 text-right whitespace-nowrap">{formatVND(modalPrice)}</span>
                 </div>
-                <div>
-                  <span className="block text-xs text-slate-400 mb-1">Nội dung chuyển khoản (Tự động):</span>
-                  <div className="flex items-center justify-between rounded-lg border border-cyan-400/30 bg-[#162038] px-3 py-1.5 font-mono text-xs font-bold text-cyan-300">
-                    <span className="truncate">{transferContent}</span>
+                <div className="min-w-0">
+                  <span className="block text-xs text-slate-400 mb-1.5">Nội dung chuyển khoản (Tự động):</span>
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-cyan-400/30 bg-[#162038] px-3 py-2 font-mono text-xs font-bold text-cyan-300 w-full min-w-0">
+                    <span className="truncate min-w-0 flex-1">{transferContent}</span>
                     <button
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(transferContent);
                         toast.success('Đã sao chép nội dung chuyển khoản');
                       }}
-                      className="ml-2 text-slate-300 hover:text-white shrink-0"
+                      className="text-slate-300 hover:text-white shrink-0"
                       title="Sao chép nội dung"
                     >
                       <Copy className="h-3.5 w-3.5" />
@@ -588,7 +588,7 @@ export function MembershipPage() {
             <div className="mt-4 flex items-center gap-2 rounded-xl border border-cyan-400/20 bg-[#162038]/60 px-4 py-2.5 text-xs text-slate-300">
               <ShieldCheck className="h-4 w-4 text-cyan-400 shrink-0" />
               <span>
-                Sau khi chuyển khoản thành công, bấm nút xác nhận bên dưới để hệ thống kích hoạt ngay huy hiệu Vương miện & mở khóa giới hạn tuần.
+                Sau khi chuyển khoản thành công, hệ thống sẽ tự động kích hoạt hoặc bạn có thể bấm nút xác nhận bên dưới để mở khóa ngay.
               </span>
             </div>
 
@@ -605,7 +605,7 @@ export function MembershipPage() {
                 type="button"
                 disabled={upgrading}
                 onClick={handleConfirmUpgrade}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-100 shadow-lg shadow-blue-500/30 transition hover:bg-blue-600 disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-100 shadow-[0_0_20px_rgba(59,130,246,0.35)] transition hover:bg-blue-600 disabled:opacity-50"
               >
                 <CheckCircle2 className="h-4 w-4 text-cyan-300" />
                 {upgrading ? 'Đang kích hoạt gói VIP...' : 'Tôi đã chuyển khoản (Kích hoạt ngay)'}
