@@ -1,5 +1,5 @@
 const service = require('../services/membership.service');
-exports.plans = async (_req, res, next) => { try { res.json({ success: true, data: { plans: await service.listPlans() } }); } catch (e) { next(e); } };
+exports.plans = async (_req, res, next) => { try { res.json({ success: true, data: { plans: await service.listPlans(), bankConfig: service.getBankConfig() } }); } catch (e) { next(e); } };
 exports.current = async (req, res, next) => { try { res.json({ success: true, data: { membership: await service.current(req.user._id) } }); } catch (e) { next(e); } };
 exports.checkout = async (req, res, next) => { try { res.status(201).json({ success: true, data: await service.checkout(req.user._id, req.body, req.ip) }); } catch (e) { next(e); } };
 exports.upgrade = async (req, res, next) => { try { res.status(200).json({ success: true, message: 'Nâng cấp gói hội viên thành công!', data: await service.upgrade(req.user._id, req.body) }); } catch (e) { next(e); } };

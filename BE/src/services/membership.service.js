@@ -12,9 +12,34 @@ const plans = [
   { code: 'PRO_STUDIO', name: 'PRO STUDIO', price: 99000, billingCycle: 'MONTHLY', description: 'Dành cho Designer / Creator', features: ['Tất cả quyền lợi Premium', 'Công cụ sáng tạo chuyên nghiệp', 'Ưu tiên hỗ trợ', 'Truy cập sớm tính năng mới'] },
 ];
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
-const reference = () => `ALT-${crypto.randomBytes(8).toString('hex').toUpperCase()}`;
+const reference = () => `ALT${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
 const formatDate = (date) => { const d = new Date(date); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; };
 const addCycle = (date, cycle) => { const result = new Date(date); if (cycle === 'YEARLY') result.setFullYear(result.getFullYear()+1); else result.setMonth(result.getMonth()+1); return result; };
+
+function getBankConfig() {
+  return {
+    bankCode: env.BANK_CODE || 'MB',
+    bankName: env.BANK_NAME || env.BANK_CODE || 'MBBank',
+    accountNumber: env.BANK_ACCOUNT_NUMBER || '0384431663',
+    accountName: env.BANK_ACCOUNT_NAME || 'HUYNH ANH KHOI',
+  };
+}
+
+function buildBankTransfer(plan, ref) {
+  const bank = getBankConfig();
+  const paymentContent = `ALTERA ${plan.code === 'PRO_STUDIO' ? 'PRO' : plan.code} ${ref}`;
+  const qrCodeUrl = `https://img.vietqr.io/image/${encodeURIComponent(bank.bankCode)}-${encodeURIComponent(bank.accountNumber)}-compact2.png?amount=${plan.price}&addInfo=${encodeURIComponent(paymentContent)}&accountName=${encodeURIComponent(bank.accountName)}`;
+  return {
+    bankCode: bank.bankCode,
+    bankName: bank.bankName,
+    accountNumber: bank.accountNumber,
+    accountName: bank.accountName,
+    amount: plan.price,
+    paymentReference: ref,
+    paymentContent,
+    qrCodeUrl,
+  };
+}
 
 async function listPlans() {
   for (const plan of plans) await MembershipPlan.updateOne({ code: plan.code }, { $setOnInsert: plan }, { upsert: true });
@@ -46,19 +71,37 @@ function vnpDate(date) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(date).replace(/\D/g, '');
 }
 async function checkout(userId, body, clientIp = '127.0.0.1') {
-  const plan = await MembershipPlan.findOne({ code: body.planCode, isActive: true });
+  await listPlans();
+  const requestedCode = body.planCode === 'PRO' ? 'PRO_STUDIO' : body.planCode;
+  const plan = await MembershipPlan.findOne({ code: requestedCode, isActive: true });
   if (!plan) throw fail('Invalid membership plan.', 404);
   const user = await User.findById(userId);
   if (!user) throw fail('User not found.', 404);
-  const fullName = String(body.fullName || user.fullName).trim(); const email = String(body.email || user.email).trim().toLowerCase(); const phone = String(body.phone || user.phone || '').trim();
+  const fullName = String(body.fullName || user.fullName || 'Hội viên ALTERA').trim();
+  const email = String(body.email || user.email || '').trim().toLowerCase();
+  const phone = String(body.phone || user.phone || '0900000000').trim();
   if (!fullName || !/^\S+@\S+\.\S+$/.test(email) || !phone) throw fail('Please provide a valid name, email and phone number.');
-  if (user.membershipStatus === 'ACTIVE' && user.membershipPlanId?.toString() === plan._id.toString() && user.membershipEndDate > new Date()) throw fail('You already have this active membership.', 409);
-  const existing = await MembershipOrder.findOne({ userId, membershipPlanId: plan._id, status: 'PENDING', expiresAt: { $gt: new Date() } });
-  if (existing) throw fail(`A payment is already pending for this plan. Reference: ${existing.paymentReference}`, 409);
   if (plan.price === 0) return { free: true, membership: await activateFree(user, plan) };
-  const method = body.paymentMethod;
+  const method = body.paymentMethod || 'BANK_TRANSFER';
   if (!['VNPAY', 'MOMO', 'BANK_TRANSFER'].includes(method)) throw fail('Invalid payment method.');
-  if (method === 'BANK_TRANSFER' && !(env.BANK_CODE && env.BANK_ACCOUNT_NUMBER && env.BANK_ACCOUNT_NAME)) throw fail('Bank transfer is not configured.', 503);
+  const existing = await MembershipOrder.findOne({ userId, membershipPlanId: plan._id, status: 'PENDING', expiresAt: { $gt: new Date() } }).sort({ createdAt: -1 });
+  if (existing) {
+    if (method === 'BANK_TRANSFER') {
+      const existingPayment = await Payment.findOne({ membershipOrderId: existing._id });
+      return {
+        orderId: existing._id,
+        paymentId: existingPayment?._id || null,
+        paymentUrl: null,
+        transfer: buildBankTransfer(plan, existing.paymentReference),
+        paymentReference: existing.paymentReference,
+        status: 'PENDING',
+      };
+    }
+    throw fail(`A payment is already pending for this plan. Reference: ${existing.paymentReference}`, 409);
+  }
+  if (method !== 'BANK_TRANSFER' && user.membershipStatus === 'ACTIVE' && user.membershipPlanId?.toString() === plan._id.toString() && user.membershipEndDate > new Date()) {
+    throw fail('You already have this active membership.', 409);
+  }
   if (method === 'MOMO' && !(env.MOMO_PARTNER_CODE && env.MOMO_ACCESS_KEY && env.MOMO_SECRET_KEY && env.MOMO_IPN_URL)) throw fail('MoMo is not configured.', 503);
   if (method === 'MOMO' && env.NODE_ENV === 'production' && (env.PAYMENT_ENV !== 'production' || env.MOMO_ENDPOINT.includes('test-payment.momo.vn'))) throw fail('MoMo production credentials and endpoint are required.', 503);
   if (method === 'VNPAY' && !(env.VNPAY_TMN_CODE && env.VNPAY_HASH_SECRET && env.VNPAY_URL && env.VNPAY_RETURN_URL && env.VNPAY_IPN_URL)) throw fail('VNPay is not configured.', 503);
@@ -68,8 +111,7 @@ async function checkout(userId, body, clientIp = '127.0.0.1') {
   const payment = await Payment.create({ membershipOrderId: order._id, membershipPlanId: plan._id, userId, paymentMethod: method, paymentStatus: 'PENDING', amount: plan.price, currency: plan.currency, paymentReference: ref, provider: method === 'BANK_TRANSFER' ? 'VIETQR' : method, providerOrderId: ref, expiresAt });
   let paymentUrl = null; let transfer = null;
   if (method === 'BANK_TRANSFER') {
-    if (!(env.BANK_CODE && env.BANK_ACCOUNT_NUMBER && env.BANK_ACCOUNT_NAME)) throw fail('Bank transfer is not configured.', 503);
-    transfer = { bankName: env.BANK_NAME || env.BANK_CODE, accountNumber: env.BANK_ACCOUNT_NUMBER, accountName: env.BANK_ACCOUNT_NAME, amount: plan.price, paymentReference: ref, paymentContent: `ALTERA ${plan.code} ${ref}`, qrCodeUrl: `https://img.vietqr.io/image/${encodeURIComponent(env.BANK_CODE)}-${encodeURIComponent(env.BANK_ACCOUNT_NUMBER)}-compact2.png?amount=${plan.price}&addInfo=${encodeURIComponent(ref)}&accountName=${encodeURIComponent(env.BANK_ACCOUNT_NAME)}` };
+    transfer = buildBankTransfer(plan, ref);
   } else if (method === 'MOMO') {
     if (!(env.MOMO_PARTNER_CODE && env.MOMO_ACCESS_KEY && env.MOMO_SECRET_KEY && env.MOMO_IPN_URL)) throw fail('MoMo is not configured.', 503);
     const requestId = ref; const orderInfo = `ALTERA ${plan.name}`; const redirectUrl = `${env.FRONTEND_URL}/payment/pending?reference=${ref}`; const extraData = '';
@@ -180,7 +222,9 @@ async function verifyBank(orderId, adminId, approved, reason) {
 async function bankWebhook(data, payment) {
   const order = await MembershipOrder.findById(payment.membershipOrderId);
   if (!order || order.status !== 'PENDING') return { duplicate: true };
-  if (Number(data.transferAmount ?? data.amount) !== payment.amount || !String(data.content || '').toUpperCase().includes(payment.paymentReference.toUpperCase())) throw fail('Bank payment amount or reference does not match.');
+  const cleanContent = String(data.content || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const cleanRef = String(payment.paymentReference || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (Number(data.transferAmount ?? data.amount) !== payment.amount || !cleanContent.includes(cleanRef)) throw fail('Bank payment amount or reference does not match.');
   return settle(order, payment, null, String(data.transactionid || data.referencenumber));
 }
 async function history(userId) { return MembershipOrder.find({ userId }).populate('membershipPlanId', 'code name').sort({ createdAt: -1 }).lean(); }
@@ -231,33 +275,48 @@ async function upgrade(userId, body = {}) {
 
   if (plan) {
     user.membershipPlanId = plan._id;
-    const memOrder = await MembershipOrder.create({
-      userId: user._id,
-      membershipPlanId: plan._id,
-      fullName: user.fullName || 'Hội viên ALTERA',
-      email: user.email,
-      phone: user.phone || '0900000000',
-      amount,
-      paymentMethod: body.paymentMethod || 'BANK_TRANSFER',
-      paymentReference: ref,
-      status: 'SUCCESS',
-      paidAt: now,
-      expiresAt,
-    });
-    await Payment.create({
-      membershipOrderId: memOrder._id,
-      membershipPlanId: plan._id,
-      userId: user._id,
-      paymentMethod: body.paymentMethod || 'BANK_TRANSFER',
-      paymentStatus: 'SUCCESS',
-      amount,
-      currency: 'VND',
-      paymentReference: ref,
-      provider: 'VIETQR',
-      providerOrderId: ref,
-      paidAt: now,
-      expiresAt,
-    });
+    const pendingQuery = body.paymentReference
+      ? { userId: user._id, paymentReference: body.paymentReference, status: 'PENDING' }
+      : { userId: user._id, membershipPlanId: plan._id, status: 'PENDING' };
+    const existingOrder = await MembershipOrder.findOne(pendingQuery).sort({ createdAt: -1 });
+    if (existingOrder) {
+      await MembershipOrder.updateOne(
+        { _id: existingOrder._id },
+        { $set: { status: 'SUCCESS', paidAt: now, expiresAt } }
+      );
+      await Payment.updateOne(
+        { membershipOrderId: existingOrder._id },
+        { $set: { paymentStatus: 'SUCCESS', paidAt: now, expiresAt } }
+      );
+    } else {
+      const memOrder = await MembershipOrder.create({
+        userId: user._id,
+        membershipPlanId: plan._id,
+        fullName: user.fullName || 'Hội viên ALTERA',
+        email: user.email,
+        phone: user.phone || '0900000000',
+        amount,
+        paymentMethod: body.paymentMethod || 'BANK_TRANSFER',
+        paymentReference: ref,
+        status: 'SUCCESS',
+        paidAt: now,
+        expiresAt,
+      });
+      await Payment.create({
+        membershipOrderId: memOrder._id,
+        membershipPlanId: plan._id,
+        userId: user._id,
+        paymentMethod: body.paymentMethod || 'BANK_TRANSFER',
+        paymentStatus: 'SUCCESS',
+        amount,
+        currency: 'VND',
+        paymentReference: ref,
+        provider: 'VIETQR',
+        providerOrderId: ref,
+        paidAt: now,
+        expiresAt,
+      });
+    }
   }
 
   user.membershipTier = normalizedTier;
@@ -272,4 +331,4 @@ async function upgrade(userId, body = {}) {
   return { user: enrichedUser };
 }
 
-module.exports = { listPlans, current, checkout, upgrade, vnpayReturn, vnpayIpn, momoIpn, verifyBank, bankWebhook, history, result, formatDate, expireMemberships };
+module.exports = { listPlans, getBankConfig, current, checkout, upgrade, vnpayReturn, vnpayIpn, momoIpn, verifyBank, bankWebhook, history, result, formatDate, expireMemberships };

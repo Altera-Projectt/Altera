@@ -1,18 +1,18 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Crown, QrCode, CheckCircle2, ShieldCheck, X, Copy } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crown, QrCode, CheckCircle2, ShieldCheck, X, Copy, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/store/authStore'
 import { AuthService } from '@/services/auth.api'
-import { MembershipService } from '@/services/membership.api'
+import { MembershipService, type BankConfig, type BankTransferInfo } from '@/services/membership.api'
 import { formatVND } from '@/utils/format'
 
 import homepage2 from '@/assets/homepage2.jpg'
 
-const ADMIN_BANK_ID = import.meta.env.VITE_ADMIN_BANK_ID || 'MB'
-const ADMIN_BANK_NAME = import.meta.env.VITE_ADMIN_BANK_NAME || 'MBBank (Ngân hàng Quân Đội)'
-const ADMIN_BANK_ACCOUNT = import.meta.env.VITE_ADMIN_BANK_ACCOUNT || '0384431663'
-const ADMIN_ACCOUNT_NAME = import.meta.env.VITE_ADMIN_ACCOUNT_NAME || 'HUYNH ANH KHOI'
+const FALLBACK_BANK_ID = import.meta.env.VITE_ADMIN_BANK_ID || 'MB'
+const FALLBACK_BANK_NAME = import.meta.env.VITE_ADMIN_BANK_NAME || 'MBBank'
+const FALLBACK_BANK_ACCOUNT = import.meta.env.VITE_ADMIN_BANK_ACCOUNT || '0384431663'
+const FALLBACK_ACCOUNT_NAME = import.meta.env.VITE_ADMIN_ACCOUNT_NAME || 'HUYNH ANH KHOI'
 
 export function MembershipPage() {
   const navigate = useNavigate();
@@ -24,13 +24,27 @@ export function MembershipPage() {
   const [isHovered, setIsHovered] = useState(false);
   const totalCards = 3;
 
-  // Upgrade modal state
+  // Upgrade modal & Render env bank state
   const [upgradeModalTier, setUpgradeModalTier] = useState<'PREMIUM' | 'PRO' | null>(null);
   const [upgrading, setUpgrading] = useState(false);
+  const [loadingTransfer, setLoadingTransfer] = useState(false);
+  const [bankConfig, setBankConfig] = useState<BankConfig | null>(null);
+  const [transferInfo, setTransferInfo] = useState<BankTransferInfo | null>(null);
 
   const effectiveTier = user?.effectiveTier || (user?.role === 'ADMIN' || user?.isLifetimeMembership ? 'PRO' : user?.membershipTier || 'FREE');
   const isLifetime = Boolean(user?.role === 'ADMIN' || user?.isLifetimeMembership);
   const daysRemaining = user?.daysRemaining ?? null;
+
+  useEffect(() => {
+    // Lấy cấu hình tài khoản ngân hàng từ .env trên Render Backend
+    MembershipService.plans()
+      .then((res) => {
+        if (res.data?.data?.bankConfig) {
+          setBankConfig(res.data.data.bankConfig);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -86,14 +100,63 @@ export function MembershipPage() {
     scrollToIndex(next);
   };
 
-  const handleOpenUpgradeModal = (tier: 'PREMIUM' | 'PRO') => {
+  const handleOpenUpgradeModal = async (tier: 'PREMIUM' | 'PRO') => {
     if (!isAuthenticated) {
       toast.info('Vui lòng đăng nhập để nâng cấp gói hội viên');
       navigate('/auth/login', { state: { from: { pathname: '/membership' } } });
       return;
     }
     setUpgradeModalTier(tier);
+    setTransferInfo(null);
+    setLoadingTransfer(true);
+    try {
+      const planCode = tier === 'PRO' ? 'PRO_STUDIO' : 'PREMIUM';
+      const res = await MembershipService.checkout({
+        planCode,
+        paymentMethod: 'BANK_TRANSFER',
+        fullName: user?.fullName || 'Hội viên ALTERA',
+        email: user?.email,
+        phone: user?.phone || '0900000000',
+      });
+      if (res.data?.data?.transfer) {
+        setTransferInfo(res.data.data.transfer);
+      }
+    } catch {
+      // Nếu lỗi mạng tạm thời, fallback sang bankConfig đã tải từ Render
+    } finally {
+      setLoadingTransfer(false);
+    }
   };
+
+  // Tự động kiểm tra trạng thái thanh toán định kỳ (Auto-polling khi nhận Webhook VietQR)
+  useEffect(() => {
+    const ref = transferInfo?.paymentReference;
+    if (!upgradeModalTier || !ref || upgrading) return;
+
+    let active = true;
+    const timer = window.setInterval(async () => {
+      try {
+        const res = await MembershipService.result(ref);
+        const paymentStatus = res.data?.data?.payment?.paymentStatus;
+        if (active && (paymentStatus === 'SUCCESS' || paymentStatus === 'PAID')) {
+          window.clearInterval(timer);
+          const meRes = await AuthService.getMe();
+          const fetched = (meRes.data.data as any)?.user || meRes.data.data;
+          if (fetched) updateUser(fetched);
+          toast.success(`Thanh toán thành công! Đã tự động kích hoạt gói ${upgradeModalTier}.`);
+          setUpgradeModalTier(null);
+          setTransferInfo(null);
+        }
+      } catch {
+        // Bỏ qua lỗi ngầm trong lúc chờ thanh toán
+      }
+    }, 4000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [upgradeModalTier, transferInfo?.paymentReference, upgrading, updateUser]);
 
   const handleConfirmUpgrade = async () => {
     if (!upgradeModalTier || upgrading) return;
@@ -102,6 +165,7 @@ export function MembershipPage() {
       const res = await MembershipService.upgrade({
         tier: upgradeModalTier,
         paymentMethod: 'BANK_TRANSFER',
+        paymentReference: transferInfo?.paymentReference,
       });
       const updatedUser = res.data.data?.user;
       if (updatedUser) {
@@ -112,6 +176,7 @@ export function MembershipPage() {
           `Chúc mừng! Bạn đã nâng cấp gói ${upgradeModalTier} thành công (Thời hạn 30 ngày).`
       );
       setUpgradeModalTier(null);
+      setTransferInfo(null);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || 'Nâng cấp gói hội viên thất bại. Vui lòng thử lại.');
     } finally {
@@ -119,16 +184,27 @@ export function MembershipPage() {
     }
   };
 
-  const modalPrice = upgradeModalTier === 'PRO' ? 99000 : 59000;
+  const activeBankId = transferInfo?.bankCode || bankConfig?.bankCode || FALLBACK_BANK_ID;
+  const activeBankName = transferInfo?.bankName || bankConfig?.bankName || FALLBACK_BANK_NAME;
+  const activeBankAccount = transferInfo?.accountNumber || bankConfig?.accountNumber || FALLBACK_BANK_ACCOUNT;
+  const activeAccountName = transferInfo?.accountName || bankConfig?.accountName || FALLBACK_ACCOUNT_NAME;
+
+  const modalPrice = transferInfo?.amount ?? (upgradeModalTier === 'PRO' ? 99000 : 59000);
   const cleanUsername = (user?.email?.split('@')[0] || user?.fullName || 'MEMBER')
     .replace(/[^a-zA-Z0-9]/g, '')
     .toUpperCase();
-  const transferContent = upgradeModalTier ? `ALTERA UPGRADE ${upgradeModalTier} ${cleanUsername}` : '';
-  const qrCodeUrl = upgradeModalTier
-    ? `https://img.vietqr.io/image/${ADMIN_BANK_ID}-${ADMIN_BANK_ACCOUNT}-compact2.png?amount=${modalPrice}&addInfo=${encodeURIComponent(
-        transferContent
-      )}&accountName=${encodeURIComponent(ADMIN_ACCOUNT_NAME)}`
-    : '';
+  const transferContent =
+    transferInfo?.paymentContent ||
+    (upgradeModalTier ? `ALTERA ${upgradeModalTier} ${cleanUsername}` : '');
+  const qrCodeUrl =
+    transferInfo?.qrCodeUrl ||
+    (upgradeModalTier
+      ? `https://img.vietqr.io/image/${encodeURIComponent(activeBankId)}-${encodeURIComponent(
+          activeBankAccount
+        )}-compact2.png?amount=${modalPrice}&addInfo=${encodeURIComponent(
+          transferContent
+        )}&accountName=${encodeURIComponent(activeAccountName)}`
+      : '');
 
   return (
     <div className="min-h-screen bg-white text-black overflow-hidden font-body selection:bg-electric-blue selection:text-white pt-24">
@@ -435,11 +511,18 @@ export function MembershipPage() {
             <div className="mt-6 grid gap-5 md:grid-cols-[220px_1fr] items-center rounded-xl border border-cyan-400/20 bg-[#0A1122] p-4">
               {/* QR Code */}
               <div className="flex flex-col items-center rounded-xl bg-white p-3 shadow-lg mx-auto">
-                <img
-                  src={qrCodeUrl}
-                  alt={`Mã VietQR nâng cấp gói ${upgradeModalTier}`}
-                  className="h-44 w-44 object-contain"
-                />
+                {loadingTransfer ? (
+                  <div className="flex h-44 w-44 flex-col items-center justify-center gap-2 text-slate-600">
+                    <Loader2 className="h-7 w-7 animate-spin text-blue-600" />
+                    <span className="text-xs font-medium">Đang tạo mã VietQR...</span>
+                  </div>
+                ) : (
+                  <img
+                    src={qrCodeUrl}
+                    alt={`Mã VietQR nâng cấp gói ${upgradeModalTier}`}
+                    className="h-44 w-44 object-contain"
+                  />
+                )}
                 <span className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-slate-700">
                   <QrCode className="h-3.5 w-3.5 text-blue-600" /> Quét mã bằng App Ngân hàng
                 </span>
@@ -459,23 +542,23 @@ export function MembershipPage() {
                 </div>
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="text-slate-400">Ngân hàng nhận:</span>
-                  <span className="font-semibold text-slate-100">{ADMIN_BANK_NAME}</span>
+                  <span className="font-semibold text-slate-100">{activeBankName}</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="text-slate-400">Chủ tài khoản:</span>
-                  <span className="font-semibold text-slate-100">{ADMIN_ACCOUNT_NAME}</span>
+                  <span className="font-semibold text-slate-100">{activeAccountName}</span>
                 </div>
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="text-slate-400">Số tài khoản:</span>
                   <button
                     type="button"
                     onClick={() => {
-                      navigator.clipboard.writeText(ADMIN_BANK_ACCOUNT);
+                      navigator.clipboard.writeText(activeBankAccount);
                       toast.success('Đã sao chép số tài khoản');
                     }}
                     className="inline-flex items-center gap-1.5 font-mono font-bold text-cyan-400 hover:underline"
                   >
-                    {ADMIN_BANK_ACCOUNT} <Copy className="h-3.5 w-3.5" />
+                    {activeBankAccount} <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
