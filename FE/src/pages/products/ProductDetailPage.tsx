@@ -4,13 +4,14 @@ import { ProductService } from '@/services/product.api'
 import type { Product, ProductColor, ProductSize } from '@/types/product.types'
 import { Button } from '@/components/ui/Button'
 import { formatPrice, optimizeCloudinaryUrl } from '@/utils/format'
-import { Heart } from 'lucide-react'
+import { Heart, Ruler } from 'lucide-react'
 import { CartService } from '@/services/cart.api'
 import { WishlistService } from '@/services/wishlist.api'
 import { useCartStore } from '@/store/cartStore'
 import { useAuthStore } from '@/store/authStore'
 import { cn } from '@/utils/cn'
 import { toast } from 'sonner'
+import { SizeGuideModal } from '@/components/fashion/SizeGuideModal'
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -28,6 +29,7 @@ export function ProductDetailPage() {
   // Variant selections
   const [selectedColor, setSelectedColor] = useState<ProductColor | null>(null)
   const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null)
+  const [showSizeGuide, setShowSizeGuide] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -43,6 +45,10 @@ export function ProductDetailPage() {
         if (productData.colors && productData.colors.length > 0) {
           setSelectedColor(productData.colors[0])
         }
+        if (productData.sizes && productData.sizes.length > 0) {
+          const firstAvail = productData.sizes.find((s: ProductSize) => s.stock > 0) || productData.sizes[0]
+          setSelectedSize(firstAvail)
+        }
       } catch (err: any) {
         setError(err?.response?.data?.message || 'Không thể tải thông tin sản phẩm')
       } finally {
@@ -52,7 +58,7 @@ export function ProductDetailPage() {
     fetchProduct()
   }, [id])
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = async (buyNow = false) => {
     if (adding || !product || product.stock === 0) return
 
     if (product.sizes && product.sizes.length > 0 && !selectedSize) {
@@ -62,6 +68,29 @@ export function ProductDetailPage() {
 
     if (product.colors && product.colors.length > 0 && !selectedColor) {
       toast.error('Vui lòng chọn Màu sắc')
+      return
+    }
+
+    if (buyNow) {
+      const unitPrice = product.discountPrice ?? product.price
+      const buyNowItem = {
+        _id: 'buy-now-' + Date.now(),
+        productId: {
+          _id: product._id,
+          id: product._id,
+          name: product.name,
+          imageUrl: product.imageUrl || product.images?.[0] || '',
+          price: unitPrice,
+          stock: product.stock || 99,
+        },
+        quantity: 1,
+        price: unitPrice,
+        customization: {
+          ...(selectedColor ? { color: selectedColor.name } : {}),
+          ...(selectedSize ? { size: selectedSize.label } : {}),
+        },
+      }
+      navigate('/checkout', { state: { buyNowItem } })
       return
     }
 
@@ -293,9 +322,19 @@ export function ProductDetailPage() {
               <div className="flex items-center justify-between mb-3">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
                   Kích cỡ
+                  {selectedSize && (
+                    <span className="ml-2 font-semibold text-cyan-400">
+                      — Size {selectedSize.label}
+                    </span>
+                  )}
                 </p>
-                <button className="text-[10px] uppercase tracking-widest text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] underline underline-offset-2 transition-colors">
-                  Hướng dẫn chọn size
+                <button
+                  type="button"
+                  onClick={() => setShowSizeGuide(true)}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-cyan-400 hover:text-cyan-300 underline underline-offset-2 transition-colors"
+                >
+                  <Ruler className="h-3.5 w-3.5" />
+                  Bảng số đo &amp; Hướng dẫn chọn size
                 </button>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -369,29 +408,63 @@ export function ProductDetailPage() {
             </div>
           )}
 
-          {/* ── Add to Cart CTA ────────────────────────────────── */}
-          <div className="flex gap-3">
-            <Button
-              variant="primary"
-              size="lg"
-              className="flex-1 tracking-widest font-bold"
-              onClick={handleAddToCart}
-              loading={adding}
-              disabled={adding || product.stock === 0}
+          {/* ── Add to Cart & Buy Now CTA ────────────────────────────────── */}
+          <div className="space-y-3">
+            <div className="flex gap-3">
+              <Button
+                variant="primary"
+                size="lg"
+                className="flex-1 tracking-widest font-bold"
+                onClick={() => void handleAddToCart(false)}
+                loading={adding}
+                disabled={adding || product.stock === 0}
+              >
+                {product.stock === 0 ? 'HẾT HÀNG' : 'THÊM VÀO GIỎ'}
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 tracking-widest font-bold border-cyan-400/50 text-cyan-400 hover:bg-cyan-400/10"
+                onClick={() => void handleAddToCart(true)}
+                disabled={adding || product.stock === 0}
+              >
+                MUA NGAY
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
+                onClick={handleWishlist}
+                disabled={wishlisting}
+                aria-label={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
+              >
+                <Heart className={cn('h-5 w-5 transition-all', isWishlisted ? 'fill-current text-[var(--color-accent)]' : '')} />
+              </Button>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/design')}
+              className="w-full rounded-xl border border-blue-400/25 bg-[#0F172A] px-4 py-3 text-xs font-bold uppercase tracking-widest text-slate-200 transition hover:border-cyan-400/50 hover:text-cyan-400"
             >
-              {product.stock === 0 ? 'HẾT HÀNG' : 'THÊM VÀO GIỎ'}
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-[var(--color-border)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-colors"
-              onClick={handleWishlist}
-              disabled={wishlisting}
-              aria-label={isWishlisted ? 'Xóa khỏi yêu thích' : 'Thêm vào yêu thích'}
-            >
-              <Heart className={cn('h-5 w-5 transition-all', isWishlisted ? 'fill-current text-[var(--color-accent)]' : '')} />
-            </Button>
+              Tùy chỉnh phôi áo này trong 3D Studio &amp; AI →
+            </button>
           </div>
+
+          <SizeGuideModal
+            open={showSizeGuide}
+            onClose={() => setShowSizeGuide(false)}
+            productName={product.name}
+            availableSizes={product.sizes?.map((s: any) => (typeof s === 'string' ? s : s.label))}
+            onSelectSize={(label) => {
+              const found = product.sizes?.find((s: any) =>
+                (typeof s === 'string' ? s : s.label) === label
+              )
+              if (found) {
+                setSelectedSize(typeof found === 'string' ? ({ label: found, stock: 10 } as any) : found)
+                toast.success(`Đã chọn Size ${label}`)
+              }
+            }}
+          />
 
           {/* Description */}
           <div className="mt-8 pt-8 border-t border-[var(--color-border)]">

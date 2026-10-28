@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, FolderOpen, Lock, RotateCw, Save, Search, Sparkles, Trash2, Unlock, Upload, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUp, CheckCircle2, Copy, Eye, EyeOff, FolderOpen, Lock, RotateCw, Ruler, Save, Search, Sparkles, Trash2, Unlock, Upload, X } from 'lucide-react'
+import { SizeGuideModal } from '@/components/fashion/SizeGuideModal'
 import { ProductService } from '@/services/product.api'
 import { DesignService, type CustomDesignDraft, type DesignTemplate, type UploadedCustomImage } from '@/services/design.api'
 import { CartService } from '@/services/cart.api'
@@ -163,6 +164,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const [product, setProduct] = useState<Product | null>(null)
   const [colorName, setColorName] = useState(savedSelection.colorName ?? '')
   const [size, setSize] = useState(savedSelection.size ?? '')
+  const [showSizeGuide, setShowSizeGuide] = useState(false)
   const [printSide, setPrintSide] = useState<'FRONT' | 'BACK' | 'BOTH'>(savedSelection.printSide ?? 'FRONT')
   const [technique, setTechnique] = useState(savedSelection.technique ?? '')
   const [quantity, setQuantity] = useState(savedSelection.quantity ?? 1)
@@ -1007,7 +1009,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       {product && <>
         <p className="text-sm font-semibold">{formatVND(product.discountPrice ?? product.price)} <span className="font-normal text-gray-500">· Kho {stock}</span></p>
         <div><p className="mb-2 text-xs font-medium">Màu sắc</p><div className="flex flex-wrap gap-2">{colors.map((item) => <button key={item.name} disabled={item.stock <= 0} title={item.stock <= 0 ? `${item.name} · Hết hàng` : item.name} aria-label={item.name} onClick={() => setColorName(item.name)} className={`h-8 w-8 rounded-full border-2 disabled:cursor-not-allowed ${item.stock <= 0 ? 'opacity-40' : ''} ${colorName === item.name ? 'border-blue-600 ring-2 ring-blue-200' : 'border-gray-300'}`} style={{ backgroundColor: item.hex }} />)}{colors.length === 0 && <span className="text-xs text-gray-500">Chưa có màu sắc</span>}</div>{selectedColor && <p className="mt-1 text-xs text-gray-500">{selectedColor.name} · {selectedColor.stock} trong kho</p>}</div>
-        <label className="block text-sm">Kích cỡ<select aria-label="Kích cỡ" className="mt-1 w-full rounded border p-2" value={size} onChange={(e) => setSize(e.target.value)}><option value="">Chọn kích cỡ</option>{sizes.map((option) => <option key={option.label} value={option.label} disabled={option.stock <= 0}>{option.label}{option.stock <= 0 ? ' · Hết hàng' : ` · còn ${option.stock}`}</option>)}</select></label>
+        <div><div className="flex items-center justify-between"><span className="text-sm font-medium">Kích cỡ</span><button type="button" onClick={() => setShowSizeGuide(true)} className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:underline"><Ruler size={13}/>Bảng số đo</button></div><select aria-label="Kích cỡ" className="mt-1 w-full rounded border p-2 text-sm" value={size} onChange={(e) => setSize(e.target.value)}><option value="">Chọn kích cỡ</option>{sizes.map((option) => <option key={option.label} value={option.label} disabled={option.stock <= 0}>{option.label}{option.stock <= 0 ? ' · Hết hàng' : ` · còn ${option.stock}`}</option>)}</select></div>
+        <SizeGuideModal open={showSizeGuide} onClose={() => setShowSizeGuide(false)} productName={product?.name || ''} availableSizes={sizes.filter((o) => o.stock > 0).map((o) => o.label)} onSelectSize={(label) => setSize(label)} />
         <div><p className="mb-2 text-xs font-medium">Mặt in</p><div className="grid grid-cols-3 gap-1">{([['FRONT', 'Mặt trước'], ['BACK', 'Mặt sau'], ['BOTH', 'Cả 2 mặt']] as const).map(([value, label]) => <button key={value} onClick={() => { setPrintSide(value); if (value === 'FRONT') setSide('frontDesign'); if (value === 'BACK') setSide('backDesign'); }} className={`rounded border px-1 py-2 text-xs ${printSide === value ? 'bg-black text-white' : ''}`}>{label}</button>)}</div></div>
         <label className="block text-sm">Công nghệ in<select className="mt-1 w-full rounded border p-2" value={technique} onChange={(e) => setTechnique(e.target.value)}><option value="">Chọn công nghệ in</option>{techniques.map((item) => <option key={item.code} value={item.code}>{item.name}</option>)}</select></label>
         <div><p className="mb-2 text-xs font-medium">Số lượng</p><div className="flex items-center gap-3"><button aria-label="Giảm số lượng" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="rounded border px-3 py-1 disabled:opacity-40">−</button><span>{quantity}</span><button aria-label="Tăng số lượng" disabled={quantity >= stock} onClick={() => setQuantity((value) => Math.min(stock, value + 1))} className="rounded border px-3 py-1 disabled:opacity-40">+</button><span className="text-xs text-gray-500">Tối đa {stock}</span></div></div>

@@ -134,11 +134,197 @@ exports.dashboard = async (req, res, next) => {
     const membershipRevenue = membershipPayments.reduce((sum, payment) => sum + payment.amount, 0);
     const revenue = apparelRevenue + membershipRevenue;
     const revenueChart = buildRevenueChart(paymentsByDay, days, now);
+
+    const configuredRate = process.env.DESIGNER_COMMISSION_RATE;
+    const parsedRate = configuredRate === undefined || configuredRate.trim() === '' ? null : Number(configuredRate);
+    const commissionRate = Number.isFinite(parsedRate) && parsedRate >= 0 && parsedRate <= 1 ? parsedRate : 0.05;
+
+    const paidOrderIdsInRange = paidPayments.map((p) => p._id).filter(Boolean);
+    const [orderSellerStatsInRange, orderSellerStatsAllTime, allDesignerProfiles, allMarketplaceDesigns] = await Promise.all([
+      Order.aggregate([
+        {
+          $match: {
+            $or: [
+              { _id: { $in: paidOrderIdsInRange } },
+              { paymentStatus: 'PAID', createdAt: { $gte: since } },
+            ],
+          },
+        },
+        { $unwind: '$items' },
+        { $match: { 'items.designerId': { $ne: null } } },
+        {
+          $group: {
+            _id: '$items.designerId',
+            grossSales: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
+            itemsSold: { $sum: '$items.quantity' },
+            orderIds: { $addToSet: '$_id' },
+          },
+        },
+      ]),
+      Order.aggregate([
+        { $match: { paymentStatus: 'PAID' } },
+        { $unwind: '$items' },
+        { $match: { 'items.designerId': { $ne: null } } },
+        {
+          $group: {
+            _id: '$items.designerId',
+            grossSales: { $sum: { $multiply: ['$items.price', '$items.quantity'] } },
+            itemsSold: { $sum: '$items.quantity' },
+            orderIds: { $addToSet: '$_id' },
+          },
+        },
+      ]),
+      DesignerProfile.find()
+        .populate('userId', 'fullName email avatar membershipTier isLifetimeMembership')
+        .lean(),
+      MarketplaceDesign.find()
+        .select('_id designerId name thumbnail thumbnailUrl category price status salesCount likesCount')
+        .lean(),
+    ]);
+
+    const rangeStatsByDesigner = new Map(
+      orderSellerStatsInRange.map((row) => [
+        String(row._id),
+        {
+          grossSales: Number(row.grossSales || 0),
+          itemsSold: Number(row.itemsSold || 0),
+          ordersCount: Array.isArray(row.orderIds) ? row.orderIds.length : 0,
+        },
+      ])
+    );
+
+    const allTimeStatsByDesigner = new Map(
+      orderSellerStatsAllTime.map((row) => [
+        String(row._id),
+        {
+          grossSales: Number(row.grossSales || 0),
+          itemsSold: Number(row.itemsSold || 0),
+          ordersCount: Array.isArray(row.orderIds) ? row.orderIds.length : 0,
+        },
+      ])
+    );
+
+    const designsByDesigner = new Map();
+    for (const d of allMarketplaceDesigns) {
+      if (!d.designerId) continue;
+      const key = String(d.designerId);
+      if (!designsByDesigner.has(key)) {
+        designsByDesigner.set(key, []);
+      }
+      designsByDesigner.get(key).push(d);
+    }
+
+    const topSellers = allDesignerProfiles
+      .map((profile) => {
+        const key = String(profile._id);
+        const designerDesigns = designsByDesigner.get(key) || [];
+        const publishedList = designerDesigns.filter((d) => d.status === 'PUBLISHED');
+        const catalogItemsSold = publishedList.reduce((sum, d) => sum + Number(d.salesCount || 0), 0);
+        const catalogGrossSales = publishedList.reduce(
+          (sum, d) => sum + Number(d.price || 0) * Number(d.salesCount || 0),
+          0
+        );
+        const totalLikes = publishedList.reduce((sum, d) => sum + Number(d.likesCount || 0), 0);
+
+        const rangeStat = rangeStatsByDesigner.get(key);
+        const allTimeStat = allTimeStatsByDesigner.get(key);
+
+        const effectiveItemsSold = Math.max(
+          rangeStat?.itemsSold || 0,
+          allTimeStat?.itemsSold || 0,
+          catalogItemsSold
+        );
+        const effectiveGrossSales = Math.max(
+          rangeStat?.grossSales || 0,
+          allTimeStat?.grossSales || 0,
+          catalogGrossSales
+        );
+        const effectiveOrdersCount = Math.max(
+          rangeStat?.ordersCount || 0,
+          allTimeStat?.ordersCount || 0,
+          effectiveItemsSold > 0 ? Math.ceil(effectiveItemsSold / 2) : 0
+        );
+
+        const sellerEarnings = Math.round(effectiveGrossSales * commissionRate);
+        const platformFee = Math.max(0, effectiveGrossSales - sellerEarnings);
+
+        const sortedDesigns = [...publishedList].sort(
+          (a, b) => Number(b.salesCount || 0) - Number(a.salesCount || 0)
+        );
+        const bestDesign = sortedDesigns[0] || designerDesigns[0] || null;
+
+        const userObj = profile.userId && typeof profile.userId === 'object' ? profile.userId : null;
+
+        return {
+          designerId: String(profile._id),
+          userId: userObj?._id ? String(userObj._id) : null,
+          displayName: profile.displayName || userObj?.fullName || 'Nhà thiết kế ALTERA',
+          username: profile.username || 'creator',
+          email: userObj?.email || '',
+          avatar: profile.avatarUrl || userObj?.avatar || '',
+          membershipTier: userObj?.isLifetimeMembership
+            ? 'PRO'
+            : String(userObj?.membershipTier || 'FREE').toUpperCase(),
+          totalDesigns: designerDesigns.length,
+          publishedDesigns: publishedList.length,
+          totalLikes,
+          ordersCount: effectiveOrdersCount,
+          itemsSold: effectiveItemsSold,
+          grossSales: effectiveGrossSales,
+          sellerEarnings,
+          platformFee,
+          commissionRate,
+          topDesign: bestDesign
+            ? {
+                _id: String(bestDesign._id),
+                name: bestDesign.name,
+                thumbnail: bestDesign.thumbnailUrl || bestDesign.thumbnail || '',
+                price: Number(bestDesign.price || 0),
+                salesCount: Number(bestDesign.salesCount || 0),
+              }
+            : null,
+        };
+      })
+      .sort((a, b) => {
+        if (b.grossSales !== a.grossSales) return b.grossSales - a.grossSales;
+        if (b.itemsSold !== a.itemsSold) return b.itemsSold - a.itemsSold;
+        return b.publishedDesigns - a.publishedDesigns;
+      })
+      .slice(0, 10);
+
+    const rangeMarketplaceGross = orderSellerStatsInRange.reduce(
+      (sum, row) => sum + Number(row.grossSales || 0),
+      0
+    );
+    const leaderboardGrossTotal = topSellers.reduce((sum, s) => sum + s.grossSales, 0);
+    const marketplaceGrossSales =
+      rangeMarketplaceGross > 0
+        ? rangeMarketplaceGross
+        : Math.min(apparelRevenue > 0 ? apparelRevenue : leaderboardGrossTotal, leaderboardGrossTotal);
+    const sellerRoyaltyPayout = Math.round(marketplaceGrossSales * commissionRate);
+    const platformCommissionFromMarketplace = Math.max(0, marketplaceGrossSales - sellerRoyaltyPayout);
+    const directStudioRevenue = Math.max(0, apparelRevenue - marketplaceGrossSales);
+    const netPlatformRevenue = Math.max(0, revenue - sellerRoyaltyPayout);
+
+    const revenueBreakdown = {
+      totalGmv: revenue,
+      apparelRevenue,
+      membershipRevenue,
+      marketplaceGrossSales,
+      directStudioRevenue,
+      commissionRate,
+      sellerRoyaltyPayout,
+      platformCommissionFromMarketplace,
+      netPlatformRevenue,
+      leaderboardGrossTotal,
+    };
+
     res.json({ success: true, data: {
       totalCustomers, totalUsers, activeUsers,
       designerProfiles, designs, pendingDesigns, approvedDesigns, totalOrders,
       pendingOrders, activeProducts, paidTransactions: paidPayments.length + membershipPayments.length,
       pendingPayments, failedPayments, revenue, apparelRevenue, membershipRevenue,
+      revenueBreakdown, topSellers,
       recentOrders, recentDesigns, revenueByDay: paymentsByDay, revenueChart,
       filters: { days, since: since.toISOString() },
     } });

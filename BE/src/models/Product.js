@@ -5,8 +5,8 @@ const STYLES = ['Oversize', 'Boxy', 'Slim', 'Regular', 'Crop', 'Baby Tee', 'Polo
 const FITS = ['Oversized', 'Boxy', 'Regular', 'Slim', 'Relaxed'];
 const GENDERS = ['Men', 'Women', 'Unisex'];
 const DEFAULT_PRINTING_TECHNIQUES = [
-  { code: 'DTF', name: 'DTF · Direct To Film', price: 80000, additionalSidePrice: 40000, customizationPrice: 0 },
-  { code: 'DTG', name: 'DTG · Direct To Garment', price: 120000, additionalSidePrice: 60000, customizationPrice: 0 },
+  { code: 'DTF', name: 'DTF · Direct To Film', price: 40000, additionalSidePrice: 25000, customizationPrice: 0 },
+  { code: 'DTG', name: 'DTG · Direct To Garment', price: 60000, additionalSidePrice: 35000, customizationPrice: 0 },
 ];
 
 const ProductSchema = new mongoose.Schema(
@@ -88,6 +88,9 @@ const ProductSchema = new mongoose.Schema(
           chest: { type: Number },
           length: { type: Number },
           shoulder: { type: Number },
+          sleeve: { type: Number },
+          recommendedHeight: { type: String },
+          recommendedWeight: { type: String },
         },
       },
     ],

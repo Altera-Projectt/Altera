@@ -4,6 +4,7 @@ const Payment = require('../models/Payment');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const MembershipPlan = require('../models/MembershipPlan');
+const DesignerProfile = require('../models/DesignerProfile');
 const env = require('../config/env');
 const { incrementPaidOrderDesignSales } = require('./marketplace-sales.service');
 
@@ -176,19 +177,140 @@ const listAdminPayments = async ({ status, method, type, search, from, to, page 
   }
   const pageNumber = Math.max(Number.parseInt(page, 10) || 1, 1);
   const pageLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 20, 1), 100);
-  const [payments, total] = await Promise.all([
+  const [payments, total, summaryAgg] = await Promise.all([
     Payment.find(query)
       .populate('userId', 'fullName email')
-      .populate('membershipPlanId', 'name code')
+      .populate('membershipPlanId', 'name code price durationDays')
       .sort({ createdAt: -1 })
       .skip((pageNumber - 1) * pageLimit)
       .limit(pageLimit)
       .lean(),
     Payment.countDocuments(query),
+    Payment.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalOrderPaidRevenue: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$orderId', null] },
+                    { $in: ['$paymentStatus', ['PAID', 'SUCCESS']] },
+                  ],
+                },
+                '$amount',
+                0,
+              ],
+            },
+          },
+          orderPaidCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$orderId', null] },
+                    { $in: ['$paymentStatus', ['PAID', 'SUCCESS']] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          totalMembershipPaidRevenue: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    {
+                      $or: [
+                        { $ne: ['$membershipOrderId', null] },
+                        { $ne: ['$membershipPlanId', null] },
+                      ],
+                    },
+                    { $in: ['$paymentStatus', ['PAID', 'SUCCESS']] },
+                  ],
+                },
+                '$amount',
+                0,
+              ],
+            },
+          },
+          membershipPaidCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    {
+                      $or: [
+                        { $ne: ['$membershipOrderId', null] },
+                        { $ne: ['$membershipPlanId', null] },
+                      ],
+                    },
+                    { $in: ['$paymentStatus', ['PAID', 'SUCCESS']] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          pendingOrderCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ['$orderId', null] },
+                    { $in: ['$paymentStatus', ['PENDING', 'PROCESSING']] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+          pendingMembershipCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    {
+                      $or: [
+                        { $ne: ['$membershipOrderId', null] },
+                        { $ne: ['$membershipPlanId', null] },
+                      ],
+                    },
+                    { $in: ['$paymentStatus', ['PENDING', 'PROCESSING']] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
   ]);
-  const orders = await Order.find({ _id: { $in: payments.map((payment) => payment.orderId).filter(Boolean) } }).populate('userId', 'fullName email').lean();
+  const orders = await Order.find({ _id: { $in: payments.map((payment) => payment.orderId).filter(Boolean) } })
+    .populate('userId', 'fullName email')
+    .populate('items.designerId', 'displayName username')
+    .lean();
   const orderById = new Map(orders.map((order) => [String(order._id), order]));
-  return { payments: payments.map((payment) => ({ ...payment, order: orderById.get(String(payment.orderId)) || null })), pagination: { total, page: pageNumber, limit: pageLimit, totalPages: Math.ceil(total / pageLimit) } };
+  const rawSummary = summaryAgg[0] || {};
+  return {
+    payments: payments.map((payment) => ({ ...payment, order: orderById.get(String(payment.orderId)) || null })),
+    summary: {
+      totalOrderPaidRevenue: Number(rawSummary.totalOrderPaidRevenue || 0),
+      orderPaidCount: Number(rawSummary.orderPaidCount || 0),
+      totalMembershipPaidRevenue: Number(rawSummary.totalMembershipPaidRevenue || 0),
+      membershipPaidCount: Number(rawSummary.membershipPaidCount || 0),
+      pendingOrderCount: Number(rawSummary.pendingOrderCount || 0),
+      pendingMembershipCount: Number(rawSummary.pendingMembershipCount || 0),
+    },
+    pagination: { total, page: pageNumber, limit: pageLimit, totalPages: Math.ceil(total / pageLimit) },
+  };
 };
 
 const getPendingAdminPayment = async (orderId, method, session) => {

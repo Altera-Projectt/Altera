@@ -453,8 +453,19 @@ export function OrderSuccessPage() {
                   </div>
                   <p className="text-xs text-[var(--color-warning)] pt-1 flex items-center gap-1.5">
                     <Clock className="h-3 w-3 shrink-0" />
-                    Admin ALTERA sẽ xác nhận đơn hàng ngay sau khi nhận được chuyển khoản.
+                    Hệ thống tự động kiểm tra giao dịch mỗi 5 giây hoặc Admin ALTERA xác nhận ngay khi nhận chuyển khoản.
                   </p>
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={refreshPayment}
+                      className="border-cyan-400/40 text-cyan-400 hover:bg-cyan-400/10"
+                    >
+                      Tôi đã chuyển khoản — Kiểm tra trạng thái ngay
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

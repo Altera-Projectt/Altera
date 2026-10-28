@@ -196,10 +196,14 @@ export function CheckoutPage() {
           <ArrowLeft className="h-3.5 w-3.5" />
           {isBuyNow ? 'Quay lại sản phẩm' : 'Quay lại giỏ hàng'}
         </button>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
-          ALTERA — Thanh toán
+        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-[#162038] px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-400 mb-3">
+          <ShoppingBag className="h-3 w-3" />
+          Thanh toán Đơn hàng Áo thun (Marketplace &amp; Studio 3D)
+        </div>
+        <h1 className="heading-brand text-4xl md:text-5xl tracking-normal">Thanh Toán Đơn Hàng</h1>
+        <p className="mt-2 text-sm text-slate-400">
+          Hoàn tất thông tin nhận hàng và chọn phương thức thanh toán (COD hoặc Chuyển khoản VietQR MBBank).
         </p>
-        <h1 className="heading-brand text-4xl md:text-5xl tracking-normal">Thanh Toán</h1>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -326,30 +330,72 @@ export function CheckoutPage() {
             <div className="rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
 
               {/* Summary header */}
-              <div className="px-6 py-5 border-b border-[var(--color-border)]">
+              <div className="px-6 py-5 border-b border-[var(--color-border)] flex items-center justify-between">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
-                  Tóm tắt đơn hàng
+                  Tóm tắt đơn hàng ({cartItems.reduce((sum, it) => sum + (it.quantity || 1), 0)} sản phẩm)
                 </p>
+                <span className="rounded bg-cyan-400/15 px-2 py-0.5 text-[10px] font-bold text-cyan-400">
+                  Đơn Áo Thun
+                </span>
               </div>
 
               {/* Cart items */}
-              <div className="px-6 py-5 space-y-4 max-h-64 overflow-y-auto scrollbar-none">
+              <div className="px-6 py-5 space-y-4 max-h-72 overflow-y-auto scrollbar-none">
                 {cartItems.map((item) => {
                   const productId = item.productId?._id
                   const visual = resolveCartItemVisual(item)
+                  const isMarketplaceItem = Boolean(item.marketplaceDesignId)
+                  const hasCustomLayers = Boolean(
+                    (item.customization as any)?.frontDesign?.layers?.length ||
+                      (item.customization as any)?.backDesign?.layers?.length ||
+                      item.customization?.printingTechnique
+                  )
+                  const selectedColor =
+                    typeof item.customization?.color === 'object'
+                      ? (item.customization?.color as any)?.name
+                      : item.customization?.color
+                  const selectedSize = item.customization?.size
+                  const selectedTechnique = item.customization?.printingTechnique
+
                   return (
-                    <div key={item._id ?? productId} className="flex items-center gap-3">
+                    <div key={item._id ?? productId} className="flex items-start gap-3 border-b border-blue-400/10 pb-3 last:border-b-0 last:pb-0">
                       <div className="h-14 w-14 flex-shrink-0 rounded-[var(--radius-md)] bg-[#0A1122] border border-[var(--color-border)] overflow-hidden">
                         <CartItemThumbnail item={item} width={160} />
                       </div>
                       <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                              isMarketplaceItem
+                                ? 'bg-cyan-400/15 text-cyan-300 border border-cyan-400/30'
+                                : hasCustomLayers
+                                  ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                                  : 'bg-slate-800 text-slate-300'
+                            }`}
+                          >
+                            {isMarketplaceItem
+                              ? 'Thiết kế Marketplace'
+                              : hasCustomLayers
+                                ? 'Thiết kế 3D Studio'
+                                : 'Phôi Áo Thun'}
+                          </span>
+                        </div>
                         <p className="text-sm font-medium line-clamp-1">{visual.displayName}</p>
                         {visual.subtitle && (
                           <p className="text-[10px] text-[var(--color-muted-foreground)] truncate">{visual.subtitle}</p>
                         )}
-                        <p className="text-xs text-[var(--color-muted-foreground)]">SL: {item.quantity}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          {[
+                            selectedSize ? `Size ${selectedSize}` : null,
+                            selectedColor ? `Màu ${selectedColor}` : null,
+                            selectedTechnique ? `In ${selectedTechnique}` : null,
+                            `SL: ${item.quantity}`,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        </p>
                       </div>
-                      <span className="text-sm font-semibold whitespace-nowrap">
+                      <span className="text-sm font-semibold whitespace-nowrap text-cyan-400">
                         {formatVND((item.price ?? item.productId?.price ?? 0) * item.quantity)}
                       </span>
                     </div>
@@ -360,13 +406,18 @@ export function CheckoutPage() {
               {/* Pricing breakdown */}
               <div className="px-6 py-5 border-t border-[var(--color-border)] space-y-3 text-sm">
                 <div className="flex justify-between text-[var(--color-muted-foreground)]">
-                  <span>Tạm tính</span>
+                  <span>Tạm tính sản phẩm &amp; in ấn</span>
                   <span className="font-medium text-[var(--color-foreground)]">{formatVND(totalPrice)}</span>
                 </div>
                 <div className="flex justify-between text-[var(--color-muted-foreground)]">
-                  <span>Phí vận chuyển</span>
-                  <span>Tính khi xác nhận</span>
+                  <span>Phí vận chuyển toàn quốc</span>
+                  <span className="font-semibold text-cyan-400">Miễn phí (0 ₫)</span>
                 </div>
+                {cartItems.some((it) => Boolean(it.marketplaceDesignId)) && (
+                  <div className="rounded-lg border border-cyan-400/20 bg-[#0A1122] p-2.5 text-[11px] text-slate-300">
+                    Đơn hàng có sản phẩm <strong className="text-cyan-400">Marketplace</strong> — đã bao gồm 5% tiền bản quyền thiết kế trích cho Creator.
+                  </div>
+                )}
               </div>
 
               {/* Total */}

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { LayoutDashboard, CreditCard, Users, LogOut, ChevronLeft, Menu, Shirt, UserRound, Box } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui'
+import logoImg from '@/assets/logo1.png'
 
 const ADMIN_LINKS = [
   { label: 'Tổng quan', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -30,10 +31,33 @@ export function AdminLayout() {
   ))
 
   return (
-    <div className="flex min-h-screen bg-[#060B16] text-slate-100">
-      <aside className={`hidden shrink-0 flex-col border-r border-blue-500/15 bg-[#0A1122] transition-[width] duration-200 md:flex ${sidebarCollapsed ? 'w-[76px]' : 'w-[248px]'}`}>
+    <div className="flex h-screen overflow-hidden bg-[#060B16] text-slate-100">
+      <aside className={`hidden shrink-0 flex-col border-r border-blue-500/15 bg-[#0A1122] transition-[width] duration-200 md:flex sticky top-0 h-screen overflow-y-auto z-30 ${sidebarCollapsed ? 'w-[76px]' : 'w-[248px]'}`}>
         <div className={`flex h-[68px] items-center border-b border-blue-500/15 ${sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-5'}`}>
-          <Link to="/admin" aria-label="Altera Admin" className="min-w-0 font-heading text-sm font-black tracking-[.12em] text-white hover:text-cyan-300 focus-visible:outline-cyan-400"><span className="text-cyan-400">A</span>{!sidebarCollapsed && <><span className="ml-1">ALTERA</span><span className="block pl-5 text-[10px] font-normal tracking-widest text-slate-400">ADMIN</span></>}</Link>
+          <Link
+            to="/admin"
+            aria-label="ALTERA Admin"
+            className="flex min-w-0 items-center gap-2.5 transition-opacity hover:opacity-85 focus-visible:outline-cyan-400"
+          >
+            {sidebarCollapsed ? (
+              <img
+                src="/favicon.png"
+                alt="ALTERA"
+                className="h-8 w-8 object-contain"
+              />
+            ) : (
+              <>
+                <img
+                  src={logoImg}
+                  alt="ALTERA Logo"
+                  className="h-7 w-auto object-contain"
+                />
+                <span className="shrink-0 rounded bg-cyan-400/10 border border-cyan-400/30 px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-cyan-400 uppercase">
+                  Admin
+                </span>
+              </>
+            )}
+          </Link>
           {!sidebarCollapsed && <button type="button" aria-label="Thu gọn thanh điều hướng" onClick={() => setSidebarCollapsed(true)} className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white focus-visible:outline-cyan-400"><ChevronLeft className="h-4 w-4" /></button>}
         </div>
         {sidebarCollapsed && <button type="button" aria-label="Mở rộng thanh điều hướng" onClick={() => setSidebarCollapsed(false)} className="mx-auto mt-3 rounded p-2 text-slate-400 hover:bg-white/10 hover:text-white focus-visible:outline-cyan-400"><Menu className="h-4 w-4" /></button>}
@@ -44,12 +68,17 @@ export function AdminLayout() {
         </div>
       </aside>
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
         <header className="sticky top-0 z-20 flex h-[60px] shrink-0 items-center justify-between gap-3 border-b border-blue-500/15 bg-[#0A1122]/95 px-4 backdrop-blur sm:px-6">
           <div className="flex min-w-0 items-center gap-3">
             <button type="button" aria-label="Mở hoặc đóng điều hướng quản trị" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen((open) => !open)} className="rounded p-2 text-slate-300 hover:bg-white/10 focus-visible:outline-cyan-400 md:hidden"><Menu className="h-5 w-5" /></button>
             {sidebarCollapsed && <button type="button" aria-label="Mở rộng thanh điều hướng" onClick={() => setSidebarCollapsed(false)} className="hidden rounded p-2 text-slate-300 hover:bg-white/10 focus-visible:outline-cyan-400 md:inline-flex"><Menu className="h-5 w-5" /></button>}
-            <Link to="/admin" className="font-heading text-sm font-black tracking-widest text-white md:hidden"><span className="text-cyan-400">A</span> ALTERA ADMIN</Link>
+            <Link to="/admin" className="flex items-center gap-2 md:hidden">
+              <img src={logoImg} alt="ALTERA Logo" className="h-6 w-auto object-contain" />
+              <span className="shrink-0 rounded bg-cyan-400/10 border border-cyan-400/30 px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-cyan-400 uppercase">
+                Admin
+              </span>
+            </Link>
             <div className="hidden min-w-0 items-center gap-2 rounded-full border border-blue-500/20 bg-[#0F172A] px-3 py-2 text-xs text-slate-400 sm:flex sm:w-64 lg:w-[min(32vw,400px)]"><span className="text-base leading-none">⌕</span><span>Tìm kiếm</span></div>
           </div>
           <div className="flex min-w-0 items-center gap-3">

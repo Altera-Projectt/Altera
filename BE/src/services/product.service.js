@@ -5,7 +5,7 @@ const getStylistProducts = async ({ style, gender, season, budget, keyPieces, li
   const normalizedBudget = budget ? Number(budget) : null;
   const query = {
     isActive: true,
-    category: { $in: ['SHIRT', 'PANTS', 'SHOES', 'ACCESSORY'] },
+    category: { $in: ['T-Shirt', 'SHIRT', 'Bag', 'PANTS', 'SHOES', 'ACCESSORY'] },
     ...(normalizedBudget ? { price: { $lte: normalizedBudget } } : {}),
     stock: { $gt: 0 },
   };
@@ -69,7 +69,7 @@ const getStylistProducts = async ({ style, gender, season, budget, keyPieces, li
 
   let products = selectedProducts;
 
-  // Fallback if we still don't have enough products
+  // Fallback if we still don't have enough products within budget
   if (products.length < Number(limit)) {
     const excludeIds = products.map((product) => product._id);
     const fallbackQuery = {
@@ -79,19 +79,36 @@ const getStylistProducts = async ({ style, gender, season, budget, keyPieces, li
       ...(excludeIds.length ? { _id: { $nin: excludeIds } } : {}),
     };
 
-    // Sort by createdAt instead of category/price to randomize slightly if we just fetch fallback
     const fallbackProducts = await Product.find(fallbackQuery)
-      .sort({ createdAt: -1 })
+      .sort({ price: 1, createdAt: -1 })
       .limit(Number(limit) - products.length)
       .lean();
 
     products = [...products, ...fallbackProducts];
   }
 
+  // Secondary fallback: if strict budget was lower than all items, pick the most affordable items
+  if (products.length < Number(limit)) {
+    const excludeIds = products.map((product) => product._id);
+    const affordableProducts = await Product.find({
+      isActive: true,
+      stock: { $gt: 0 },
+      ...(excludeIds.length ? { _id: { $nin: excludeIds } } : {}),
+    })
+      .sort({ price: 1 })
+      .limit(Number(limit) - products.length)
+      .lean();
+
+    products = [...products, ...affordableProducts];
+  }
+
   return products;
 };
 
 const getStylistMarketplaceDesigns = async ({ style, gender, season, budget, keyPieces, limit = 4 } = {}) => {
+  if (MarketplaceDesign.db && MarketplaceDesign.db.readyState !== 1) {
+    return [];
+  }
   const normalizedBudget = budget ? Number(budget) : null;
   const query = {
     status: 'PUBLISHED',
@@ -157,6 +174,20 @@ const getStylistMarketplaceDesigns = async ({ style, gender, season, budget, key
     designs = [...designs, ...fallbackDesigns];
   }
 
+  if (designs.length < Number(limit)) {
+    const excludeIds = designs.map(d => d._id);
+    const affordableDesigns = await MarketplaceDesign.find({
+      status: 'PUBLISHED',
+      ...(excludeIds.length ? { _id: { $nin: excludeIds } } : {}),
+    })
+      .populate('productId')
+      .sort({ price: 1, likesCount: -1 })
+      .limit(Number(limit) - designs.length)
+      .lean();
+
+    designs = [...designs, ...affordableDesigns];
+  }
+
   // Normalize structure to match products for the prompt
   return designs.map(d => ({
     _id: d._id,
@@ -165,8 +196,8 @@ const getStylistMarketplaceDesigns = async ({ style, gender, season, budget, key
     category: d.category || 'T-Shirt',
     price: d.price,
     description: d.description || d.tags?.join(', '),
-    thumbnail: d.thumbnail,
-    imageUrl: (d.productId && Array.isArray(d.productId.images) && d.productId.images.length > 0) ? d.productId.images[0] : (d.productId?.imageUrl || d.thumbnail),
+    thumbnail: d.thumbnailUrl || d.thumbnail,
+    imageUrl: d.thumbnailUrl || d.thumbnail || ((d.productId && Array.isArray(d.productId.images) && d.productId.images.length > 0) ? d.productId.images[0] : d.productId?.imageUrl),
     slug: d.slug
   }));
 };
