@@ -8,48 +8,230 @@ import logoSvg from '@/assets/logo1.png'
 import { MarketplaceService, type MarketplaceDesign } from '@/services/marketplace.api'
 import { formatVND, optimizeCloudinaryUrl } from '@/utils/format'
 
-const TSHIRT_CORE_LINES = [
+type TshirtSizeCode = 'S' | 'M' | 'L' | 'XL' | 'XXL'
+
+interface TshirtSizeSpec {
+  size: TshirtSizeCode
+  badge: string
+  typicalNote: string
+  heightRange: string
+  weightRange: string
+  bustRange: string
+  waistRange: string
+  hipRange: string
+  shirtChest: string
+  shirtLength: string
+  shirtShoulder: string
+  shirtSleeve: string
+}
+
+const ALTERA_SINGLE_SHIRT = {
+  name: 'Áo Thun Cotton Heavyweight 280gsm',
+  spec: '100% Cotton 2 chiều cao cấp · Form Unisex chuẩn ALTERA',
+  price: 179000,
+  badge: 'Phôi chuẩn duy nhất',
+}
+
+const TSHIRT_HERO_HIGHLIGHTS = [
   {
     code: '01',
-    name: 'Áo Thun Boxy Heavyweight 280gsm',
-    spec: '100% Cotton 2 chiều · Form vuông vai trễ',
-    price: 189000,
-    badge: 'Bán chạy #1',
-    chest: '112 – 124 cm',
-    length: '68 – 74 cm',
-    weightRange: '48 – 88 kg',
+    badge: 'Phôi duy nhất',
+    rightLabel: '179.000 ₫',
+    title: 'Áo Thun Cotton Heavyweight 280gsm',
+    spec: '100% Cotton 2 chiều dày dặn · Đứng form Unisex chuẩn ALTERA',
+    to: '/products',
   },
   {
     code: '02',
-    name: 'Áo Thun Oversize Streetwear 240gsm',
-    spec: 'Cotton co giãn · Tay lỡ chuẩn Hàn Quốc',
-    price: 179000,
-    badge: 'Form rộng',
-    chest: '110 – 122 cm',
-    length: '70 – 76 cm',
-    weightRange: '45 – 85 kg',
+    badge: 'Size S – XXL',
+    rightLabel: '45 – 98 kg',
+    title: 'Chọn Size Hoặc Nhập Số Đo 3 Vòng',
+    spec: 'Tự động gợi ý size chuẩn theo chiều cao, cân nặng & 3 vòng',
+    to: '#clip-huong-dan-thiet-ke',
   },
   {
     code: '03',
-    name: 'Áo Thun Regular Fit Supima 220gsm',
-    spec: 'Mềm mịn thoáng khí · Lịch sự hàng ngày',
-    price: 159000,
-    badge: 'Dễ mặc',
-    chest: '98 – 110 cm',
-    length: '66 – 72 cm',
-    weightRange: '45 – 80 kg',
+    badge: '3D & AI Studio',
+    rightLabel: 'Xoay 360°',
+    title: 'Tự Thiết Kế Hình In AI Độc Bản',
+    spec: 'Nhập Prompt tiếng Việt sinh họa tiết, tách nền PNG & ướm 3D',
+    to: '/design',
   },
   {
     code: '04',
-    name: 'Áo Thun Baby Tee Croptop 200gsm',
-    spec: 'Cotton 4 chiều · Ôm nhẹ tôn dáng Y2K',
-    price: 149000,
-    badge: 'Xu hướng',
-    chest: '82 – 94 cm',
-    length: '46 – 52 cm',
-    weightRange: '40 – 62 kg',
+    badge: 'Marketplace',
+    rightLabel: 'Hoa hồng 5%',
+    title: 'Mua Áo Thiết Kế Hoặc Mở Bán',
+    spec: 'Áo hoàn chỉnh từ 219.000 ₫ · Creator nhận 5% bản quyền mỗi đơn',
+    to: '/marketplace',
   },
 ]
+
+const TSHIRT_SIZE_CHART: TshirtSizeSpec[] = [
+  {
+    size: 'S',
+    badge: 'Nhỏ gọn',
+    typicalNote: 'Chuẩn dáng ~1m58 · 52 kg',
+    heightRange: '1m53 – 1m63',
+    weightRange: '45 – 56 kg',
+    bustRange: '80 – 87 cm',
+    waistRange: '64 – 71 cm',
+    hipRange: '84 – 90 cm',
+    shirtChest: '106 cm',
+    shirtLength: '67 cm',
+    shirtShoulder: '49 cm',
+    shirtSleeve: '21 cm',
+  },
+  {
+    size: 'M',
+    badge: 'Phổ biến',
+    typicalNote: 'Chuẩn dáng ~1m70 · 65 kg',
+    heightRange: '1m64 – 1m72',
+    weightRange: '57 – 66 kg',
+    bustRange: '88 – 94 cm',
+    waistRange: '72 – 79 cm',
+    hipRange: '91 – 97 cm',
+    shirtChest: '112 cm',
+    shirtLength: '70 cm',
+    shirtShoulder: '51 cm',
+    shirtSleeve: '22 cm',
+  },
+  {
+    size: 'L',
+    badge: 'Thoải mái',
+    typicalNote: 'Chuẩn dáng ~1m75 · 72 kg',
+    heightRange: '1m73 – 1m78',
+    weightRange: '67 – 76 kg',
+    bustRange: '95 – 101 cm',
+    waistRange: '80 – 87 cm',
+    hipRange: '98 – 104 cm',
+    shirtChest: '118 cm',
+    shirtLength: '73 cm',
+    shirtShoulder: '53 cm',
+    shirtSleeve: '23 cm',
+  },
+  {
+    size: 'XL',
+    badge: 'Form lớn',
+    typicalNote: 'Chuẩn dáng ~1m81 · 82 kg',
+    heightRange: '1m79 – 1m84',
+    weightRange: '77 – 86 kg',
+    bustRange: '102 – 108 cm',
+    waistRange: '88 – 95 cm',
+    hipRange: '105 – 111 cm',
+    shirtChest: '124 cm',
+    shirtLength: '75 cm',
+    shirtShoulder: '55 cm',
+    shirtSleeve: '24 cm',
+  },
+  {
+    size: 'XXL',
+    badge: 'Ngoại cỡ',
+    typicalNote: 'Chuẩn dáng ~1m87 · 92 kg',
+    heightRange: '1m85 – 1m92',
+    weightRange: '87 – 98 kg',
+    bustRange: '109 – 116 cm',
+    waistRange: '96 – 104 cm',
+    hipRange: '112 – 118 cm',
+    shirtChest: '130 cm',
+    shirtLength: '77 cm',
+    shirtShoulder: '57 cm',
+    shirtSleeve: '25 cm',
+  },
+]
+
+const SIZE_ORDER: TshirtSizeCode[] = ['S', 'M', 'L', 'XL', 'XXL']
+
+function parseHeightToCm(raw: string): number | null {
+  const cleaned = raw.trim().toLowerCase().replace(/\s+/g, '')
+  if (!cleaned) return null
+
+  const mMatch = cleaned.match(/^(\d)m(\d{1,2})?$/)
+  if (mMatch) {
+    const meters = Number(mMatch[1])
+    const rest = mMatch[2]
+    if (!rest) return null
+    const cmPart = rest.length === 1 ? Number(rest) * 10 : Number(rest)
+    const total = meters * 100 + cmPart
+    return total >= 135 && total <= 220 ? total : null
+  }
+
+  const numStr = cleaned.replace(/cm$/, '').replace(',', '.')
+  const val = Number(numStr)
+  if (!Number.isFinite(val) || val <= 0) return null
+  if (val < 3) {
+    const total = Math.round(val * 100)
+    return total >= 135 && total <= 220 ? total : null
+  }
+  return val >= 135 && val <= 220 ? Math.round(val) : null
+}
+
+function parseMetricNumber(raw: string, min: number, max: number): number | null {
+  const cleaned = raw.trim().toLowerCase().replace(/(kg|cm|\s)+/g, '').replace(',', '.')
+  if (!cleaned) return null
+  const val = Number(cleaned)
+  if (!Number.isFinite(val) || val < min || val > max) return null
+  return val
+}
+
+function recommendTshirtSize(inputs: {
+  height: string
+  weight: string
+  bust: string
+  waist: string
+  hip: string
+}): TshirtSizeCode | null {
+  const indices: number[] = []
+
+  const h = parseHeightToCm(inputs.height)
+  if (h !== null) {
+    if (h <= 163) indices.push(0)
+    else if (h <= 172) indices.push(1)
+    else if (h <= 178) indices.push(2)
+    else if (h <= 184) indices.push(3)
+    else indices.push(4)
+  }
+
+  const w = parseMetricNumber(inputs.weight, 35, 145)
+  if (w !== null) {
+    if (w <= 56) indices.push(0)
+    else if (w <= 66) indices.push(1)
+    else if (w <= 76) indices.push(2)
+    else if (w <= 86) indices.push(3)
+    else indices.push(4)
+  }
+
+  const b = parseMetricNumber(inputs.bust, 65, 145)
+  if (b !== null) {
+    if (b <= 87) indices.push(0)
+    else if (b <= 94) indices.push(1)
+    else if (b <= 101) indices.push(2)
+    else if (b <= 108) indices.push(3)
+    else indices.push(4)
+  }
+
+  const wa = parseMetricNumber(inputs.waist, 50, 135)
+  if (wa !== null) {
+    if (wa <= 71) indices.push(0)
+    else if (wa <= 79) indices.push(1)
+    else if (wa <= 87) indices.push(2)
+    else if (wa <= 95) indices.push(3)
+    else indices.push(4)
+  }
+
+  const hi = parseMetricNumber(inputs.hip, 70, 145)
+  if (hi !== null) {
+    if (hi <= 90) indices.push(0)
+    else if (hi <= 97) indices.push(1)
+    else if (hi <= 104) indices.push(2)
+    else if (hi <= 111) indices.push(3)
+    else indices.push(4)
+  }
+
+  if (indices.length === 0) return null
+  const finalIdx = Math.min(SIZE_ORDER.length - 1, Math.max(...indices))
+  return SIZE_ORDER[finalIdx]
+}
 
 const AI_SAMPLE_PROMPTS = [
   {
@@ -136,13 +318,13 @@ const STUDIO_TUTORIAL_STEPS = [
   {
     step: '01',
     time: '00:00 – 00:15',
-    title: 'Chọn Phôi Áo Thun, Màu Sắc & Tra Cứu Bảng Size',
-    desc: 'Lựa chọn dòng phôi áo thun chủ đạo (Boxy 280gsm, Oversize 240gsm, Regular 220gsm), chọn màu vải yêu thích và mở Bảng số đo thông minh để chọn đúng size S / M / L / XL.',
-    badge: 'Bước 01 · Chọn phôi & Bảng size',
+    title: 'Chọn Size Áo Thun Trực Tiếp Hoặc Nhập Số Đo Cơ Thể',
+    desc: 'ALTERA sử dụng 1 dòng phôi Áo Thun Cotton 280gsm chuẩn form duy nhất. Người dùng có thể bấm chọn trực tiếp từng size S, M, L, XL, XXL để xem thông số đo đạc hoặc nhập chiều cao, cân nặng và số đo 3 vòng để hệ thống tự động chọn size phù hợp.',
+    badge: 'Bước 01 · Chọn Size & Số đo 3 vòng',
     highlights: [
-      '12 dòng phôi áo thun Cotton cao cấp chuẩn form',
-      'Gợi ý size tự động theo chiều cao & cân nặng',
-      'Giá phôi chỉ từ 139.000 ₫ – 219.000 ₫',
+      '1 dòng phôi Áo Thun Cotton 280gsm chuẩn form duy nhất',
+      'Nhập chiều cao, cân nặng & 3 vòng tự động chọn size S – XXL',
+      'Bảng đo đạc chi tiết chiều cao, cân nặng, 3 vòng & số đo áo từng size',
     ],
   },
   {
@@ -239,11 +421,36 @@ export function HomePage() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(false)
 
   // Interactive states inside the 4 tutorial steps
-  const [selectedFitIdx, setSelectedFitIdx] = useState(0)
+  const [selectedSizeCode, setSelectedSizeCode] = useState<TshirtSizeCode>('M')
+  const [bodyInputs, setBodyInputs] = useState({
+    height: '1m70',
+    weight: '65',
+    bust: '92',
+    waist: '76',
+    hip: '94',
+  })
   const [selectedPromptIdx, setSelectedPromptIdx] = useState(0)
   const [demoShirtColor, setDemoShirtColor] = useState('#F8FAFC')
   const [demoPrintSide, setDemoPrintSide] = useState<'FRONT' | 'BACK'>('FRONT')
   const [demoDecalLocked, setDemoDecalLocked] = useState(true)
+
+  const handleBodyInputChange = (
+    field: keyof typeof bodyInputs,
+    value: string
+  ) => {
+    const next = { ...bodyInputs, [field]: value }
+    setBodyInputs(next)
+    const autoSize = recommendTshirtSize(next)
+    if (autoSize) {
+      setSelectedSizeCode(autoSize)
+    }
+  }
+
+  const hasAnyBodyInput = Object.values(bodyInputs).some((v) => v.trim() !== '')
+  const recommendedSize = recommendTshirtSize(bodyInputs)
+  const currentSizeSpec =
+    TSHIRT_SIZE_CHART.find((item) => item.size === selectedSizeCode) ??
+    TSHIRT_SIZE_CHART[1]
 
   useEffect(() => {
     let active = true
@@ -269,7 +476,6 @@ export function HomePage() {
 
   const currentClip = STUDIO_TUTORIAL_STEPS[activeTutorialIdx]
   const currentPromptSample = AI_SAMPLE_PROMPTS[selectedPromptIdx]
-  const currentFitSample = TSHIRT_CORE_LINES[selectedFitIdx]
 
   return (
     <div className="min-h-screen bg-white text-black overflow-hidden font-body selection:bg-[#0011FF] selection:text-white">
@@ -309,7 +515,7 @@ export function HomePage() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.8 }}
             >
-              ALTERA chuyên sâu các dòng <strong>Áo Thun Cotton Heavyweight 280gsm (Form Boxy, Oversize, Regular Fit &amp; Baby Tee)</strong>. Tự tay sáng tạo họa tiết bằng AI, ướm thử trên mô hình 3D xoay 360° hoặc chọn mua áo thun giới hạn từ cộng đồng Nhà thiết kế chỉ từ <strong className="text-[#0011FF]">159.000 ₫</strong>.
+              ALTERA tập trung chuyên sâu vào <strong>1 dòng phôi Áo Thun Cotton Heavyweight 280gsm Chuẩn Form Unisex duy nhất (Đủ Size S, M, L, XL, XXL)</strong>. Tự tay sáng tạo họa tiết bằng AI, ướm thử trên mô hình 3D xoay 360°, chọn size theo số đo 3 vòng hoặc đặt mua áo thiết kế độc bản chỉ từ <strong className="text-[#0011FF]">179.000 ₫</strong>.
             </motion.p>
 
             <div className="mt-8 flex flex-wrap gap-3.5">
@@ -340,34 +546,59 @@ export function HomePage() {
           </div>
         </div>
 
-        {/* 4 Core T-Shirt Product Lineup Bar */}
+        {/* 4 Core Highlights of ALTERA's Single Flagship T-Shirt */}
         <div className="w-full max-w-7xl mx-auto mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 relative z-20">
-          {TSHIRT_CORE_LINES.map((line) => (
-            <Link
-              key={line.name}
-              to="/products"
-              className="group rounded-2xl border border-blue-200 bg-[#F5F9FF] p-5 transition-all hover:-translate-y-1 hover:border-[#0011FF] hover:bg-white hover:shadow-xl hover:shadow-blue-600/10"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="rounded-md bg-[#0011FF] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-                  {line.code} · {line.badge}
-                </span>
-                <span className="text-sm font-black text-[#0011FF]">
-                  Từ {formatVND(line.price)}
-                </span>
-              </div>
-              <h2 className="mt-3 text-sm font-extrabold tracking-normal text-blue-950 group-hover:text-[#0011FF]">
-                {line.name}
-              </h2>
-              <p className="mt-1 text-xs text-blue-900/70">{line.spec}</p>
-            </Link>
-          ))}
+          {TSHIRT_HERO_HIGHLIGHTS.map((item) =>
+            item.to.startsWith('#') ? (
+              <a
+                key={item.code}
+                href={item.to}
+                onClick={() => {
+                  setActiveTutorialIdx(0)
+                  setIsAutoPlaying(false)
+                }}
+                className="group rounded-2xl border border-blue-200 bg-[#F5F9FF] p-5 transition-all hover:-translate-y-1 hover:border-[#0011FF] hover:bg-white hover:shadow-xl hover:shadow-blue-600/10"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-md bg-[#0011FF] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                    {item.code} · {item.badge}
+                  </span>
+                  <span className="text-sm font-black text-[#0011FF]">
+                    {item.rightLabel}
+                  </span>
+                </div>
+                <h2 className="mt-3 text-sm font-extrabold tracking-normal text-blue-950 group-hover:text-[#0011FF]">
+                  {item.title}
+                </h2>
+                <p className="mt-1 text-xs text-blue-900/70">{item.spec}</p>
+              </a>
+            ) : (
+              <Link
+                key={item.code}
+                to={item.to}
+                className="group rounded-2xl border border-blue-200 bg-[#F5F9FF] p-5 transition-all hover:-translate-y-1 hover:border-[#0011FF] hover:bg-white hover:shadow-xl hover:shadow-blue-600/10"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="rounded-md bg-[#0011FF] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                    {item.code} · {item.badge}
+                  </span>
+                  <span className="text-sm font-black text-[#0011FF]">
+                    {item.rightLabel}
+                  </span>
+                </div>
+                <h2 className="mt-3 text-sm font-extrabold tracking-normal text-blue-950 group-hover:text-[#0011FF]">
+                  {item.title}
+                </h2>
+                <p className="mt-1 text-xs text-blue-900/70">{item.spec}</p>
+              </Link>
+            )
+          )}
         </div>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
           SECTION 2 — CLIP HƯỚNG DẪN SỬ DỤNG TÍNH NĂNG THIẾT KẾ ÁO THUN 3D & AI
-          + Phần 01: Chọn phôi áo & Bảng size trực quan
+          + Phần 01: 1 Phôi áo duy nhất · Chọn Size hoặc nhập số đo cơ thể & 3 vòng
           + Phần 02: Ô Prompt AI mẫu & Kết quả AI Generate trực quan
           + Phần 03: Mô hình Áo Thun 3D xoay 360° thực tế (ShirtCanvas3D)
           + Phần 04: Gian hàng Marketplace Mini trực quan
@@ -386,7 +617,7 @@ export function HomePage() {
                 Hướng Dẫn Thiết Kế Áo Thun 3D &amp; AI Trong 4 Bước
               </h2>
               <p className="font-rader mt-3 max-w-2xl text-sm md:text-base text-white/90 leading-relaxed">
-                Bấm vào từng phần bên phải hoặc tương tác trực tiếp ngay trong màn hình mô phỏng bên trái: thử chọn Prompt AI mẫu, xoay áo 3D 360° và xem gian hàng Marketplace Mini.
+                Bấm vào từng phần bên phải hoặc tương tác trực tiếp ngay trong màn hình mô phỏng bên trái: thử nhập số đo cơ thể để tìm Size áo, chọn Prompt AI mẫu, xoay áo 3D 360° và xem gian hàng Marketplace Mini.
               </p>
             </div>
 
@@ -422,82 +653,289 @@ export function HomePage() {
 
               {/* Main Interactive Viewport Content (Changes per step 01 / 02 / 03 / 04) */}
               <div className="relative min-h-[430px] md:min-h-[460px] w-full overflow-hidden bg-white text-blue-950 flex flex-col justify-between p-5 md:p-6">
-                {/* ── VIEWPORT PHẦN 01: CHỌN PHÔI ÁO THUN & BẢNG SIZE TRỰC QUAN ── */}
+                {/* ── VIEWPORT PHẦN 01: 1 LOẠI ÁO DUY NHẤT · CHỌN SIZE HOẶC NHẬP SỐ ĐO CƠ THỂ & 3 VÒNG ── */}
                 {activeTutorialIdx === 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center my-auto">
-                    <div className="md:col-span-5 flex flex-col items-center justify-center rounded-2xl bg-[#F4F8FF] border border-blue-200 p-4 relative">
-                      <span className="absolute top-3 left-3 rounded-md bg-[#0011FF] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white">
-                        {currentFitSample.badge}
-                      </span>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch my-auto">
+                    {/* Left: Single Flagship T-Shirt Card */}
+                    <div className="md:col-span-4 flex flex-col items-center justify-between rounded-2xl bg-[#F4F8FF] border border-blue-200 p-4 relative">
+                      <div className="flex w-full items-center justify-between gap-1.5">
+                        <span className="rounded-md bg-[#0011FF] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-white">
+                          {ALTERA_SINGLE_SHIRT.badge}
+                        </span>
+                        <span className="rounded-md border border-[#0011FF] bg-white px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-[#0011FF]">
+                          SIZE {selectedSizeCode}
+                        </span>
+                      </div>
+
                       <img
                         src={homepage0}
-                        alt={currentFitSample.name}
-                        className="h-52 md:h-60 w-auto object-contain drop-shadow-[0_18px_30px_rgba(0,17,255,0.18)]"
+                        alt={ALTERA_SINGLE_SHIRT.name}
+                        className="my-2 h-40 md:h-48 w-auto object-contain drop-shadow-[0_18px_30px_rgba(0,17,255,0.18)]"
                       />
-                      <p className="mt-2 text-xs font-extrabold uppercase text-[#0011FF]">
-                        Giá phôi: {formatVND(currentFitSample.price)}
-                      </p>
+
+                      <div className="w-full rounded-xl border border-blue-100 bg-white p-2.5 text-center">
+                        <p className="text-xs font-extrabold tracking-normal text-blue-950">
+                          {ALTERA_SINGLE_SHIRT.name}
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-blue-900/70">
+                          {ALTERA_SINGLE_SHIRT.spec}
+                        </p>
+                        <p className="mt-1.5 text-xs font-black uppercase text-[#0011FF]">
+                          Giá phôi: {formatVND(ALTERA_SINGLE_SHIRT.price)}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="md:col-span-7 flex flex-col justify-between space-y-4">
+                    {/* Right: Direct Size Picker + Body Measurements Input + Per-Size Detailed Measurements */}
+                    <div className="md:col-span-8 flex flex-col justify-between space-y-3">
+                      {/* 1. Direct Size Buttons (S, M, L, XL, XXL) */}
                       <div>
-                        <p className="text-[11px] font-extrabold uppercase tracking-widest text-[#0011FF]">
-                          BƯỚC 01 · CHỌN DÒNG PHÔI ÁO THUN CHỦ ĐẠO
-                        </p>
-                        <h4 className="mt-1 text-base md:text-lg font-black text-blue-950 tracking-normal">
-                          Click chọn thử 4 dòng phôi Áo Thun ALTERA:
-                        </h4>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        {TSHIRT_CORE_LINES.map((fit, idx) => {
-                          const isSelected = idx === selectedFitIdx
-                          return (
-                            <button
-                              key={fit.code}
-                              type="button"
-                              onClick={() => setSelectedFitIdx(idx)}
-                              className={`rounded-xl border p-3 text-left transition-all ${
-                                isSelected
-                                  ? 'border-[#0011FF] bg-[#0011FF] text-white'
-                                  : 'border-blue-200 bg-[#F5F9FF] text-blue-950 hover:border-[#0011FF]'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between text-[11px] font-bold">
-                                <span>PHÔI {fit.code}</span>
-                                <span>{formatVND(fit.price)}</span>
-                              </div>
-                              <p className="mt-1 text-xs font-extrabold tracking-normal line-clamp-1">
-                                {fit.name}
-                              </p>
-                            </button>
-                          )
-                        })}
-                      </div>
-
-                      {/* Mini Size Measurement Preview */}
-                      <div className="rounded-xl border border-blue-200 bg-[#F4F8FF] p-3.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0011FF]">
-                            THÔNG SỐ BẢNG SIZE ({currentFitSample.name})
-                          </span>
-                          <span className="text-[11px] font-bold text-blue-900/75">
-                            Size S · M · L · XL
+                        <div className="flex flex-wrap items-center justify-between gap-1">
+                          <p className="text-[11px] font-extrabold uppercase tracking-wider text-[#0011FF]">
+                            BƯỚC 01 · CHỌN SIZE ÁO THUN (1 DÒNG PHÔI DUY NHẤT)
+                          </p>
+                          <span className="text-[11px] font-bold text-blue-900/70">
+                            Click chọn Size hoặc nhập số đo bên dưới
                           </span>
                         </div>
-                        <div className="mt-2.5 grid grid-cols-3 gap-2 text-center">
-                          <div className="rounded-lg bg-white p-2 border border-blue-100">
-                            <p className="text-[10px] font-bold uppercase text-blue-900/60">Vòng ngực</p>
-                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">{currentFitSample.chest}</p>
+
+                        <div className="mt-2 grid grid-cols-5 gap-1.5 sm:gap-2">
+                          {TSHIRT_SIZE_CHART.map((item) => {
+                            const isSelected = item.size === selectedSizeCode
+                            const isRecommended = recommendedSize === item.size
+                            return (
+                              <button
+                                key={item.size}
+                                type="button"
+                                onClick={() => setSelectedSizeCode(item.size)}
+                                className={`relative rounded-xl border px-2 py-2 text-center transition-all ${
+                                  isSelected
+                                    ? 'border-[#0011FF] bg-[#0011FF] text-white shadow-md shadow-blue-600/20'
+                                    : 'border-blue-200 bg-[#F5F9FF] text-blue-950 hover:border-[#0011FF]'
+                                }`}
+                              >
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="text-xs sm:text-sm font-black tracking-normal">
+                                    Size {item.size}
+                                  </span>
+                                </div>
+                                <p
+                                  className={`mt-0.5 text-[10px] font-semibold ${
+                                    isSelected ? 'text-white/90' : 'text-blue-900/70'
+                                  }`}
+                                >
+                                  {item.weightRange}
+                                </p>
+                                {isRecommended && (
+                                  <span
+                                    className={`mt-1 inline-block rounded px-1.5 py-0.2 text-[9px] font-extrabold uppercase ${
+                                      isSelected
+                                        ? 'bg-white text-[#0011FF]'
+                                        : 'bg-[#0011FF]/10 text-[#0011FF]'
+                                    }`}
+                                  >
+                                    Phù hợp
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 2. Body Measurements Calculator (Height, Weight & 3 Vòng) */}
+                      <div className="rounded-xl border border-blue-200 bg-[#F4F8FF] p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0011FF]">
+                            NHẬP SỐ LIỆU CƠ THỂ ĐỂ TỰ ĐỘNG CHỌN SIZE
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {recommendedSize ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedSizeCode(recommendedSize)}
+                                className="rounded-md bg-[#0011FF] px-2.5 py-0.5 text-[10px] font-extrabold uppercase text-white transition hover:bg-blue-700"
+                              >
+                                Đề xuất phù hợp: Size {recommendedSize}
+                              </button>
+                            ) : (
+                              <span className="text-[10px] font-bold text-blue-900/65">
+                                Nhập chiều cao / cân nặng / 3 vòng
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (hasAnyBodyInput) {
+                                  setBodyInputs({
+                                    height: '',
+                                    weight: '',
+                                    bust: '',
+                                    waist: '',
+                                    hip: '',
+                                  })
+                                } else {
+                                  const sample = {
+                                    height: '1m70',
+                                    weight: '65',
+                                    bust: '92',
+                                    waist: '76',
+                                    hip: '94',
+                                  }
+                                  setBodyInputs(sample)
+                                  setSelectedSizeCode('M')
+                                }
+                              }}
+                              className="rounded-md border border-blue-200 bg-white px-2 py-0.5 text-[10px] font-bold text-[#0011FF] transition hover:border-[#0011FF]"
+                            >
+                              {hasAnyBodyInput ? 'Xóa để tự nhập' : 'Điền mẫu 1m70 · 65kg'}
+                            </button>
                           </div>
-                          <div className="rounded-lg bg-white p-2 border border-blue-100">
-                            <p className="text-[10px] font-bold uppercase text-blue-900/60">Dài áo</p>
-                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">{currentFitSample.length}</p>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-2">
+                          <label className="block">
+                            <span className="block text-[10px] font-bold text-blue-900/75">
+                              Chiều cao
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="text"
+                              value={bodyInputs.height}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onChange={(e) => handleBodyInputChange('height', e.target.value)}
+                              placeholder="VD: 1m70"
+                              className="mt-0.5 w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-blue-950 placeholder:font-normal placeholder:text-blue-900/35 focus:border-[#0011FF] focus:outline-none"
+                            />
+                          </label>
+
+                          <label className="block">
+                            <span className="block text-[10px] font-bold text-blue-900/75">
+                              Cân nặng (kg)
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={bodyInputs.weight}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onChange={(e) => handleBodyInputChange('weight', e.target.value)}
+                              placeholder="VD: 65"
+                              className="mt-0.5 w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-blue-950 placeholder:font-normal placeholder:text-blue-900/35 focus:border-[#0011FF] focus:outline-none"
+                            />
+                          </label>
+
+                          <label className="block">
+                            <span className="block text-[10px] font-bold text-blue-900/75">
+                              Vòng 1 · Ngực
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={bodyInputs.bust}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onChange={(e) => handleBodyInputChange('bust', e.target.value)}
+                              placeholder="VD: 92 cm"
+                              className="mt-0.5 w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-blue-950 placeholder:font-normal placeholder:text-blue-900/35 focus:border-[#0011FF] focus:outline-none"
+                            />
+                          </label>
+
+                          <label className="block">
+                            <span className="block text-[10px] font-bold text-blue-900/75">
+                              Vòng 2 · Eo
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={bodyInputs.waist}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onChange={(e) => handleBodyInputChange('waist', e.target.value)}
+                              placeholder="VD: 76 cm"
+                              className="mt-0.5 w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-blue-950 placeholder:font-normal placeholder:text-blue-900/35 focus:border-[#0011FF] focus:outline-none"
+                            />
+                          </label>
+
+                          <label className="col-span-2 sm:col-span-1 block">
+                            <span className="block text-[10px] font-bold text-blue-900/75">
+                              Vòng 3 · Hông
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={bodyInputs.hip}
+                              onFocus={(e) => e.currentTarget.select()}
+                              onChange={(e) => handleBodyInputChange('hip', e.target.value)}
+                              placeholder="VD: 94 cm"
+                              className="mt-0.5 w-full rounded-lg border border-blue-200 bg-white px-2.5 py-1.5 text-xs font-extrabold text-blue-950 placeholder:font-normal placeholder:text-blue-900/35 focus:border-[#0011FF] focus:outline-none"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* 3. Detailed Per-Size Measurements (Height, Weight, 3 Vòng & Garment Dimensions) */}
+                      <div className="rounded-xl border-2 border-[#0011FF]/25 bg-white p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#0011FF]">
+                            THÔNG SỐ ĐO ĐẠC CHUẨN · SIZE {currentSizeSpec.size} ({currentSizeSpec.badge})
+                          </span>
+                          <span className="rounded-md bg-[#EEF4FF] px-2.5 py-0.5 text-[10px] font-extrabold text-[#0011FF]">
+                            {currentSizeSpec.typicalNote}
+                          </span>
+                        </div>
+
+                        <div className="mt-2 grid grid-cols-2 sm:grid-cols-5 gap-1.5 text-center">
+                          <div className="rounded-lg bg-[#F4F8FF] p-2 border border-blue-100">
+                            <p className="text-[10px] font-bold uppercase text-blue-900/65">
+                              Chiều cao
+                            </p>
+                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">
+                              {currentSizeSpec.heightRange}
+                            </p>
                           </div>
-                          <div className="rounded-lg bg-white p-2 border border-blue-100">
-                            <p className="text-[10px] font-bold uppercase text-blue-900/60">Cân nặng</p>
-                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">{currentFitSample.weightRange}</p>
+
+                          <div className="rounded-lg bg-[#F4F8FF] p-2 border border-blue-100">
+                            <p className="text-[10px] font-bold uppercase text-blue-900/65">
+                              Cân nặng
+                            </p>
+                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">
+                              {currentSizeSpec.weightRange}
+                            </p>
                           </div>
+
+                          <div className="rounded-lg bg-[#F4F8FF] p-2 border border-blue-100">
+                            <p className="text-[10px] font-bold uppercase text-blue-900/65">
+                              Vòng 1 (Ngực)
+                            </p>
+                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">
+                              {currentSizeSpec.bustRange}
+                            </p>
+                          </div>
+
+                          <div className="rounded-lg bg-[#F4F8FF] p-2 border border-blue-100">
+                            <p className="text-[10px] font-bold uppercase text-blue-900/65">
+                              Vòng 2 (Eo)
+                            </p>
+                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">
+                              {currentSizeSpec.waistRange}
+                            </p>
+                          </div>
+
+                          <div className="col-span-2 sm:col-span-1 rounded-lg bg-[#F4F8FF] p-2 border border-blue-100">
+                            <p className="text-[10px] font-bold uppercase text-blue-900/65">
+                              Vòng 3 (Hông)
+                            </p>
+                            <p className="mt-0.5 text-xs font-black text-[#0011FF]">
+                              {currentSizeSpec.hipRange}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 border-t border-blue-100 pt-2 text-[11px]">
+                          <span className="font-bold text-blue-900/75">
+                            Số đo áo thực tế (Size {currentSizeSpec.size}):
+                          </span>
+                          <span className="font-extrabold text-[#0011FF]">
+                            Rộng ngực áo {currentSizeSpec.shirtChest} · Dài áo {currentSizeSpec.shirtLength} · Vai {currentSizeSpec.shirtShoulder} · Dài tay {currentSizeSpec.shirtSleeve}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -765,16 +1203,16 @@ export function HomePage() {
                       })}
 
                       {trending.length === 0 &&
-                        TSHIRT_CORE_LINES.slice(0, 3).map((fallback, idx) => (
+                        AI_SAMPLE_PROMPTS.map((fallback) => (
                           <Link
-                            key={fallback.code}
+                            key={fallback.id}
                             to="/marketplace"
                             className="group flex flex-col justify-between rounded-2xl border border-blue-200 bg-[#F4F8FF] p-3 transition hover:border-[#0011FF] hover:bg-white"
                           >
                             <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-white p-3 flex items-center justify-center">
                               <img
-                                src={AI_SAMPLE_PROMPTS[idx]?.svgDataUrl || homepage0}
-                                alt={fallback.name}
+                                src={fallback.svgDataUrl || homepage0}
+                                alt={fallback.artworkTitle}
                                 className="h-full w-full object-contain"
                               />
                               <span className="absolute top-2 left-2 rounded bg-[#0011FF] px-2 py-0.5 text-[9px] font-extrabold uppercase text-white">
@@ -782,7 +1220,7 @@ export function HomePage() {
                               </span>
                             </div>
                             <h5 className="mt-2.5 truncate text-xs font-extrabold text-blue-950">
-                              {fallback.name}
+                              Áo Thun 280gsm · {fallback.artworkTitle}
                             </h5>
                             <div className="mt-2 flex items-center justify-between border-t border-blue-200/70 pt-2">
                               <span className="text-xs font-black text-[#0011FF]">
@@ -1084,13 +1522,13 @@ export function HomePage() {
 
               <div className="rounded-[22px] border border-white/30 bg-white/10 p-6 backdrop-blur-md">
                 <span className="inline-block rounded-md bg-white px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wider text-[#0011FF]">
-                  04 · BẢNG SỐ ĐO CHUẨNG DÁNG VIỆT
+                  04 · BẢNG SỐ ĐO CHUẨN DÁNG VIỆT
                 </span>
                 <h3 className="mt-3 text-base md:text-lg font-extrabold tracking-normal text-white">
-                  Đầy Đủ Size S, M, L, XL Cho Nam &amp; Nữ
+                  Đầy Đủ Size S, M, L, XL, XXL Cho Nam &amp; Nữ
                 </h3>
                 <p className="mt-2 text-xs md:text-sm leading-relaxed text-white/90">
-                  Tích hợp công cụ gợi ý size tự động theo chiều cao (148–188cm) và cân nặng (40–92kg) ngay tại trang sản phẩm và Studio.
+                  Tích hợp công cụ gợi ý size tự động theo chiều cao (1m53 – 1m92), cân nặng (45 – 98 kg) và số đo 3 vòng chi tiết cho từng size.
                 </p>
               </div>
             </div>
