@@ -1229,8 +1229,8 @@ export function DesignStudioPage() {
   const updateUser = useAuthStore((state) => state.updateUser)
   const effectiveTier = storeUser?.effectiveTier || (storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership ? 'PRO' : storeUser?.membershipTier || 'FREE')
   const isLifetime = Boolean(storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership)
-  const aiUsed = storeUser?.weeklyUsage?.aiGenerationsUsed ?? 0
-  const publishUsed = storeUser?.weeklyUsage?.publishedProductsUsed ?? 0
+  const aiUsed = storeUser?.monthlyUsage?.aiGenerationsUsed ?? storeUser?.monthlyAiUsed ?? storeUser?.weeklyUsage?.aiGenerationsUsed ?? storeUser?.weeklyAiUsed ?? 0
+  const publishUsed = storeUser?.monthlyUsage?.publishedProductsUsed ?? storeUser?.monthlyPublishedUsed ?? storeUser?.weeklyUsage?.publishedProductsUsed ?? storeUser?.weeklyPublishedUsed ?? 0
   
   const { generateDesign } = useAiPolling({
     onSuccess: (result) => {
@@ -1489,20 +1489,16 @@ export function DesignStudioPage() {
                 : 'GÓI MIỄN PHÍ'}
             </span>
             <span className="text-slate-300">
-              AI tuần này:{' '}
+              AI tháng này:{' '}
               <strong className="text-cyan-400">
-                {effectiveTier === 'FREE' ? `${aiUsed} / 1` : 'Không giới hạn'}
+                {isLifetime ? 'Không giới hạn' : `${aiUsed} / ${effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100}`}
               </strong>
             </span>
             <span className="text-slate-600">•</span>
             <span className="text-slate-300">
-              Đăng bán tuần này:{' '}
+              Đăng bán tháng này:{' '}
               <strong className="text-cyan-400">
-                {effectiveTier === 'FREE'
-                  ? 'Khóa'
-                  : effectiveTier === 'PREMIUM' && !isLifetime
-                  ? `${publishUsed} / 3`
-                  : 'Không giới hạn'}
+                {isLifetime ? 'Không giới hạn' : `${publishUsed} / ${effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20}`}
               </strong>
             </span>
             {effectiveTier === 'FREE' && (

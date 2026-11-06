@@ -189,7 +189,7 @@ export function MembershipPage() {
   const activeBankAccount = transferInfo?.accountNumber || bankConfig?.accountNumber || FALLBACK_BANK_ACCOUNT;
   const activeAccountName = transferInfo?.accountName || bankConfig?.accountName || FALLBACK_ACCOUNT_NAME;
 
-  const modalPrice = transferInfo?.amount ?? (upgradeModalTier === 'PRO' ? 99000 : 59000);
+  const modalPrice = transferInfo?.amount ?? (upgradeModalTier === 'PRO' ? 36000 : 18000);
   const cleanUsername = (user?.email?.split('@')[0] || user?.fullName || 'MEMBER')
     .replace(/[^a-zA-Z0-9]/g, '')
     .toUpperCase();
@@ -231,7 +231,7 @@ export function MembershipPage() {
                 ) : effectiveTier === 'PREMIUM' ? (
                   <span>💎 GÓI PREMIUM ĐANG KÍCH HOẠT • Còn {daysRemaining ?? 30} ngày</span>
                 ) : (
-                  <span>GÓI HIỆN TẠI: MIỄN PHÍ (1 ảnh AI/tuần)</span>
+                  <span>GÓI HIỆN TẠI: FREE · 15 ảnh AI/tháng · 5 lượt đăng bán/tháng</span>
                 )}
               </div>
             )}
@@ -266,8 +266,8 @@ export function MembershipPage() {
             <div className="mb-4 flex items-center gap-1.5 rounded-full bg-[#0F172A]/90 p-1.5 border border-cyan-400/30">
               {[
                 { label: 'Miễn Phí', idx: 0 },
-                { label: 'Premium 59k', idx: 1 },
-                { label: 'Pro 99k 👑', idx: 2 },
+                { label: 'Premium 18k', idx: 1 },
+                { label: 'Pro 36k 👑', idx: 2 },
               ].map((tab) => (
                 <button
                   key={tab.idx}
@@ -319,8 +319,8 @@ export function MembershipPage() {
                     </p>
                     <ul className="w-full space-y-3 mb-6 text-[13px] font-medium text-left flex-1">
                       <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Mua sắm sản phẩm trên toàn hệ thống</li>
-                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Tạo tối đa 1 ảnh thiết kế AI / tuần</li>
-                      <li className="flex items-start leading-snug text-gray-400"><span className="mr-2 text-rose-500 font-bold">✕</span> Không hỗ trợ lưu thiết kế 3D & Đăng bán</li>
+                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> 15 lượt tạo ảnh AI / tháng</li>
+                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> 5 lượt đăng bán / tháng lên Marketplace</li>
                     </ul>
                   </div>
                   <div>
@@ -350,22 +350,22 @@ export function MembershipPage() {
                   <div className="flex flex-col items-center text-center">
                     <div className="bg-[#0011FF] text-white text-[11px] font-bold px-6 py-1.5 rounded-full uppercase tracking-widest mb-6">Phổ Biến Nhất</div>
                     <h3 className="text-[#0011FF] text-xl font-black font-heading tracking-normal mb-2">PREMIUM</h3>
-                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal flex items-end justify-center">59k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
+                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal flex items-end justify-center">18k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
                     <p className="text-[13px] text-gray-600 mb-6 font-medium px-2 leading-relaxed h-[54px]">
                       Trọn bộ tính năng cần thiết để định hình phong cách, thiết kế 3D và bắt đầu kinh doanh.
                     </p>
                     <ul className="w-full space-y-3 mb-6 text-[13px] font-medium text-left flex-1">
-                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Tạo ảnh thiết kế bằng AI không giới hạn</li>
+                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> 50 lượt tạo ảnh AI / tháng</li>
                       <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Mở khóa toàn bộ công cụ 3D Studio</li>
-                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Đăng bán tối đa 3 sản phẩm / tuần lên Marketplace</li>
+                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> 15 lượt đăng bán / tháng lên Marketplace</li>
                       <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Huy hiệu Vương miện Bạc & Viền Avatar VIP</li>
                     </ul>
                   </div>
                   <div>
                     {effectiveTier === 'PREMIUM' ? (
                       <button
-                        onClick={() => handleOpenUpgradeModal('PREMIUM')}
-                        className="w-full py-3.5 bg-cyan-600 text-white text-xs font-bold rounded-xl uppercase tracking-wider hover:bg-cyan-700 transition-colors"
+                        disabled
+                        className="w-full py-3.5 bg-cyan-600 text-white text-xs font-bold rounded-xl uppercase tracking-wider opacity-70 cursor-default"
                       >
                         ĐANG SỬ DỤNG (Còn {daysRemaining ?? 30} ngày)
                       </button>
@@ -392,13 +392,13 @@ export function MembershipPage() {
                       <Crown className="h-3.5 w-3.5" /> Gói Pro VIP
                     </div>
                     <h3 className="text-[#0011FF] text-base font-black font-heading tracking-normal mb-2 leading-tight uppercase">DÀNH CHO NHÀ THIẾT KẾ<br/>& SÁNG TẠO</h3>
-                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal flex items-end justify-center">99k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
+                    <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal flex items-end justify-center">36k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
                     <p className="text-[13px] text-gray-600 mb-6 font-medium px-2 leading-relaxed h-[54px]">
                       Đặc quyền không giới hạn dành riêng cho nhà thiết kế chuyên nghiệp và thương hiệu thời trang.
                     </p>
                     <ul className="w-full space-y-3 mb-6 text-[13px] font-medium text-left flex-1">
-                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Tạo ảnh AI & Thiết kế 3D không giới hạn</li>
-                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Đăng bán sản phẩm lên Marketplace không giới hạn</li>
+                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> 100 lượt tạo ảnh AI / tháng</li>
+                      <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> 20 lượt đăng bán / tháng</li>
                       <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Huy hiệu Vương miện Vàng & Viền Avatar Hoàng Kim</li>
                       <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> Ưu tiên duyệt thiết kế & Hỗ trợ kỹ thuật 24/7</li>
                     </ul>
@@ -413,8 +413,8 @@ export function MembershipPage() {
                       </button>
                     ) : effectiveTier === 'PRO' ? (
                       <button
-                        onClick={() => handleOpenUpgradeModal('PRO')}
-                        className="w-full py-3.5 bg-amber-500 text-slate-950 text-xs font-black rounded-xl uppercase tracking-wider hover:bg-amber-400 transition-colors"
+                        disabled
+                        className="w-full py-3.5 bg-amber-500 text-slate-950 text-xs font-black rounded-xl uppercase tracking-wider opacity-70 cursor-default"
                       >
                         ĐANG SỬ DỤNG (Còn {daysRemaining ?? 30} ngày)
                       </button>
@@ -533,7 +533,7 @@ export function MembershipPage() {
                 <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">
                   <span className="text-slate-400 shrink-0 whitespace-nowrap">Gói đăng ký:</span>
                   <span className="font-bold text-cyan-400 text-right whitespace-nowrap">
-                    {upgradeModalTier === 'PRO' ? 'GÓI PRO (99k/Tháng)' : 'GÓI PREMIUM (59k/Tháng)'}
+                    {upgradeModalTier === 'PRO' ? 'GÓI PRO (36k/Tháng)' : 'GÓI PREMIUM (18k/Tháng)'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-2">

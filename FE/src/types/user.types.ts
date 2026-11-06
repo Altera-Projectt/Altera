@@ -15,6 +15,12 @@ export interface User {
   membershipExpiresAt?: string | null
   isLifetimeMembership?: boolean
   daysRemaining?: number | null
+  monthlyAiUsed?: number
+  monthlyPublishedUsed?: number
+  monthlyUsage?: {
+    aiGenerationsUsed: number
+    publishedProductsUsed: number
+  }
   weeklyAiUsed?: number
   weeklyPublishedUsed?: number
   weeklyUsage?: {

@@ -15,6 +15,7 @@ import { MarketplaceService, type MarketplaceDesign } from '@/services/marketpla
 import { formatVND, optimizeImage, getLqipImage } from '@/utils/format'
 import { ProgressiveImage } from '@/components/ui/ProgressiveImage'
 import { ShoppingBag } from 'lucide-react'
+import { getUsagePercent } from '@/utils/membershipLimits'
 
 type TabType = 'store' | 'overview' | 'measurements' | 'preferences'
 
@@ -211,8 +212,8 @@ export function ProfilePage() {
   const isLifetime = Boolean(user.role?.toUpperCase() === 'ADMIN' || user.isLifetimeMembership)
   const daysRemaining = user.daysRemaining ?? null
   const formattedExpiry = user.membershipExpiresAt ? new Date(user.membershipExpiresAt).toLocaleDateString('vi-VN') : null
-  const aiUsed = user.weeklyUsage?.aiGenerationsUsed ?? 0
-  const publishUsed = user.weeklyUsage?.publishedProductsUsed ?? 0
+  const aiUsed = user.monthlyUsage?.aiGenerationsUsed ?? user?.monthlyAiUsed ?? user?.weeklyUsage?.aiGenerationsUsed ?? user?.weeklyAiUsed ?? 0
+  const publishUsed = user.monthlyUsage?.publishedProductsUsed ?? user?.monthlyPublishedUsed ?? user?.weeklyUsage?.publishedProductsUsed ?? user?.weeklyPublishedUsed ?? 0
 
   return (
     <div className="mx-auto max-w-[var(--spacing-contentMax)] px-6 py-12 min-h-[70vh]">
@@ -334,7 +335,7 @@ export function ProfilePage() {
               ) : (
                 <div className="inline-flex flex-wrap items-center justify-center gap-2">
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-slate-100 px-3.5 py-1 text-xs font-bold tracking-normal text-slate-700">
-                    GÓI MIỄN PHÍ (1 ảnh AI/tuần • Chỉ mua hàng)
+                    GÓI MIỄN PHÍ · 15 ảnh AI/tháng · 5 lượt đăng bán/tháng
                   </span>
                   <Link
                     to="/membership"
@@ -346,23 +347,25 @@ export function ProfilePage() {
               )}
             </div>
 
-            {/* Weekly Quota Usage Bar */}
+            {/* Monthly Quota Usage */}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5 text-[11px] font-medium">
               <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
-                Lượt tạo ảnh AI tuần này:{' '}
+                Lượt tạo ảnh AI tháng này:{' '}
                 <strong className="text-cyan-400">
-                  {effectiveTier === 'FREE' ? `${aiUsed} / 1` : `Không giới hạn (Đã tạo ${aiUsed})`}
+                  {isLifetime ? 'Không giới hạn' : `${aiUsed} / ${effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100}`}
                 </strong>
+                {!isLifetime && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(aiUsed, effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100)}%` }} /></div>}
               </div>
               <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
-                Lượt đăng bán tuần này:{' '}
+                Lượt đăng bán tháng này:{' '}
                 <strong className="text-cyan-400">
                   {effectiveTier === 'FREE'
-                    ? 'Khóa (Cần nâng cấp)'
+                    ? `${publishUsed} / 5`
                     : effectiveTier === 'PREMIUM' && !isLifetime
-                    ? `${publishUsed} / 3`
-                    : `Không giới hạn (Đã đăng ${publishUsed})`}
+                    ? `${publishUsed} / ${effectiveTier === 'PREMIUM' ? 15 : 20}`
+                    : isLifetime ? 'Không giới hạn' : `${publishUsed} / 20`}
                 </strong>
+                {!isLifetime && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(publishUsed, effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20)}%` }} /></div>}
               </div>
             </div>
           </div>
