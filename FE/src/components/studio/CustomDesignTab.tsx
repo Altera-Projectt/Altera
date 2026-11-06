@@ -634,6 +634,12 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       toast.error(msg)
       return
     }
+    if (effectiveTier === 'PRO' && !isLifetime && publishUsed >= 20) {
+      const msg = 'Gói Pro đã dùng hết 20 lượt đăng bán trong tháng này.'
+      setDraftError(msg)
+      toast.error(msg)
+      return
+    }
     setPublishName(draftName || draftNameInput || '')
     setDraftError('')
     setShowPublish(true)

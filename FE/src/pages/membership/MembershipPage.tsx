@@ -245,7 +245,7 @@ export function MembershipPage() {
             </p>
             <ul className="space-y-4">
               {[
-                'Gợi ý phong cách từ AI không giới hạn',
+                'Theo dõi lượt tạo ảnh AI và đăng bán theo tháng',
                 'Sáng tạo trang phục 3D Studio chuyên nghiệp',
                 'Đăng bán thiết kế thương mại lên Marketplace',
                 'Huy hiệu Vương miện & Viền Avatar VIP độc quyền',
@@ -394,7 +394,7 @@ export function MembershipPage() {
                     <h3 className="text-[#0011FF] text-base font-black font-heading tracking-normal mb-2 leading-tight uppercase">DÀNH CHO NHÀ THIẾT KẾ<br/>& SÁNG TẠO</h3>
                     <div className="text-[#0011FF] text-5xl font-black font-heading mb-6 tracking-normal flex items-end justify-center">36k<span className="text-xl pb-1.5 tracking-normal">/Tháng</span></div>
                     <p className="text-[13px] text-gray-600 mb-6 font-medium px-2 leading-relaxed h-[54px]">
-                      Đặc quyền không giới hạn dành riêng cho nhà thiết kế chuyên nghiệp và thương hiệu thời trang.
+                      Hạn mức 100 lượt tạo ảnh AI và 20 lượt đăng bán mỗi tháng dành cho nhà thiết kế chuyên nghiệp.
                     </p>
                     <ul className="w-full space-y-3 mb-6 text-[13px] font-medium text-left flex-1">
                       <li className="flex items-start leading-snug"><span className="mr-2 text-[#0011FF] font-bold">✓</span> 100 lượt tạo ảnh AI / tháng</li>

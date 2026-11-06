@@ -1284,6 +1284,11 @@ export function DesignStudioPage() {
       setGenerateError('Bạn cần đăng nhập để tạo thiết kế.')
       return
     }
+    const monthlyAiLimit = effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100
+    if (!isLifetime && aiUsed >= monthlyAiLimit) {
+      setGenerateError(`Bạn đã dùng hết ${monthlyAiLimit} lượt tạo ảnh AI trong tháng này.`)
+      return
+    }
     try {
       setGenerating(true)
       setGenerateError(null)
