@@ -208,8 +208,8 @@ export function ProfilePage() {
     )
   }
 
-  const effectiveTier = user.effectiveTier || (user.role?.toUpperCase() === 'ADMIN' || user.isLifetimeMembership ? 'PRO' : user.membershipTier || 'FREE')
-  const isLifetime = Boolean(user.role?.toUpperCase() === 'ADMIN' || user.isLifetimeMembership)
+  const isAdmin = user.role?.toUpperCase() === 'ADMIN'
+  const effectiveTier = user.effectiveTier || (isAdmin ? 'PRO' : user.membershipTier || 'FREE')
   const daysRemaining = user.daysRemaining ?? null
   const formattedExpiry = user.membershipExpiresAt ? new Date(user.membershipExpiresAt).toLocaleDateString('vi-VN') : null
   const aiUsed = user.monthlyUsage?.aiGenerationsUsed ?? user?.monthlyAiUsed ?? user?.weeklyUsage?.aiGenerationsUsed ?? user?.weeklyAiUsed ?? 0
@@ -260,15 +260,15 @@ export function ProfilePage() {
         <div className="absolute top-[120px] md:top-[220px] flex flex-col items-center w-full z-10 px-4">
           <div className="relative flex flex-col items-center shrink-0">
             {/* Crown Badge on top of Avatar */}
-            {(effectiveTier === 'PRO' || isLifetime) && (
+            {(effectiveTier === 'PRO' || isAdmin) && (
               <div
-                title={isLifetime ? 'Vương miện Hoàng Kim — Admin & Pro Vĩnh Viễn' : 'Vương miện Hoàng Kim — Gói Pro VIP'}
+                title={isAdmin ? 'Quản trị viên ALTERA' : 'Huy hiệu thành viên PRO'}
                 className="absolute -top-5 z-20 flex items-center justify-center rounded-full bg-[#0F172A] border-2 border-amber-400 p-2 shadow-[0_0_20px_rgba(251,191,36,0.8)]"
               >
                 <Crown className="w-6 h-6 text-amber-400 fill-amber-400" />
               </div>
             )}
-            {effectiveTier === 'PREMIUM' && !isLifetime && (
+            {effectiveTier === 'PREMIUM' && !isAdmin && (
               <div
                 title="Vương miện Bạc/Xanh — Gói Premium VIP"
                 className="absolute -top-4 z-20 flex items-center justify-center rounded-full bg-[#0F172A] border-2 border-cyan-400 p-1.5 shadow-[0_0_15px_rgba(34,211,238,0.7)]"
@@ -280,7 +280,7 @@ export function ProfilePage() {
             <div
               className={cn(
                 'group relative h-32 w-32 md:h-48 md:w-48 rounded-full overflow-hidden bg-white shrink-0 transition-all',
-                effectiveTier === 'PRO' || isLifetime
+                effectiveTier === 'PRO' || isAdmin
                   ? 'ring-4 ring-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.6)] border-4 border-[#060B16]'
                   : effectiveTier === 'PREMIUM'
                   ? 'ring-4 ring-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)] border-4 border-[#060B16]'
@@ -317,10 +317,10 @@ export function ProfilePage() {
 
             {/* VIP Membership Badge & Countdown */}
             <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
-              {isLifetime ? (
+              {isAdmin ? (
                 <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-gradient-to-r from-[#0F172A] via-[#162038] to-[#0F172A] px-4 py-1.5 text-xs font-extrabold tracking-normal text-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.35)]">
                   <Crown className="h-4 w-4 text-amber-400 fill-amber-400" />
-                  👑 ADMIN • PRO VĨNH VIỄN
+                  ADMIN • QUYỀN QUẢN TRỊ
                 </span>
               ) : effectiveTier === 'PRO' ? (
                 <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-[#0F172A] px-4 py-1.5 text-xs font-extrabold tracking-normal text-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.3)]">
@@ -352,20 +352,20 @@ export function ProfilePage() {
               <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
                 Lượt tạo ảnh AI tháng này:{' '}
                 <strong className="text-cyan-400">
-                  {isLifetime ? 'Không giới hạn' : `${aiUsed} / ${effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100}`}
+                  {isAdmin ? 'Không giới hạn' : `${aiUsed} / ${effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100}`}
                 </strong>
-                {!isLifetime && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(aiUsed, effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100)}%` }} /></div>}
+                {!isAdmin && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(aiUsed, effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100)}%` }} /></div>}
               </div>
               <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
                 Lượt đăng bán tháng này:{' '}
                 <strong className="text-cyan-400">
                   {effectiveTier === 'FREE'
                     ? `${publishUsed} / 5`
-                    : effectiveTier === 'PREMIUM' && !isLifetime
+                    : effectiveTier === 'PREMIUM' && !isAdmin
                     ? `${publishUsed} / ${effectiveTier === 'PREMIUM' ? 15 : 20}`
-                    : isLifetime ? 'Không giới hạn' : `${publishUsed} / 20`}
+                    : isAdmin ? 'Không giới hạn' : `${publishUsed} / 20`}
                 </strong>
-                {!isLifetime && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(publishUsed, effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20)}%` }} /></div>}
+                {!isAdmin && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(publishUsed, effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20)}%` }} /></div>}
               </div>
             </div>
           </div>

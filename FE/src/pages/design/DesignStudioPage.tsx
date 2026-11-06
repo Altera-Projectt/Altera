@@ -1227,8 +1227,8 @@ export function DesignStudioPage() {
   const token = useAuthStore((state) => state.token)
   const storeUser = useAuthStore((state) => state.user)
   const updateUser = useAuthStore((state) => state.updateUser)
-  const effectiveTier = storeUser?.effectiveTier || (storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership ? 'PRO' : storeUser?.membershipTier || 'FREE')
-  const isLifetime = Boolean(storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership)
+  const isAdmin = storeUser?.role?.toUpperCase() === 'ADMIN'
+  const effectiveTier = storeUser?.effectiveTier || (isAdmin ? 'PRO' : storeUser?.membershipTier || 'FREE')
   const aiUsed = storeUser?.monthlyUsage?.aiGenerationsUsed ?? storeUser?.monthlyAiUsed ?? storeUser?.weeklyUsage?.aiGenerationsUsed ?? storeUser?.weeklyAiUsed ?? 0
   const publishUsed = storeUser?.monthlyUsage?.publishedProductsUsed ?? storeUser?.monthlyPublishedUsed ?? storeUser?.weeklyUsage?.publishedProductsUsed ?? storeUser?.weeklyPublishedUsed ?? 0
   
@@ -1285,7 +1285,7 @@ export function DesignStudioPage() {
       return
     }
     const monthlyAiLimit = effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100
-    if (!isLifetime && aiUsed >= monthlyAiLimit) {
+    if (!isAdmin && aiUsed >= monthlyAiLimit) {
       setGenerateError(`Bạn đã dùng hết ${monthlyAiLimit} lượt tạo ảnh AI trong tháng này.`)
       return
     }
@@ -1485,8 +1485,8 @@ export function DesignStudioPage() {
           <div className="flex flex-wrap items-center gap-2.5 rounded-xl border border-cyan-400/30 bg-[#0F172A] px-4 py-3 text-xs text-slate-100 shadow-lg">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-[#162038] px-3 py-1 font-bold text-cyan-400">
               <Crown className="h-3.5 w-3.5 text-amber-400" />
-              {isLifetime
-                ? '👑 ADMIN • PRO VĨNH VIỄN'
+              {isAdmin
+                ? 'ADMIN • QUYỀN QUẢN TRỊ'
                 : effectiveTier === 'PRO'
                 ? `👑 GÓI PRO${storeUser.daysRemaining != null ? ` (Còn ${storeUser.daysRemaining} ngày)` : ''}`
                 : effectiveTier === 'PREMIUM'
@@ -1496,14 +1496,14 @@ export function DesignStudioPage() {
             <span className="text-slate-300">
               AI tháng này:{' '}
               <strong className="text-cyan-400">
-                {isLifetime ? 'Không giới hạn' : `${aiUsed} / ${effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100}`}
+                {isAdmin ? 'Không giới hạn' : `${aiUsed} / ${effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100}`}
               </strong>
             </span>
             <span className="text-slate-600">•</span>
             <span className="text-slate-300">
               Đăng bán tháng này:{' '}
               <strong className="text-cyan-400">
-                {isLifetime ? 'Không giới hạn' : `${publishUsed} / ${effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20}`}
+                {isAdmin ? 'Không giới hạn' : `${publishUsed} / ${effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20}`}
               </strong>
             </span>
             {effectiveTier === 'FREE' && (

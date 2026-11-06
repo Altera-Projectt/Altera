@@ -31,8 +31,8 @@ export function MembershipPage() {
   const [bankConfig, setBankConfig] = useState<BankConfig | null>(null);
   const [transferInfo, setTransferInfo] = useState<BankTransferInfo | null>(null);
 
-  const effectiveTier = user?.effectiveTier || (user?.role === 'ADMIN' || user?.isLifetimeMembership ? 'PRO' : user?.membershipTier || 'FREE');
-  const isLifetime = Boolean(user?.role === 'ADMIN' || user?.isLifetimeMembership);
+  const isAdmin = user?.role?.toUpperCase() === 'ADMIN';
+  const effectiveTier = user?.effectiveTier || (isAdmin ? 'PRO' : user?.membershipTier || 'FREE');
   const daysRemaining = user?.daysRemaining ?? null;
   const membershipExpiry = user?.membershipExpiresAt || user?.membershipEndDate || null;
   const formattedMembershipExpiry = membershipExpiry ? new Date(membershipExpiry).toLocaleDateString('vi-VN') : null;
@@ -226,8 +226,8 @@ export function MembershipPage() {
             {isAuthenticated && user && (
               <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/40 bg-[#0F172A]/90 px-4 py-1.5 text-xs font-bold text-cyan-400 mb-5 shadow-[0_0_20px_rgba(34,211,238,0.2)]">
                 <Crown className="h-4 w-4 text-amber-400" />
-                {isLifetime ? (
-                  <span>👑 ADMIN • PRO VĨNH VIỄN</span>
+                {isAdmin ? (
+                  <span>Quản trị viên • quyền ADMIN</span>
                 ) : effectiveTier === 'PRO' ? (
                   <span>👑 GÓI PRO ĐANG KÍCH HOẠT{daysRemaining !== null ? ` • Còn ${daysRemaining} ngày` : ''}{formattedMembershipExpiry ? ` • Hết hạn ${formattedMembershipExpiry}` : ''}</span>
                 ) : effectiveTier === 'PREMIUM' ? (
@@ -406,12 +406,12 @@ export function MembershipPage() {
                     </ul>
                   </div>
                   <div>
-                    {isLifetime ? (
+                    {isAdmin ? (
                       <button
                         disabled
                         className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-xs font-black rounded-xl uppercase tracking-wider shadow-md cursor-default"
                       >
-                        👑 ADMIN • PRO VĨNH VIỄN
+                        ADMIN • QUYỀN QUẢN TRỊ
                       </button>
                     ) : effectiveTier === 'PRO' ? (
                       <button

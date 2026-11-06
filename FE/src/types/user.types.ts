@@ -13,7 +13,6 @@ export interface User {
   effectiveTier?: 'FREE' | 'PREMIUM' | 'PRO'
   membershipStartedAt?: string | null
   membershipExpiresAt?: string | null
-  isLifetimeMembership?: boolean
   daysRemaining?: number | null
   monthlyAiUsed?: number
   monthlyPublishedUsed?: number

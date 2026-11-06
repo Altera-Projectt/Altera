@@ -185,8 +185,8 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   const storeUser = useAuthStore((state) => state.user)
   const updateUser = useAuthStore((state) => state.updateUser)
   const authenticatedUserId = storeUser?._id
-  const effectiveTier = storeUser?.effectiveTier || (storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership ? 'PRO' : storeUser?.membershipTier || 'FREE')
-  const isLifetime = Boolean(storeUser?.role?.toUpperCase() === 'ADMIN' || storeUser?.isLifetimeMembership)
+  const isAdmin = storeUser?.role?.toUpperCase() === 'ADMIN'
+  const effectiveTier = storeUser?.effectiveTier || (isAdmin ? 'PRO' : storeUser?.membershipTier || 'FREE')
   const publishUsed = storeUser?.monthlyUsage?.publishedProductsUsed ?? storeUser?.monthlyPublishedUsed ?? storeUser?.weeklyUsage?.publishedProductsUsed ?? storeUser?.weeklyPublishedUsed ?? 0
   const current = [...design[side].layers].sort((a, b) => a.zIndex - b.zIndex)
   const visibleImageLayers = current.filter((layer) => layer.type === 'image' && layer.visible) as ImageLayer[]
@@ -628,13 +628,13 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       toast.error(msg)
       return
     }
-    if (effectiveTier === 'PREMIUM' && !isLifetime && publishUsed >= 15) {
+    if (effectiveTier === 'PREMIUM' && !isAdmin && publishUsed >= 15) {
       const msg = 'Gói Premium tối đa đăng bán 15 sản phẩm / tháng (Đã dùng hết giới hạn tháng). Vui lòng nâng cấp gói nếu cần thêm lượt đăng bán.'
       setDraftError(msg)
       toast.error(msg)
       return
     }
-    if (effectiveTier === 'PRO' && !isLifetime && publishUsed >= 20) {
+    if (effectiveTier === 'PRO' && !isAdmin && publishUsed >= 20) {
       const msg = 'Gói Pro đã dùng hết 20 lượt đăng bán trong tháng này.'
       setDraftError(msg)
       toast.error(msg)

@@ -11,7 +11,6 @@ type AdminUser = {
   effectiveTier?: 'FREE' | 'PREMIUM' | 'PRO'
   membershipStartedAt?: string | null
   membershipExpiresAt?: string | null
-  isLifetimeMembership?: boolean
   daysRemaining?: number | null
   membershipStatus?: string
   phone?: string
@@ -44,11 +43,9 @@ export function AdminUsersPage() {
   const [page, setPage] = useState(1)
   const [pages, setPages] = useState<PageInfo>({ total: 0, page: 1, limit: 20, totalPages: 0 })
 
-  // Admin VIP Package Modal state
+  // Membership assignment state; this does not modify account roles.
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [selectedNewTier, setSelectedNewTier] = useState<'FREE' | 'PREMIUM' | 'PRO'>('PRO')
-  const [isLifetimeSelection, setIsLifetimeSelection] = useState(false)
-  const [customDays, setCustomDays] = useState(30)
   const [updatingTier, setUpdatingTier] = useState(false)
 
   useEffect(() => {
@@ -97,8 +94,6 @@ export function AdminUsersPage() {
   const handleOpenEditTier = (user: AdminUser) => {
     setEditingUser(user)
     setSelectedNewTier(user.effectiveTier === 'PREMIUM' ? 'PREMIUM' : user.effectiveTier === 'PRO' ? 'PRO' : 'PRO')
-    setIsLifetimeSelection(Boolean(user.isLifetimeMembership || user.role === 'ADMIN'))
-    setCustomDays(user.daysRemaining && user.daysRemaining > 0 ? user.daysRemaining : 30)
   }
 
   const handleSaveTier = async () => {
@@ -109,15 +104,14 @@ export function AdminUsersPage() {
     try {
       const payload: Record<string, unknown> = {
         membershipTier: selectedNewTier,
-        isLifetimeMembership: isLifetimeSelection,
-        durationDays: customDays,
+        ...(selectedNewTier === 'FREE' ? {} : { durationDays: 30 }),
       }
       const res = await AdminService.updateUser(editingUser._id, payload)
       const updatedUser = res.data.data.user
       setItems((current) =>
         current.map((item) => (item._id === editingUser._id ? { ...item, ...updatedUser } : item))
       )
-      setNotice(`Đã cập nhật gói ${selectedNewTier}${isLifetimeSelection ? ' (VĨNH VIỄN)' : ` (${customDays} ngày)`} cho tài khoản ${editingUser.email}.`)
+      setNotice(`Đã cập nhật membership ${selectedNewTier}${selectedNewTier === 'FREE' ? '' : ' (30 ngày)'} cho tài khoản ${editingUser.email}.`)
       setEditingUser(null)
     } catch (err: unknown) {
       setError(errorText(err))
@@ -248,9 +242,9 @@ export function AdminUsersPage() {
                 </tr>
               ) : (
                 items.map((user) => {
-                  const isVipLifetime = Boolean(user.isLifetimeMembership || user.role === 'ADMIN')
-                  const effectiveTier = user.effectiveTier || (isVipLifetime ? 'PRO' : user.membershipTier || 'FREE')
-                  const isExpired = user.membershipTier && user.membershipTier !== 'FREE' && user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date() && !isVipLifetime
+                  const isAdmin = user.role === 'ADMIN'
+                  const effectiveTier = user.effectiveTier || (isAdmin ? 'PRO' : user.membershipTier || 'FREE')
+                  const isExpired = user.membershipTier && user.membershipTier !== 'FREE' && user.membershipExpiresAt && new Date(user.membershipExpiresAt) < new Date() && !isAdmin
 
                   return (
                     <tr key={user._id} className="border-t border-blue-400/10 transition-colors hover:bg-blue-500/[0.05]">
@@ -262,12 +256,7 @@ export function AdminUsersPage() {
 
                       {/* Gói Hội Viên */}
                       <td className="px-4 py-3">
-                        {isVipLifetime ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/40 bg-amber-500/15 px-2.5 py-1 text-xs font-black text-amber-300 shadow-[0_0_12px_rgba(251,191,36,0.2)]">
-                            <Crown className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                            PRO VĨNH VIỄN
-                          </span>
-                        ) : effectiveTier === 'PRO' ? (
+                        {effectiveTier === 'PRO' ? (
                           <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300">
                             <Crown className="h-3 w-3 fill-amber-400 text-amber-400" />
                             PRO VIP
@@ -286,10 +275,10 @@ export function AdminUsersPage() {
 
                       {/* Thời Hạn Gói */}
                       <td className="px-4 py-3">
-                        {isVipLifetime ? (
+                        {isAdmin ? (
                           <div className="flex flex-col">
-                            <span className="text-xs font-bold text-amber-300">Vĩnh viễn</span>
-                            <span className="text-[10px] text-slate-400">Không giới hạn</span>
+                            <span className="text-xs font-bold text-amber-300">Quyền theo Role ADMIN</span>
+                            <span className="text-[10px] text-slate-400">Membership tách biệt</span>
                           </div>
                         ) : !isExpired && (effectiveTier === 'PRO' || effectiveTier === 'PREMIUM') ? (
                           <div className="flex flex-col">
@@ -474,33 +463,9 @@ export function AdminUsersPage() {
               </div>
 
               {selectedNewTier !== 'FREE' && (
-                <>
-                  <div className="flex items-center justify-between rounded-xl border border-slate-700 bg-[#162038] p-3">
-                    <span className="text-xs font-medium text-slate-300">Cấp quyền Vĩnh viễn (Lifetime VIP):</span>
-                    <input
-                      type="checkbox"
-                      checked={isLifetimeSelection}
-                      onChange={(e) => setIsLifetimeSelection(e.target.checked)}
-                      className="h-4 w-4 rounded border-slate-700 text-amber-500 focus:ring-amber-400"
-                    />
-                  </div>
-
-                  {!isLifetimeSelection && (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">
-                        Số ngày gia hạn (mặc định 30 ngày):
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={3650}
-                        value={customDays}
-                        onChange={(e) => setCustomDays(Math.max(1, Number(e.target.value)))}
-                        className="w-full rounded-lg border border-slate-700 bg-[#162038] px-3 py-2 text-sm text-slate-100 focus:border-cyan-400 focus:outline-none"
-                      />
-                    </div>
-                  )}
-                </>
+                <p className="rounded-xl border border-slate-700 bg-[#162038] p-3 text-xs text-slate-300">
+                  Membership trả phí có chu kỳ 30 ngày. Role không bị thay đổi khi cập nhật gói.
+                </p>
               )}
             </div>
 

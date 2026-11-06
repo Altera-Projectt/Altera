@@ -57,8 +57,7 @@ export function Navbar() {
     navigate('/')
   }
 
-  const effectiveTier = user?.effectiveTier || (isAdmin || user?.isLifetimeMembership ? 'PRO' : user?.membershipTier || 'FREE')
-  const isLifetime = Boolean(isAdmin || user?.isLifetimeMembership)
+  const effectiveTier = user?.effectiveTier || (isAdmin ? 'PRO' : user?.membershipTier || 'FREE')
 
   // Fetch cart & fresh membership status on mount so badge is in sync globally
   React.useEffect(() => {
@@ -166,12 +165,12 @@ export function Navbar() {
                 className="relative text-white hover:bg-white/10 hover:text-white ml-2"
               >
                 <Link to="/profile" className="relative">
-                  {(effectiveTier === 'PRO' || isLifetime) && (
+                  {(effectiveTier === 'PRO' || isAdmin) && (
                     <span className="absolute -top-2 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-[#0F172A] border border-amber-400 shadow">
                       <Crown className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
                     </span>
                   )}
-                  {effectiveTier === 'PREMIUM' && !isLifetime && (
+                  {effectiveTier === 'PREMIUM' && !isAdmin && (
                     <span className="absolute -top-2 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-[#0F172A] border border-cyan-400 shadow">
                       <Crown className="h-2.5 w-2.5 text-cyan-400 fill-cyan-400" />
                     </span>
@@ -183,7 +182,7 @@ export function Navbar() {
                       decoding="async"
                       className={cn(
                         'h-7 w-7 rounded-full object-cover',
-                        effectiveTier === 'PRO' || isLifetime
+                        effectiveTier === 'PRO' || isAdmin
                           ? 'ring-2 ring-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.8)]'
                           : effectiveTier === 'PREMIUM'
                           ? 'ring-2 ring-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.7)]'
