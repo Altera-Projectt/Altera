@@ -293,10 +293,10 @@ export function AdminUsersPage() {
                           </div>
                         ) : !isExpired && (effectiveTier === 'PRO' || effectiveTier === 'PREMIUM') ? (
                           <div className="flex flex-col">
-                            <span className="inline-flex items-center gap-1 text-xs font-bold text-cyan-300">
+                            {user.daysRemaining != null && <span className="inline-flex items-center gap-1 text-xs font-bold text-cyan-300">
                               <Clock className="h-3 w-3 text-cyan-400" />
-                              Còn {user.daysRemaining ?? 30} ngày
-                            </span>
+                              Còn {user.daysRemaining} ngày
+                            </span>}
                             {user.membershipExpiresAt && (
                               <span className="text-[10px] text-slate-400">
                                 Hết hạn: {new Date(user.membershipExpiresAt).toLocaleDateString('vi-VN')}

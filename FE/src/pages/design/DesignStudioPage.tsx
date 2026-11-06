@@ -1488,9 +1488,9 @@ export function DesignStudioPage() {
               {isLifetime
                 ? '👑 ADMIN • PRO VĨNH VIỄN'
                 : effectiveTier === 'PRO'
-                ? `👑 GÓI PRO (Còn ${storeUser.daysRemaining ?? 30} ngày)`
+                ? `👑 GÓI PRO${storeUser.daysRemaining != null ? ` (Còn ${storeUser.daysRemaining} ngày)` : ''}`
                 : effectiveTier === 'PREMIUM'
-                ? `💎 GÓI PREMIUM (Còn ${storeUser.daysRemaining ?? 30} ngày)`
+                ? `💎 GÓI PREMIUM${storeUser.daysRemaining != null ? ` (Còn ${storeUser.daysRemaining} ngày)` : ''}`
                 : 'GÓI MIỄN PHÍ'}
             </span>
             <span className="text-slate-300">

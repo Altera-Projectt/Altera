@@ -34,6 +34,8 @@ export function MembershipPage() {
   const effectiveTier = user?.effectiveTier || (user?.role === 'ADMIN' || user?.isLifetimeMembership ? 'PRO' : user?.membershipTier || 'FREE');
   const isLifetime = Boolean(user?.role === 'ADMIN' || user?.isLifetimeMembership);
   const daysRemaining = user?.daysRemaining ?? null;
+  const membershipExpiry = user?.membershipExpiresAt || user?.membershipEndDate || null;
+  const formattedMembershipExpiry = membershipExpiry ? new Date(membershipExpiry).toLocaleDateString('vi-VN') : null;
 
   useEffect(() => {
     // Lấy cấu hình tài khoản ngân hàng từ .env trên Render Backend
@@ -227,9 +229,9 @@ export function MembershipPage() {
                 {isLifetime ? (
                   <span>👑 ADMIN • PRO VĨNH VIỄN</span>
                 ) : effectiveTier === 'PRO' ? (
-                  <span>👑 GÓI PRO ĐANG KÍCH HOẠT • Còn {daysRemaining ?? 30} ngày</span>
+                  <span>👑 GÓI PRO ĐANG KÍCH HOẠT{daysRemaining !== null ? ` • Còn ${daysRemaining} ngày` : ''}{formattedMembershipExpiry ? ` • Hết hạn ${formattedMembershipExpiry}` : ''}</span>
                 ) : effectiveTier === 'PREMIUM' ? (
-                  <span>💎 GÓI PREMIUM ĐANG KÍCH HOẠT • Còn {daysRemaining ?? 30} ngày</span>
+                  <span>💎 GÓI PREMIUM ĐANG KÍCH HOẠT{daysRemaining !== null ? ` • Còn ${daysRemaining} ngày` : ''}{formattedMembershipExpiry ? ` • Hết hạn ${formattedMembershipExpiry}` : ''}</span>
                 ) : (
                   <span>GÓI HIỆN TẠI: FREE · 15 ảnh AI/tháng · 5 lượt đăng bán/tháng</span>
                 )}
@@ -367,7 +369,7 @@ export function MembershipPage() {
                         disabled
                         className="w-full py-3.5 bg-cyan-600 text-white text-xs font-bold rounded-xl uppercase tracking-wider opacity-70 cursor-default"
                       >
-                        ĐANG SỬ DỤNG (Còn {daysRemaining ?? 30} ngày)
+                        ĐANG SỬ DỤNG{daysRemaining !== null ? ` (Còn ${daysRemaining} ngày)` : ''}
                       </button>
                     ) : (
                       <button
@@ -409,14 +411,14 @@ export function MembershipPage() {
                         disabled
                         className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 text-xs font-black rounded-xl uppercase tracking-wider shadow-md cursor-default"
                       >
-                        👑 GÓI VĨNH VIỄN
+                        👑 ADMIN • PRO VĨNH VIỄN
                       </button>
                     ) : effectiveTier === 'PRO' ? (
                       <button
                         disabled
                         className="w-full py-3.5 bg-amber-500 text-slate-950 text-xs font-black rounded-xl uppercase tracking-wider opacity-70 cursor-default"
                       >
-                        ĐANG SỬ DỤNG (Còn {daysRemaining ?? 30} ngày)
+                        ĐANG SỬ DỤNG{daysRemaining !== null ? ` (Còn ${daysRemaining} ngày)` : ''}
                       </button>
                     ) : (
                       <button

@@ -325,12 +325,12 @@ export function ProfilePage() {
               ) : effectiveTier === 'PRO' ? (
                 <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-[#0F172A] px-4 py-1.5 text-xs font-extrabold tracking-normal text-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.3)]">
                   <Crown className="h-4 w-4 text-amber-400 fill-amber-400" />
-                  👑 GÓI PRO • Còn {daysRemaining ?? 30} ngày{formattedExpiry ? ` (Hết hạn: ${formattedExpiry})` : ''}
+                  👑 GÓI PRO{daysRemaining !== null ? ` • Còn ${daysRemaining} ngày` : ''}{formattedExpiry ? ` (Hết hạn: ${formattedExpiry})` : ''}
                 </span>
               ) : effectiveTier === 'PREMIUM' ? (
                 <span className="inline-flex items-center gap-2 rounded-full border border-cyan-400/50 bg-[#0F172A] px-4 py-1.5 text-xs font-extrabold tracking-normal text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.25)]">
                   <Crown className="h-4 w-4 text-cyan-400 fill-cyan-400" />
-                  💎 GÓI PREMIUM • Còn {daysRemaining ?? 30} ngày{formattedExpiry ? ` (Hết hạn: ${formattedExpiry})` : ''}
+                  💎 GÓI PREMIUM{daysRemaining !== null ? ` • Còn ${daysRemaining} ngày` : ''}{formattedExpiry ? ` (Hết hạn: ${formattedExpiry})` : ''}
                 </span>
               ) : (
                 <div className="inline-flex flex-wrap items-center justify-center gap-2">
