@@ -86,6 +86,11 @@ async function checkout(userId, body, clientIp = '127.0.0.1') {
   if (!['VNPAY', 'MOMO', 'BANK_TRANSFER'].includes(method)) throw fail('Invalid payment method.');
   const existing = await MembershipOrder.findOne({ userId, membershipPlanId: plan._id, status: 'PENDING', expiresAt: { $gt: new Date() } }).sort({ createdAt: -1 });
   if (existing) {
+    if (existing.amount !== plan.price) {
+      existing.amount = plan.price;
+      await existing.save();
+      await Payment.updateOne({ membershipOrderId: existing._id }, { $set: { amount: plan.price } });
+    }
     if (method === 'BANK_TRANSFER') {
       const existingPayment = await Payment.findOne({ membershipOrderId: existing._id });
       return {

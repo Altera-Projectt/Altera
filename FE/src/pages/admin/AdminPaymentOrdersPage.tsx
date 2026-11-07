@@ -279,7 +279,7 @@ export function AdminPaymentOrdersPage() {
               {formatVND(summary.totalMembershipPaidRevenue)}
             </p>
             <p className="mt-1.5 text-xs text-slate-400">
-              Nâng cấp gói <strong className="text-slate-200">PREMIUM (59.000 ₫)</strong> &amp; <strong className="text-slate-200">PRO STUDIO (99.000 ₫)</strong> · 100% doanh thu dịch vụ số về Sàn.
+              Nâng cấp gói <strong className="text-slate-200">PREMIUM (18.000 ₫)</strong> &amp; <strong className="text-slate-200">PRO STUDIO (36.000 ₫)</strong> · 100% doanh thu dịch vụ số về Sàn.
             </p>
           </div>
 

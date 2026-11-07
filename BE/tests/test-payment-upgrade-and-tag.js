@@ -48,7 +48,7 @@ async function runTest() {
   const startTime = Date.now();
   const startIso = new Date().toISOString();
 
-  // Gọi service upgrade lên gói PRO (99k/Tháng)
+  // Gọi service upgrade lên gói PRO (36k/Tháng)
   const upgradeResult = await membershipService.upgrade(testUser._id, {
     tier: 'PRO',
     paymentMethod: 'BANK_TRANSFER',
