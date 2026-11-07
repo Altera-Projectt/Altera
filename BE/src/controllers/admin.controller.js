@@ -175,7 +175,7 @@ exports.dashboard = async (req, res, next) => {
         },
       ]),
       DesignerProfile.find()
-        .populate('userId', 'fullName email avatar membershipTier isLifetimeMembership')
+        .populate('userId', 'fullName email avatar membershipTier isLifetimeMembership bankAccount')
         .lean(),
       MarketplaceDesign.find()
         .select('_id designerId name thumbnail thumbnailUrl category price status salesCount likesCount')
@@ -265,6 +265,15 @@ exports.dashboard = async (req, res, next) => {
           membershipTier: userObj?.isLifetimeMembership
             ? 'PRO'
             : String(userObj?.membershipTier || 'FREE').toUpperCase(),
+          bankAccount: userObj?.bankAccount?.accountNumber
+            ? {
+                bankCode: userObj.bankAccount.bankCode || '',
+                bankName: userObj.bankAccount.bankName || userObj.bankAccount.bankCode || '',
+                accountNumber: userObj.bankAccount.accountNumber || '',
+                accountName: userObj.bankAccount.accountName || '',
+                updatedAt: userObj.bankAccount.updatedAt || null,
+              }
+            : null,
           totalDesigns: designerDesigns.length,
           publishedDesigns: publishedList.length,
           totalLikes,
@@ -375,7 +384,7 @@ exports.listUsers = async (req, res, next) => {
     }
     const [rawUsers, total] = await Promise.all([
       User.find(query)
-        .select('fullName email phone role isActive avatar createdAt membershipTier membershipStartedAt membershipExpiresAt isLifetimeMembership membershipStatus')
+        .select('fullName email phone role isActive avatar createdAt membershipTier membershipStartedAt membershipExpiresAt isLifetimeMembership membershipStatus bankAccount')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),

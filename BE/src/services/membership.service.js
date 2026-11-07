@@ -7,9 +7,9 @@ const User = require('../models/User');
 const env = require('../config/env');
 
 const plans = [
-  { code: 'BASIC', name: 'BASIC', price: 0, billingCycle: 'FREE', description: 'Quyền lợi cơ bản', features: ['Thiết kế cơ bản', 'Lưu các thiết kế yêu thích'] },
-  { code: 'PREMIUM', name: 'PREMIUM', price: 59000, billingCycle: 'MONTHLY', description: 'Quyền lợi nâng cao', features: ['Thiết kế nâng cao', 'AI Design', 'Nhiều thiết kế hơn', 'Ưu tiên tính năng mới'] },
-  { code: 'PRO_STUDIO', name: 'PRO STUDIO', price: 99000, billingCycle: 'MONTHLY', description: 'Dành cho Designer / Creator', features: ['Tất cả quyền lợi Premium', 'Công cụ sáng tạo chuyên nghiệp', 'Ưu tiên hỗ trợ', 'Truy cập sớm tính năng mới'] },
+  { code: 'BASIC', name: 'BASIC', price: 0, billingCycle: 'FREE', description: 'Gói cơ bản miễn phí', features: ['Mua sắm sản phẩm trên toàn hệ thống', '15 lượt tạo ảnh AI / tháng', '5 lượt đăng bán / tháng lên Marketplace'] },
+  { code: 'PREMIUM', name: 'PREMIUM', price: 18000, billingCycle: 'MONTHLY', description: 'Trọn bộ tính năng thiết kế 3D & kinh doanh', features: ['50 lượt tạo ảnh AI / tháng', 'Mở khóa toàn bộ công cụ 3D Studio', '15 lượt đăng bán / tháng lên Marketplace', 'Huy hiệu Vương miện Bạc & Viền Avatar VIP'] },
+  { code: 'PRO_STUDIO', name: 'PRO STUDIO', price: 36000, billingCycle: 'MONTHLY', description: 'Dành cho Nhà thiết kế & Sáng tạo chuyên nghiệp', features: ['100 lượt tạo ảnh AI / tháng', '20 lượt đăng bán / tháng lên Marketplace', 'Huy hiệu Vương miện Vàng & Viền Avatar Hoàng Kim', 'Ưu tiên duyệt thiết kế & Hỗ trợ kỹ thuật 24/7'] },
 ];
 const fail = (message, statusCode = 400) => Object.assign(new Error(message), { statusCode });
 const reference = () => `ALT${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
@@ -42,7 +42,7 @@ function buildBankTransfer(plan, ref) {
 }
 
 async function listPlans() {
-  for (const plan of plans) await MembershipPlan.updateOne({ code: plan.code }, { $setOnInsert: plan }, { upsert: true });
+  for (const plan of plans) await MembershipPlan.updateOne({ code: plan.code }, { $set: plan }, { upsert: true });
   return MembershipPlan.find({ isActive: true }).sort({ price: 1 }).lean();
 }
 async function current(userId) {
@@ -270,7 +270,7 @@ async function upgrade(userId, body = {}) {
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-  const amount = normalizedTier === 'PRO' ? 99000 : 59000;
+  const amount = normalizedTier === 'PRO' ? 36000 : 18000;
   const ref = reference();
 
   if (plan) {

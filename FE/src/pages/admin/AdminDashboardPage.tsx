@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { AdminService } from '@/services/admin.api'
 import { formatVND, formatVNDShort, optimizeCloudinaryUrl } from '@/utils/format'
+import { QrCode, Landmark, Copy, Check, X } from 'lucide-react'
 
 type RevenueDayItem = {
   _id: string
@@ -43,6 +44,13 @@ type TopSellerItem = {
   email: string
   avatar: string
   membershipTier: string
+  bankAccount?: {
+    bankCode: string
+    bankName: string
+    accountNumber: string
+    accountName: string
+    updatedAt?: string | null
+  } | null
   totalDesigns: number
   publishedDesigns: number
   totalLikes: number
@@ -112,6 +120,23 @@ export function AdminDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [payoutSeller, setPayoutSeller] = useState<TopSellerItem | null>(null)
+  const [payoutAmount, setPayoutAmount] = useState<number>(0)
+  const [payoutNote, setPayoutNote] = useState<string>('')
+  const [copiedField, setCopiedField] = useState<string | null>(null)
+
+  const handleOpenPayoutModal = (seller: TopSellerItem) => {
+    setPayoutSeller(seller)
+    setPayoutAmount(seller.sellerEarnings > 0 ? seller.sellerEarnings : 0)
+    setPayoutNote(`ALTERA THANH TOAN HOA HONG ${seller.username.toUpperCase()}`)
+    setCopiedField(null)
+  }
+
+  const handleCopyText = (text: string, field: string) => {
+    void navigator.clipboard.writeText(text)
+    setCopiedField(field)
+    setTimeout(() => setCopiedField(null), 2000)
+  }
 
   useEffect(() => {
     let current = true
@@ -509,7 +534,7 @@ export function AdminDashboardPage() {
                     {formatVND(breakdown.membershipRevenue)}
                   </p>
                   <p className="mt-2 text-xs leading-relaxed text-slate-400">
-                    Doanh thu bán gói <span className="text-slate-200">PREMIUM (59.000 ₫)</span> & <span className="text-slate-200">PRO STUDIO (99.000 ₫)</span> — 100% thuộc về Sàn.
+                    Doanh thu bán gói <span className="text-slate-200">PREMIUM (18.000 ₫)</span> & <span className="text-slate-200">PRO STUDIO (36.000 ₫)</span> — 100% thuộc về Sàn.
                   </p>
                   <div className="mt-3 flex items-center justify-between border-t border-blue-400/15 pt-2.5 text-[11px] text-slate-300">
                     <span>Tỷ lệ biên lợi nhuận:</span>
@@ -749,6 +774,27 @@ export function AdminDashboardPage() {
                               Phí sàn: <strong className="text-slate-200">{formatVND(seller.platformFee)}</strong>
                             </span>
                           </div>
+
+                          <div className="mt-3 flex items-center justify-between gap-2 border-t border-blue-400/15 pt-3">
+                            {seller.bankAccount?.accountNumber ? (
+                              <span className="inline-flex items-center gap-1.5 truncate rounded-md border border-cyan-400/30 bg-[#060B16] px-2 py-1 text-[11px] font-semibold text-cyan-400">
+                                <Landmark className="h-3 w-3 shrink-0" />
+                                {seller.bankAccount.bankCode} • {seller.bankAccount.accountNumber}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 rounded-md border border-slate-700 bg-[#060B16]/70 px-2 py-1 text-[11px] text-slate-400">
+                                Chưa gắn TK Ngân hàng
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenPayoutModal(seller)}
+                              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-blue-600 transition-colors"
+                            >
+                              <QrCode className="h-3.5 w-3.5" />
+                              Thanh toán QR
+                            </button>
+                          </div>
                         </div>
                       )
                     })}
@@ -765,6 +811,7 @@ export function AdminDashboardPage() {
                           <th className="px-3 py-2.5 text-right">Đã bán</th>
                           <th className="px-3 py-2.5 text-right">Doanh số &amp; Hoa hồng (5%)</th>
                           <th className="px-3 py-2.5 text-right">Về Sàn (95%)</th>
+                          <th className="px-3 py-2.5">Ngân hàng &amp; Thanh toán</th>
                           <th className="w-24 px-3 py-2.5 text-right">Tỷ trọng</th>
                         </tr>
                       </thead>
@@ -873,6 +920,30 @@ export function AdminDashboardPage() {
                               <td className="px-3 py-2.5 text-right font-medium text-slate-300">
                                 {formatVND(seller.platformFee)}
                               </td>
+                              <td className="px-3 py-2.5">
+                                <div className="flex items-center justify-between gap-2">
+                                  {seller.bankAccount?.accountNumber ? (
+                                    <div className="min-w-0">
+                                      <p className="truncate font-mono text-xs font-bold text-cyan-400">
+                                        {seller.bankAccount.bankCode} • {seller.bankAccount.accountNumber}
+                                      </p>
+                                      <p className="truncate text-[10px] text-slate-400">
+                                        {seller.bankAccount.accountName}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[11px] text-slate-400">Chưa cập nhật</span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenPayoutModal(seller)}
+                                    className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-cyan-400/30 bg-[#162038] px-2.5 py-1 text-[11px] font-bold text-cyan-400 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition-colors"
+                                  >
+                                    <QrCode className="h-3.5 w-3.5" />
+                                    QR Hoa hồng
+                                  </button>
+                                </div>
+                              </td>
                               <td className="w-24 px-3 py-2.5 text-right">
                                 <div className="flex items-center justify-end gap-1.5">
                                   <div className="h-1.5 w-12 overflow-hidden rounded-full bg-[#060B16]">
@@ -930,6 +1001,147 @@ export function AdminDashboardPage() {
             </div>
           </>
         )
+      )}
+
+      {/* MODAL QUÉT MÃ VIETQR THANH TOÁN HOA HỒNG CHO CREATOR / SELLER */}
+      {payoutSeller && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#060B16]/85 p-4 backdrop-blur-sm"
+          onClick={() => setPayoutSeller(null)}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-2xl border border-cyan-400/30 bg-[#0F172A] p-6 text-slate-100 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setPayoutSeller(null)}
+              className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-[#162038] hover:text-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-[#162038] text-cyan-400">
+                <QrCode className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold tracking-normal text-slate-100">
+                  Thanh toán Hoa hồng qua VietQR
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Creator: <strong className="text-slate-100">{payoutSeller.displayName}</strong> (@{payoutSeller.username})
+                </p>
+              </div>
+            </div>
+
+            {payoutSeller.bankAccount?.accountNumber && payoutSeller.bankAccount?.bankCode ? (
+              <div className="mt-5 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-[200px_1fr] items-center rounded-xl border border-cyan-400/25 bg-[#0A1122] p-4">
+                  <div className="flex flex-col items-center justify-center rounded-xl bg-white p-2.5 shadow-md mx-auto">
+                    <img
+                      src={`https://img.vietqr.io/image/${encodeURIComponent(payoutSeller.bankAccount.bankCode)}-${encodeURIComponent(payoutSeller.bankAccount.accountNumber)}-compact2.png?amount=${Math.max(0, Math.round(payoutAmount || 0))}&addInfo=${encodeURIComponent(payoutNote)}&accountName=${encodeURIComponent(payoutSeller.bankAccount.accountName || '')}`}
+                      alt="VietQR thanh toán hoa hồng"
+                      className="h-44 w-44 object-contain"
+                    />
+                    <span className="mt-1 text-[10px] font-bold text-slate-700">
+                      Quét bằng App Ngân hàng bất kỳ
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div>
+                      <span className="text-slate-400">Ngân hàng thụ hưởng:</span>
+                      <p className="font-semibold text-slate-100 mt-0.5">
+                        {payoutSeller.bankAccount.bankCode} — {payoutSeller.bankAccount.bankName}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400">Số tài khoản:</span>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="font-mono text-base font-bold text-cyan-400">
+                          {payoutSeller.bankAccount.accountNumber}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(payoutSeller.bankAccount!.accountNumber, 'stk')}
+                          className="inline-flex items-center gap-1 rounded border border-cyan-400/30 bg-[#162038] px-2 py-0.5 text-[10px] font-semibold text-cyan-400 hover:bg-blue-500 hover:text-white"
+                        >
+                          {copiedField === 'stk' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {copiedField === 'stk' ? 'Đã chép' : 'Sao chép'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400">Chủ tài khoản:</span>
+                      <p className="font-bold uppercase text-slate-100 mt-0.5">
+                        {payoutSeller.bankAccount.accountName}
+                      </p>
+                    </div>
+
+                    <div className="pt-1 border-t border-blue-400/15">
+                      <span className="text-slate-400">Doanh số bán / Hoa hồng (5%):</span>
+                      <p className="font-semibold text-slate-200 mt-0.5">
+                        {formatVND(payoutSeller.grossSales)} → <strong className="text-cyan-400">{formatVND(payoutSeller.sellerEarnings)}</strong>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Số tiền chuyển khoản (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={payoutAmount}
+                      onChange={(e) => setPayoutAmount(Number(e.target.value))}
+                      className="w-full rounded-xl border border-cyan-400/30 bg-[#162038] px-3 py-2 text-sm font-bold text-cyan-400 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Nội dung chuyển khoản
+                    </label>
+                    <input
+                      type="text"
+                      value={payoutNote}
+                      onChange={(e) => setPayoutNote(e.target.value)}
+                      className="w-full rounded-xl border border-cyan-400/30 bg-[#162038] px-3 py-2 text-xs text-slate-100 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-xl border border-dashed border-cyan-400/30 bg-[#0A1122] p-6 text-center">
+                <Landmark className="mx-auto h-8 w-8 text-slate-400 mb-2" />
+                <p className="text-sm font-semibold text-slate-200">
+                  Người dùng này chưa cập nhật tài khoản ngân hàng
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Creator cần vào trang <strong>Hồ sơ cá nhân (/profile) → Tổng quan → Tài khoản Ngân hàng nhận thanh toán</strong> để lưu số tài khoản trước khi Admin tạo mã QR.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPayoutSeller(null)}
+                className="rounded-xl bg-blue-500 px-5 py-2 text-xs font-bold text-white hover:bg-blue-600 transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )

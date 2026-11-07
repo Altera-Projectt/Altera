@@ -1,7 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, me } = require('../controllers/auth.controller');
-const { registerValidator, loginValidator } = require('../validators/auth.validator');
+const {
+  register,
+  login,
+  googleAuth,
+  forgotPassword,
+  verifyResetCode,
+  resetPassword,
+  me,
+} = require('../controllers/auth.controller');
+const {
+  registerValidator,
+  loginValidator,
+  forgotPasswordValidator,
+  verifyResetCodeValidator,
+  resetPasswordValidator,
+} = require('../validators/auth.validator');
 const { protect } = require('../middlewares/auth.middleware');
 
 /**
@@ -97,6 +111,10 @@ router.post('/register', registerValidator, register);
  *         description: Invalid credentials
  */
 router.post('/login', loginValidator, login);
+router.post('/google', googleAuth);
+router.post('/forgot-password', forgotPasswordValidator, forgotPassword);
+router.post('/verify-reset-code', verifyResetCodeValidator, verifyResetCode);
+router.post('/reset-password', resetPasswordValidator, resetPassword);
 
 /**
  * @swagger

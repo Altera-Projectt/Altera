@@ -69,10 +69,91 @@ const updateBasic = async (req, res, next) => {
     if (req.body.coverImage !== undefined) {
       updates.coverImage = await ensureCloudinaryUrl(req.body.coverImage, 'altera/users/covers');
     }
+    if (req.body.bankAccount && typeof req.body.bankAccount === 'object') {
+      const { bankCode, bankName, accountNumber, accountName } = req.body.bankAccount;
+      updates.bankAccount = {
+        bankCode: bankCode ? String(bankCode).trim().toUpperCase() : null,
+        bankName: bankName ? String(bankName).trim() : null,
+        accountNumber: accountNumber ? String(accountNumber).replace(/\s+/g, '').trim() : null,
+        accountName: accountName ? String(accountName).trim().toUpperCase() : null,
+        updatedAt: new Date(),
+      };
+    }
 
     const updated = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
     const user = await enrichUserResponse(updated);
     res.status(200).json({ success: true, message: 'Basic profile updated successfully', data: { user } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateBankAccount = async (req, res, next) => {
+  try {
+    const { bankCode, bankName, accountNumber, accountName } = req.body || {};
+
+    const cleanCode = bankCode ? String(bankCode).trim().toUpperCase() : '';
+    const cleanName = bankName ? String(bankName).trim() : '';
+    const cleanNumber = accountNumber ? String(accountNumber).replace(/\s+/g, '').trim() : '';
+    const cleanHolder = accountName ? String(accountName).trim().toUpperCase() : '';
+
+    // Allow clearing bank account if all fields are empty
+    if (!cleanCode && !cleanNumber && !cleanHolder) {
+      const updated = await User.findByIdAndUpdate(
+        req.user._id,
+        {
+          bankAccount: {
+            bankCode: null,
+            bankName: null,
+            accountNumber: null,
+            accountName: null,
+            updatedAt: null,
+          },
+        },
+        { new: true, runValidators: true }
+      );
+      const user = await enrichUserResponse(updated);
+      return res.status(200).json({
+        success: true,
+        message: 'Đã xóa thông tin tài khoản ngân hàng',
+        data: { user },
+      });
+    }
+
+    if (!cleanCode || !cleanNumber || !cleanHolder) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng nhập đầy đủ Ngân hàng, Số tài khoản và Tên chủ tài khoản.',
+      });
+    }
+
+    if (!/^[0-9A-Za-z]{5,30}$/.test(cleanNumber)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Số tài khoản ngân hàng không hợp lệ (5–30 ký tự chữ hoặc số).',
+      });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        bankAccount: {
+          bankCode: cleanCode,
+          bankName: cleanName || cleanCode,
+          accountNumber: cleanNumber,
+          accountName: cleanHolder,
+          updatedAt: new Date(),
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    const user = await enrichUserResponse(updated);
+    res.status(200).json({
+      success: true,
+      message: 'Cập nhật tài khoản ngân hàng nhận hoa hồng thành công',
+      data: { user },
+    });
   } catch (error) {
     next(error);
   }
@@ -234,6 +315,7 @@ module.exports = {
   getProfile,
   updateProfile,
   updateBasic,
+  updateBankAccount,
   updateMeasurements,
   updatePreferences,
   uploadAvatar,

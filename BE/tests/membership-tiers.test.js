@@ -58,7 +58,7 @@ describe('Membership Tiers, Weekly Quotas, Expiration & VIP Lifetime Flow', () =
     updateOneMock.mock.restore();
   });
 
-  it('3. Enforces FREE tier quotas (max 1 AI image/week, blocks 3D Studio & Marketplace publishing)', async () => {
+  it('3. Enforces FREE tier quotas (max 15 AI images/month, allows 3D Studio draft, max 5 Marketplace publications/month)', async () => {
     const freeUser = {
       _id: new mongoose.Types.ObjectId(),
       email: 'freeuser@example.com',
@@ -67,37 +67,39 @@ describe('Membership Tiers, Weekly Quotas, Expiration & VIP Lifetime Flow', () =
       isLifetimeMembership: false,
     };
 
-    let aiCount = 0;
+    let aiCount = 14;
+    let publishCount = 4;
     const designCountMock = mock.method(Design, 'countDocuments', async () => aiCount);
-    const mpCountMock = mock.method(MarketplaceDesign, 'countDocuments', async () => 0);
+    const mpCountMock = mock.method(MarketplaceDesign, 'countDocuments', async () => publishCount);
 
-    // 0 AI images used -> allowed
+    // 14 AI images used -> allowed
     await assert.doesNotReject(() => enforceAiQuota(freeUser));
 
-    // 1 AI image used -> blocked with 403
-    aiCount = 1;
+    // 15 AI images used -> blocked with 403
+    aiCount = 15;
     await assert.rejects(
       () => enforceAiQuota(freeUser),
-      /Tài khoản Miễn phí chỉ được tạo tối đa 1 ảnh AI mỗi tuần/
+      /Tài khoản Miễn phí giới hạn tối đa 15 lượt tạo ảnh AI mỗi tháng/
     );
 
-    // 3D Studio access -> blocked with 403
-    await assert.rejects(
-      () => enforceStudioAccess(freeUser),
-      /chỉ dành cho hội viên Premium và Pro/
-    );
+    // 3D Studio access -> allowed so FREE user can use their 5 monthly publish slots
+    await assert.doesNotReject(() => enforceStudioAccess(freeUser));
 
-    // Marketplace publishing -> blocked with 403
+    // 4 published this month -> allowed
+    await assert.doesNotReject(() => enforcePublishQuota(freeUser));
+
+    // 5 published this month -> blocked with 403
+    publishCount = 5;
     await assert.rejects(
       () => enforcePublishQuota(freeUser),
-      /chỉ dành cho hội viên Premium và Pro/
+      /Gói Miễn phí giới hạn đăng bán tối đa 5 sản phẩm mỗi tháng/
     );
 
     designCountMock.mock.restore();
     mpCountMock.mock.restore();
   });
 
-  it('4. Enforces PREMIUM tier quotas (unlimited AI & 3D Studio, max 3 Marketplace publications/week)', async () => {
+  it('4. Enforces PREMIUM tier quotas (max 50 AI images/month, max 15 Marketplace publications/month)', async () => {
     const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const premiumUser = {
       _id: new mongoose.Types.ObjectId(),
@@ -111,21 +113,29 @@ describe('Membership Tiers, Weekly Quotas, Expiration & VIP Lifetime Flow', () =
     assert.equal(getEffectiveTier(premiumUser), 'PREMIUM');
     assert.equal(getDaysRemaining(premiumUser), 30);
 
-    let publishedCount = 2;
-    const designCountMock = mock.method(Design, 'countDocuments', async () => 50);
+    let aiCount = 49;
+    let publishedCount = 14;
+    const designCountMock = mock.method(Design, 'countDocuments', async () => aiCount);
     const mpCountMock = mock.method(MarketplaceDesign, 'countDocuments', async () => publishedCount);
 
     await assert.doesNotReject(() => enforceAiQuota(premiumUser));
     await assert.doesNotReject(() => enforceStudioAccess(premiumUser));
 
-    // 2 published this week -> allowed
+    // 50 AI images used -> blocked with 403
+    aiCount = 50;
+    await assert.rejects(
+      () => enforceAiQuota(premiumUser),
+      /Gói Premium giới hạn tối đa 50 lượt tạo ảnh AI mỗi tháng/
+    );
+
+    // 14 published this month -> allowed
     await assert.doesNotReject(() => enforcePublishQuota(premiumUser));
 
-    // 3 published this week -> blocked with 403
-    publishedCount = 3;
+    // 15 published this month -> blocked with 403
+    publishedCount = 15;
     await assert.rejects(
       () => enforcePublishQuota(premiumUser),
-      /Gói Premium giới hạn đăng tối đa 3 sản phẩm mỗi tuần/
+      /Gói Premium giới hạn đăng bán tối đa 15 sản phẩm mỗi tháng/
     );
 
     designCountMock.mock.restore();

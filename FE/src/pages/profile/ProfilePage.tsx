@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
 import { AuthService } from '@/services/auth.api'
 import { useAuthStore } from '@/store/authStore'
-import type { User, UpdateMeasurementsPayload, UpdatePreferencesPayload } from '@/types/user.types'
+import type { User, UpdateMeasurementsPayload, UpdatePreferencesPayload, UpdateBankAccountPayload } from '@/types/user.types'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { User as UserIcon, Camera, Ruler, Scale, Shirt, Footprints, Edit2, Trash2, Crown, Sparkles } from 'lucide-react'
+import { User as UserIcon, Camera, Ruler, Scale, Shirt, Footprints, Edit2, Trash2, Crown, Sparkles, Landmark, QrCode, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/utils/cn'
 import api from '@/utils/axios'
 import { toast } from 'sonner'
@@ -18,6 +18,24 @@ import { ShoppingBag } from 'lucide-react'
 import { getUsagePercent } from '@/utils/membershipLimits'
 
 type TabType = 'store' | 'overview' | 'measurements' | 'preferences'
+
+const VIETNAM_BANKS: Array<{ code: string; name: string }> = [
+  { code: 'MB', name: 'MBBank (Ngân hàng Quân Đội)' },
+  { code: 'VCB', name: 'Vietcombank (Ngân hàng Ngoại Thương)' },
+  { code: 'TCB', name: 'Techcombank (Ngân hàng Kỹ Thương)' },
+  { code: 'ACB', name: 'ACB (Ngân hàng Á Châu)' },
+  { code: 'BIDV', name: 'BIDV (Ngân hàng Đầu tư & Phát triển)' },
+  { code: 'ICB', name: 'VietinBank (Ngân hàng Công Thương)' },
+  { code: 'VPB', name: 'VPBank (Ngân hàng Việt Nam Thịnh Vượng)' },
+  { code: 'TPB', name: 'TPBank (Ngân hàng Tiên Phong)' },
+  { code: 'STB', name: 'Sacombank (Ngân hàng Sài Gòn Thương Tín)' },
+  { code: 'VIB', name: 'VIB (Ngân hàng Quốc Tế)' },
+  { code: 'SHB', name: 'SHB (Ngân hàng Sài Gòn - Hà Nội)' },
+  { code: 'MSB', name: 'MSB (Ngân hàng Hàng Hải)' },
+  { code: 'OCB', name: 'OCB (Ngân hàng Phương Đông)' },
+  { code: 'HDB', name: 'HDBank (Ngân hàng Phát triển TP.HCM)' },
+  { code: 'VBA', name: 'Agribank (Ngân hàng NN&PT Nông thôn)' },
+]
 
 export function ProfilePage() {
   const navigate = useNavigate()
@@ -34,6 +52,15 @@ export function ProfilePage() {
   // Edit states
   const [isEditingBio, setIsEditingBio] = useState(false)
   const [bioForm, setBioForm] = useState({ bio: '', location: '' })
+
+  const [isEditingBank, setIsEditingBank] = useState(false)
+  const [savingBank, setSavingBank] = useState(false)
+  const [bankForm, setBankForm] = useState<UpdateBankAccountPayload>({
+    bankCode: 'MB',
+    bankName: 'MBBank (Ngân hàng Quân Đội)',
+    accountNumber: '',
+    accountName: '',
+  })
 
   const [isEditingMeasurements, setIsEditingMeasurements] = useState(false)
   const [measurementsForm, setMeasurementsForm] = useState<UpdateMeasurementsPayload>({ height: 0, weight: 0, shirtSize: '', shoeSize: '' })
@@ -106,6 +133,13 @@ export function ProfilePage() {
   useEffect(() => {
     if (user) {
       setBioForm({ bio: user.bio || '', location: user.location || '' })
+      const matchedBank = VIETNAM_BANKS.find((b) => b.code === user.bankAccount?.bankCode)
+      setBankForm({
+        bankCode: user.bankAccount?.bankCode || 'MB',
+        bankName: user.bankAccount?.bankName || matchedBank?.name || 'MBBank (Ngân hàng Quân Đội)',
+        accountNumber: user.bankAccount?.accountNumber || '',
+        accountName: user.bankAccount?.accountName || '',
+      })
       setMeasurementsForm({
         height: user.measurements?.height || 0,
         weight: user.measurements?.weight || 0,
@@ -130,6 +164,34 @@ export function ProfilePage() {
       toast.success('Đã cập nhật thông tin cơ bản')
     } catch {
       toast.error('Lỗi khi cập nhật thông tin')
+    }
+  }
+
+  const handleSaveBankAccount = async () => {
+    const cleanNumber = bankForm.accountNumber.replace(/\s+/g, '').trim()
+    const cleanHolder = bankForm.accountName.trim().toUpperCase()
+    if (!bankForm.bankCode || !cleanNumber || !cleanHolder) {
+      toast.error('Vui lòng nhập đầy đủ Ngân hàng, Số tài khoản và Tên chủ tài khoản.')
+      return
+    }
+    try {
+      setSavingBank(true)
+      const selectedBank = VIETNAM_BANKS.find((b) => b.code === bankForm.bankCode)
+      const res = await AuthService.updateBankAccount({
+        bankCode: bankForm.bankCode,
+        bankName: selectedBank?.name || bankForm.bankName || bankForm.bankCode,
+        accountNumber: cleanNumber,
+        accountName: cleanHolder,
+      })
+      const updatedUser = (res.data.data as any).user || res.data.data
+      setUser(updatedUser)
+      updateUser(updatedUser)
+      setIsEditingBank(false)
+      toast.success('Đã lưu tài khoản ngân hàng nhận hoa hồng!')
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Lỗi khi lưu tài khoản ngân hàng')
+    } finally {
+      setSavingBank(false)
     }
   }
 
@@ -349,23 +411,23 @@ export function ProfilePage() {
 
             {/* Monthly Quota Usage */}
             <div className="mt-3 flex flex-wrap items-center justify-center gap-2.5 text-[11px] font-medium">
-              <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-1.5 text-[var(--color-foreground)] shadow-sm">
                 Lượt tạo ảnh AI tháng này:{' '}
-                <strong className="text-cyan-400">
+                <strong className="text-[#0011FF]">
                   {isAdmin ? 'Không giới hạn' : `${aiUsed} / ${effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100}`}
                 </strong>
-                {!isAdmin && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(aiUsed, effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100)}%` }} /></div>}
+                {!isAdmin && <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200"><div className="h-full rounded-full bg-[#0011FF]" style={{ width: `${getUsagePercent(aiUsed, effectiveTier === 'FREE' ? 15 : effectiveTier === 'PREMIUM' ? 50 : 100)}%` }} /></div>}
               </div>
-              <div className="rounded-lg border border-cyan-400/30 bg-[#0F172A] px-3 py-1 text-slate-200">
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3.5 py-1.5 text-[var(--color-foreground)] shadow-sm">
                 Lượt đăng bán tháng này:{' '}
-                <strong className="text-cyan-400">
+                <strong className="text-[#0011FF]">
                   {effectiveTier === 'FREE'
                     ? `${publishUsed} / 5`
                     : effectiveTier === 'PREMIUM' && !isAdmin
                     ? `${publishUsed} / ${effectiveTier === 'PREMIUM' ? 15 : 20}`
                     : isAdmin ? 'Không giới hạn' : `${publishUsed} / 20`}
                 </strong>
-                {!isAdmin && <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-700"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${getUsagePercent(publishUsed, effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20)}%` }} /></div>}
+                {!isAdmin && <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200"><div className="h-full rounded-full bg-[#0011FF]" style={{ width: `${getUsagePercent(publishUsed, effectiveTier === 'FREE' ? 5 : effectiveTier === 'PREMIUM' ? 15 : 20)}%` }} /></div>}
               </div>
             </div>
           </div>
@@ -579,6 +641,175 @@ export function ProfilePage() {
                           value={bioForm.location}
                           onChange={(e) => setBioForm(prev => ({ ...prev, location: e.target.value }))}
                           placeholder="VD: Hồ Chí Minh, VN"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                {/* BANK ACCOUNT FOR COMMISSION PAYOUT */}
+                <section className="bg-[var(--color-card)] p-8 rounded-[var(--radius-xl)] border border-[var(--color-border)] shadow-lg">
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-1 flex items-center gap-1.5">
+                        <Landmark className="h-3.5 w-3.5 text-[#0011FF]" />
+                        Tài khoản nhận hoa hồng Creator (VietQR)
+                      </p>
+                      <h3 className="font-heading text-2xl uppercase tracking-normal text-[var(--color-foreground)]">
+                        Tài khoản Ngân hàng nhận thanh toán
+                      </h3>
+                      <p className="mt-1.5 text-xs text-[var(--color-muted-foreground)] max-w-2xl leading-relaxed">
+                        Cập nhật số tài khoản ngân hàng của bạn để Quản trị viên ALTERA kiểm tra và quét mã VietQR chuyển khoản tiền hoa hồng bản quyền thiết kế nhanh chóng, chính xác.
+                      </p>
+                    </div>
+                    {!isEditingBank ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingBank(true)}
+                        className="text-[10px] uppercase font-bold tracking-widest shrink-0"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 mr-2" />
+                        {user.bankAccount?.accountNumber ? 'Đổi tài khoản ngân hàng' : 'Liên kết ngân hàng'}
+                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={savingBank}
+                          onClick={() => setIsEditingBank(false)}
+                          className="text-[10px] uppercase font-bold tracking-widest"
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={savingBank}
+                          onClick={handleSaveBankAccount}
+                          className="text-[10px] uppercase font-bold tracking-widest bg-[#0011FF] text-white hover:bg-[#0011FF]/90"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                          {savingBank ? 'Đang lưu...' : 'Lưu tài khoản'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+
+                  {!isEditingBank ? (
+                    user.bankAccount?.accountNumber && user.bankAccount?.bankCode ? (
+                      <div className="grid gap-6 md:grid-cols-[1fr_220px] items-center rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-background)] p-6">
+                        <div className="space-y-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-[#0011FF]/10 border border-[#0011FF]/20 px-2.5 py-1 text-xs font-extrabold text-[#0011FF]">
+                              {user.bankAccount.bankCode}
+                            </span>
+                            <span className="text-sm font-bold text-[var(--color-foreground)]">
+                              {user.bankAccount.bankName || user.bankAccount.bankCode}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                              Số tài khoản nhận tiền
+                            </p>
+                            <p className="mt-0.5 font-mono text-2xl font-black tracking-wider text-[#0011FF]">
+                              {user.bankAccount.accountNumber}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)]">
+                              Chủ tài khoản
+                            </p>
+                            <p className="mt-0.5 text-sm font-bold tracking-normal text-[var(--color-foreground)] uppercase">
+                              {user.bankAccount.accountName}
+                            </p>
+                          </div>
+                          <p className="text-xs text-[var(--color-muted-foreground)] pt-1 border-t border-[var(--color-border)]">
+                            ✓ Hệ thống đã tự động tạo mã VietQR cho tài khoản của bạn. Admin có thể quét mã này để thanh toán hoa hồng trực tiếp.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-center justify-center rounded-xl border border-[var(--color-border)] bg-white p-3 text-center shadow-sm">
+                          <img
+                            src={`https://img.vietqr.io/image/${encodeURIComponent(user.bankAccount.bankCode)}-${encodeURIComponent(user.bankAccount.accountNumber)}-compact2.png?addInfo=${encodeURIComponent(`ALTERA HOA HONG ${user.fullName || ''}`)}&accountName=${encodeURIComponent(user.bankAccount.accountName || '')}`}
+                            alt="Mã VietQR nhận hoa hồng"
+                            className="h-40 w-40 object-contain"
+                          />
+                          <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-zinc-700">
+                            <QrCode className="h-3 w-3 text-[#0011FF]" />
+                            VietQR Nhận Hoa Hồng
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-[var(--radius-xl)] border border-dashed border-[var(--color-border)] bg-[var(--color-background)]/50 p-10 text-center">
+                        <Landmark className="mx-auto h-8 w-8 text-[var(--color-muted-foreground)] mb-3" />
+                        <p className="text-sm font-bold text-[var(--color-foreground)]">
+                          Bạn chưa cập nhật tài khoản ngân hàng nhận hoa hồng
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--color-muted-foreground)] max-w-md mx-auto">
+                          Hãy thêm thông tin ngân hàng để khi thiết kế của bạn bán được trên Marketplace, Admin có thể quét mã QR chuyển khoản hoa hồng ngay cho bạn.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsEditingBank(true)}
+                          className="mt-4 uppercase text-[10px] font-bold tracking-widest"
+                        >
+                          + Thêm tài khoản ngân hàng ngay
+                        </Button>
+                      </div>
+                    )
+                  ) : (
+                    <div className="grid gap-6 sm:grid-cols-2 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-background)] p-6">
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                          Chọn Ngân hàng thụ hưởng (Hỗ trợ VietQR)
+                        </label>
+                        <select
+                          value={bankForm.bankCode}
+                          onChange={(e) => {
+                            const code = e.target.value
+                            const found = VIETNAM_BANKS.find((b) => b.code === code)
+                            setBankForm((prev) => ({
+                              ...prev,
+                              bankCode: code,
+                              bankName: found?.name || code,
+                            }))
+                          }}
+                          className="w-full h-10 px-3.5 text-sm bg-[var(--color-card)] border border-[var(--color-border)] rounded-[var(--radius-md)] text-[var(--color-foreground)] focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900 transition-all cursor-pointer"
+                        >
+                          {VIETNAM_BANKS.map((bank) => (
+                            <option key={bank.code} value={bank.code} className="bg-[var(--color-card)] text-[var(--color-foreground)]">
+                              {bank.code} — {bank.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                          Số tài khoản ngân hàng
+                        </label>
+                        <Input
+                          type="text"
+                          value={bankForm.accountNumber}
+                          onChange={(e) => setBankForm((prev) => ({ ...prev, accountNumber: e.target.value }))}
+                          placeholder="VD: 0384431663"
+                          className="font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-widest text-[var(--color-muted-foreground)] mb-2">
+                          Tên chủ tài khoản (IN HOA KHÔNG DẤU)
+                        </label>
+                        <Input
+                          type="text"
+                          value={bankForm.accountName}
+                          onChange={(e) => setBankForm((prev) => ({ ...prev, accountName: e.target.value.toUpperCase() }))}
+                          placeholder="VD: NGUYEN VAN A"
+                          className="uppercase"
                         />
                       </div>
                     </div>

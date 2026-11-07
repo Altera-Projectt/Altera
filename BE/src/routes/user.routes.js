@@ -4,6 +4,7 @@ const {
   getProfile,
   updateProfile,
   updateBasic,
+  updateBankAccount,
   updateMeasurements,
   updatePreferences,
   uploadAvatar,
@@ -74,6 +75,7 @@ router.put('/profile', upload.single('avatar'), updateProfile);
 
 // Profile dashboard endpoints. Keep /profile above for backwards compatibility.
 router.put('/me/basic', updateBasic);
+router.put('/me/bank-account', updateBankAccount);
 router.put('/me/measurements', updateMeasurements);
 router.put('/me/preferences', updatePreferences);
 router.post('/me/avatar', upload.single('avatar'), uploadAvatar);

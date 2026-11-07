@@ -2,6 +2,14 @@
  * ALTERA — User Types
  */
 
+export interface BankAccountInfo {
+  bankCode: string | null
+  bankName: string | null
+  accountNumber: string | null
+  accountName: string | null
+  updatedAt?: string | null
+}
+
 export interface User {
   _id: string
   id: string
@@ -35,6 +43,7 @@ export interface User {
   bio?: string
   location?: string
   role: 'USER' | 'ADMIN'
+  bankAccount?: BankAccountInfo | null
   measurements?: {
     height?: number
     weight?: number
@@ -87,6 +96,13 @@ export interface UpdatePreferencesPayload {
   styles?: string[]
   favoriteColors?: string[]
   avoidColors?: string[]
+}
+
+export interface UpdateBankAccountPayload {
+  bankCode: string
+  bankName: string
+  accountNumber: string
+  accountName: string
 }
 
 export interface ChangePasswordPayload {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AdminService } from '@/services/admin.api'
-import { Crown, Sparkles, Clock, X, CheckCircle2 } from 'lucide-react'
+import { Crown, Sparkles, Clock, X, CheckCircle2, QrCode, Landmark, Copy, Check } from 'lucide-react'
 
 type AdminUser = {
   _id: string
@@ -14,6 +14,13 @@ type AdminUser = {
   daysRemaining?: number | null
   membershipStatus?: string
   phone?: string
+  bankAccount?: {
+    bankCode: string | null
+    bankName: string | null
+    accountNumber: string | null
+    accountName: string | null
+    updatedAt?: string | null
+  } | null
   isActive?: boolean
   createdAt: string
 }
@@ -47,6 +54,19 @@ export function AdminUsersPage() {
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
   const [selectedNewTier, setSelectedNewTier] = useState<'FREE' | 'PREMIUM' | 'PRO'>('PRO')
   const [updatingTier, setUpdatingTier] = useState(false)
+
+  // Bank QR Payout Modal state
+  const [qrUser, setQrUser] = useState<AdminUser | null>(null)
+  const [qrAmount, setQrAmount] = useState<number>(50000)
+  const [qrNote, setQrNote] = useState<string>('')
+  const [copiedBank, setCopiedBank] = useState(false)
+
+  const handleOpenBankQr = (user: AdminUser) => {
+    setQrUser(user)
+    setQrAmount(50000)
+    setQrNote(`ALTERA THANH TOAN HOA HONG ${(user.fullName || user.email).toUpperCase().slice(0, 24)}`)
+    setCopiedBank(false)
+  }
 
   useEffect(() => {
     let current = true
@@ -217,28 +237,29 @@ export function AdminUsersPage() {
 
       <div className="overflow-hidden rounded-xl border border-blue-400/15 bg-[#0F172A] shadow-lg shadow-black/20">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px] text-left text-sm">
-            <thead className="border-b border-blue-400/15 bg-[#162038]/80 text-xs font-semibold uppercase tracking-wider text-slate-300">
+          <table className="w-full min-w-[1150px] text-left text-xs sm:text-sm">
+            <thead className="border-b border-blue-400/15 bg-[#162038]/80 text-[11px] font-semibold uppercase tracking-wider text-slate-300">
               <tr>
                 {[
                   'Mã tài khoản',
                   'Họ tên',
                   'Email',
+                  'TK Ngân hàng (Hoa hồng)',
                   'Gói hội viên',
                   'Thời hạn gói',
                   'Vai trò',
                   'Trạng thái',
-                  'Ngày đăng ký',
+                  'Ngày tạo',
                   'Thao tác',
                 ].map((label) => (
-                  <th key={label} className="px-4 py-3">{label}</th>
+                  <th key={label} className="px-3 py-2.5">{label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="p-10 text-center text-slate-400">Đang tải danh sách tài khoản…</td>
+                  <td colSpan={10} className="p-10 text-center text-slate-400">Đang tải danh sách tài khoản…</td>
                 </tr>
               ) : (
                 items.map((user) => {
@@ -248,21 +269,37 @@ export function AdminUsersPage() {
 
                   return (
                     <tr key={user._id} className="border-t border-blue-400/10 transition-colors hover:bg-blue-500/[0.05]">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-cyan-400">
+                      <td className="px-3 py-2.5 font-mono text-xs font-semibold text-cyan-400">
                         #{user._id.slice(-7).toUpperCase()}
                       </td>
-                      <td className="px-4 py-3 font-medium text-slate-100">{user.fullName || '—'}</td>
-                      <td className="px-4 py-3 text-slate-300">{user.email}</td>
+                      <td className="px-3 py-2.5 font-medium text-slate-100">{user.fullName || '—'}</td>
+                      <td className="px-3 py-2.5 text-slate-300">{user.email}</td>
+
+                      {/* TK Ngân Hàng */}
+                      <td className="px-3 py-2.5">
+                        {user.bankAccount?.accountNumber ? (
+                          <div className="flex flex-col">
+                            <span className="font-mono text-xs font-bold text-cyan-400">
+                              {user.bankAccount.bankCode} • {user.bankAccount.accountNumber}
+                            </span>
+                            <span className="text-[10px] uppercase text-slate-400">
+                              {user.bankAccount.accountName}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-500">Chưa cập nhật</span>
+                        )}
+                      </td>
 
                       {/* Gói Hội Viên */}
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         {effectiveTier === 'PRO' ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 text-xs font-bold text-amber-300">
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-xs font-bold text-amber-300">
                             <Crown className="h-3 w-3 fill-amber-400 text-amber-400" />
                             PRO VIP
                           </span>
                         ) : effectiveTier === 'PREMIUM' ? (
-                          <span className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-bold text-cyan-300">
+                          <span className="inline-flex items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-500/10 px-2 py-0.5 text-xs font-bold text-cyan-300">
                             <Sparkles className="h-3 w-3 text-cyan-400" />
                             PREMIUM
                           </span>
@@ -274,11 +311,10 @@ export function AdminUsersPage() {
                       </td>
 
                       {/* Thời Hạn Gói */}
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         {isAdmin ? (
                           <div className="flex flex-col">
-                            <span className="text-xs font-bold text-amber-300">Quyền theo Role ADMIN</span>
-                            <span className="text-[10px] text-slate-400">Membership tách biệt</span>
+                            <span className="text-xs font-bold text-amber-300">Role ADMIN</span>
                           </div>
                         ) : !isExpired && (effectiveTier === 'PRO' || effectiveTier === 'PREMIUM') ? (
                           <div className="flex flex-col">
@@ -288,7 +324,7 @@ export function AdminUsersPage() {
                             </span>}
                             {user.membershipExpiresAt && (
                               <span className="text-[10px] text-slate-400">
-                                Hết hạn: {new Date(user.membershipExpiresAt).toLocaleDateString('vi-VN')}
+                                Hết: {new Date(user.membershipExpiresAt).toLocaleDateString('vi-VN')}
                               </span>
                             )}
                           </div>
@@ -307,7 +343,7 @@ export function AdminUsersPage() {
                       </td>
 
                       {/* Vai Trò */}
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         <span
                           className={`inline-block rounded-md px-2 py-0.5 text-xs font-semibold ${
                             user.role === 'ADMIN'
@@ -320,46 +356,55 @@ export function AdminUsersPage() {
                       </td>
 
                       {/* Trạng Thái */}
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         <span
-                          className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${
                             user.isActive === false
                               ? 'border border-rose-500/30 bg-rose-500/15 text-rose-400'
                               : 'border border-emerald-500/30 bg-emerald-500/15 text-emerald-400'
                           }`}
                         >
-                          {user.isActive === false ? 'Đã vô hiệu hóa' : 'Đang hoạt động'}
+                          {user.isActive === false ? 'Đã khóa' : 'Hoạt động'}
                         </span>
                       </td>
 
                       {/* Ngày Đăng Ký */}
-                      <td className="px-4 py-3 text-slate-400">
+                      <td className="px-3 py-2.5 text-slate-400">
                         {new Date(user.createdAt).toLocaleDateString('vi-VN')}
                       </td>
 
                       {/* Thao Tác */}
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBankQr(user)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/30 bg-[#162038] px-2 py-1 text-xs font-semibold text-cyan-400 hover:bg-blue-500 hover:text-white hover:border-blue-500 transition"
+                            title="Xem tài khoản ngân hàng & mã QR thanh toán hoa hồng"
+                          >
+                            <QrCode className="h-3 w-3" />
+                            QR
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleOpenEditTier(user)}
-                            className="rounded-lg border border-cyan-400/30 bg-[#162038] px-2.5 py-1 text-xs font-semibold text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/20 transition"
+                            className="rounded-lg border border-cyan-400/30 bg-[#162038] px-2 py-1 text-xs font-semibold text-cyan-300 hover:border-cyan-400 hover:bg-cyan-500/20 transition"
                             title="Đổi gói hội viên & thời hạn"
                           >
-                            Đổi gói
+                            Gói
                           </button>
 
                           {user.role !== 'ADMIN' && (
                             <button
                               type="button"
-                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                              className={`rounded-lg px-2 py-1 text-xs font-semibold transition ${
                                 user.isActive === false
                                   ? 'border border-emerald-500/30 bg-[#162038]/60 text-emerald-400 hover:bg-emerald-500/20'
                                   : 'border border-rose-500/30 bg-[#162038]/60 text-rose-400 hover:bg-rose-500/20'
                               }`}
                               onClick={() => void toggle(user)}
                             >
-                              {user.isActive === false ? 'Kích hoạt' : 'Vô hiệu hóa'}
+                              {user.isActive === false ? 'Mở' : 'Khóa'}
                             </button>
                           )}
                         </div>
@@ -370,7 +415,7 @@ export function AdminUsersPage() {
               )}
               {!loading && !items.length && (
                 <tr>
-                  <td colSpan={9} className="p-10 text-center text-slate-400">Không tìm thấy tài khoản phù hợp.</td>
+                  <td colSpan={10} className="p-10 text-center text-slate-400">Không tìm thấy tài khoản phù hợp.</td>
                 </tr>
               )}
             </tbody>
@@ -486,6 +531,144 @@ export function AdminUsersPage() {
               >
                 <CheckCircle2 size={15} />
                 {updatingTier ? 'Đang lưu...' : 'Lưu thay đổi'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL XEM BANK & QUÉT QR THANH TOÁN HOA HỒNG */}
+      {qrUser && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#060B16]/85 p-4 backdrop-blur-sm"
+          onClick={() => setQrUser(null)}
+        >
+          <div
+            className="relative w-full max-w-lg rounded-2xl border border-cyan-400/30 bg-[#0F172A] p-6 text-slate-100 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setQrUser(null)}
+              className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-[#162038] hover:text-white"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/30 bg-[#162038] text-cyan-400">
+                <QrCode className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold tracking-normal text-slate-100">
+                  Thanh toán Hoa hồng qua VietQR
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Người dùng: <strong className="text-slate-100">{qrUser.fullName}</strong> ({qrUser.email})
+                </p>
+              </div>
+            </div>
+
+            {qrUser.bankAccount?.accountNumber && qrUser.bankAccount?.bankCode ? (
+              <div className="mt-5 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-[200px_1fr] items-center rounded-xl border border-cyan-400/25 bg-[#0A1122] p-4">
+                  <div className="flex flex-col items-center justify-center rounded-xl bg-white p-2.5 shadow-md mx-auto">
+                    <img
+                      src={`https://img.vietqr.io/image/${encodeURIComponent(qrUser.bankAccount.bankCode)}-${encodeURIComponent(qrUser.bankAccount.accountNumber)}-compact2.png?amount=${Math.max(0, Math.round(qrAmount || 0))}&addInfo=${encodeURIComponent(qrNote)}&accountName=${encodeURIComponent(qrUser.bankAccount.accountName || '')}`}
+                      alt="VietQR thanh toán hoa hồng"
+                      className="h-44 w-44 object-contain"
+                    />
+                    <span className="mt-1 text-[10px] font-bold text-slate-700">
+                      Quét bằng App Ngân hàng bất kỳ
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div>
+                      <span className="text-slate-400">Ngân hàng thụ hưởng:</span>
+                      <p className="font-semibold text-slate-100 mt-0.5">
+                        {qrUser.bankAccount.bankCode} — {qrUser.bankAccount.bankName}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400">Số tài khoản:</span>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="font-mono text-base font-bold text-cyan-400">
+                          {qrUser.bankAccount.accountNumber}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText(qrUser.bankAccount?.accountNumber || '')
+                            setCopiedBank(true)
+                            setTimeout(() => setCopiedBank(false), 2000)
+                          }}
+                          className="inline-flex items-center gap-1 rounded border border-cyan-400/30 bg-[#162038] px-2 py-0.5 text-[10px] font-semibold text-cyan-400 hover:bg-blue-500 hover:text-white"
+                        >
+                          {copiedBank ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {copiedBank ? 'Đã chép' : 'Sao chép'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400">Chủ tài khoản:</span>
+                      <p className="font-bold uppercase text-slate-100 mt-0.5">
+                        {qrUser.bankAccount.accountName}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Số tiền chuyển khoản (VNĐ)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1000}
+                      value={qrAmount}
+                      onChange={(e) => setQrAmount(Number(e.target.value))}
+                      className="w-full rounded-xl border border-cyan-400/30 bg-[#162038] px-3 py-2 text-sm font-bold text-cyan-400 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Nội dung chuyển khoản
+                    </label>
+                    <input
+                      type="text"
+                      value={qrNote}
+                      onChange={(e) => setQrNote(e.target.value)}
+                      className="w-full rounded-xl border border-cyan-400/30 bg-[#162038] px-3 py-2 text-xs text-slate-100 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-xl border border-dashed border-cyan-400/30 bg-[#0A1122] p-6 text-center">
+                <Landmark className="mx-auto h-8 w-8 text-slate-400 mb-2" />
+                <p className="text-sm font-semibold text-slate-200">
+                  Tài khoản này chưa liên kết ngân hàng nhận hoa hồng
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  Người dùng cần đăng nhập và cập nhật tại mục <strong>Hồ sơ cá nhân (/profile) → Tổng quan → Tài khoản Ngân hàng nhận thanh toán</strong>.
+                </p>
+              </div>
+            )}
+
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setQrUser(null)}
+                className="rounded-xl bg-blue-500 px-5 py-2 text-xs font-bold text-white hover:bg-blue-600 transition"
+              >
+                Đóng
               </button>
             </div>
           </div>

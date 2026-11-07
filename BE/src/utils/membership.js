@@ -3,6 +3,13 @@ const Design = require('../models/Design');
 const MarketplaceDesign = require('../models/MarketplaceDesign');
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
+const MEMBERSHIP_LIMITS = {
+  FREE: { ai: 15, publish: 5, price: 0 },
+  PREMIUM: { ai: 50, publish: 15, price: 18000 },
+  PRO: { ai: 100, publish: 20, price: 36000 },
+};
 
 const getEffectiveTier = (user) => {
   return User.getEffectiveTier(user);
@@ -61,6 +68,23 @@ const getWeeklyUsage = async (userId) => {
   return { weeklyAiUsed, weeklyPublishedUsed };
 };
 
+const getMonthlyUsage = async (userId) => {
+  if (!userId) return { monthlyAiUsed: 0, monthlyPublishedUsed: 0 };
+  const thirtyDaysAgo = new Date(Date.now() - THIRTY_DAYS_MS);
+  const [monthlyAiUsed, monthlyPublishedUsed] = await Promise.all([
+    Design.countDocuments({
+      userId,
+      prompt: { $nin: [null, ''] },
+      createdAt: { $gte: thirtyDaysAgo },
+    }),
+    MarketplaceDesign.countDocuments({
+      userId,
+      createdAt: { $gte: thirtyDaysAgo },
+    }),
+  ]);
+  return { monthlyAiUsed, monthlyPublishedUsed };
+};
+
 const enrichUserResponse = async (userDoc) => {
   if (!userDoc) return null;
   await checkAndExpireUserMembership(userDoc);
@@ -69,7 +93,17 @@ const enrichUserResponse = async (userDoc) => {
   delete obj.__v;
   obj.effectiveTier = getEffectiveTier(obj);
   obj.daysRemaining = getDaysRemaining(obj);
-  const { weeklyAiUsed, weeklyPublishedUsed } = await getWeeklyUsage(obj._id || obj.id);
+  const userId = obj._id || obj.id;
+  const [{ weeklyAiUsed, weeklyPublishedUsed }, { monthlyAiUsed, monthlyPublishedUsed }] = await Promise.all([
+    getWeeklyUsage(userId),
+    getMonthlyUsage(userId),
+  ]);
+  obj.monthlyAiUsed = monthlyAiUsed;
+  obj.monthlyPublishedUsed = monthlyPublishedUsed;
+  obj.monthlyUsage = {
+    aiGenerationsUsed: monthlyAiUsed,
+    publishedProductsUsed: monthlyPublishedUsed,
+  };
   obj.weeklyAiUsed = weeklyAiUsed;
   obj.weeklyPublishedUsed = weeklyPublishedUsed;
   obj.weeklyUsage = {
@@ -81,14 +115,20 @@ const enrichUserResponse = async (userDoc) => {
 
 const enforceAiQuota = async (user) => {
   await checkAndExpireUserMembership(user);
+  const isAdmin = String(user?.role || '').toUpperCase() === 'ADMIN';
+  if (isAdmin) return;
+
   const effectiveTier = getEffectiveTier(user);
-  if (effectiveTier === 'PRO' || effectiveTier === 'PREMIUM') {
-    return;
-  }
-  const { weeklyAiUsed } = await getWeeklyUsage(user._id);
-  if (weeklyAiUsed >= 1) {
+  const limit = MEMBERSHIP_LIMITS[effectiveTier]?.ai ?? MEMBERSHIP_LIMITS.FREE.ai;
+  const { monthlyAiUsed } = await getMonthlyUsage(user._id);
+
+  if (monthlyAiUsed >= limit) {
     const err = new Error(
-      'Tài khoản Miễn phí chỉ được tạo tối đa 1 ảnh AI mỗi tuần. Vui lòng nâng cấp gói Premium hoặc Pro để sáng tạo không giới hạn!'
+      effectiveTier === 'FREE'
+        ? `Tài khoản Miễn phí giới hạn tối đa ${limit} lượt tạo ảnh AI mỗi tháng (Đã dùng ${monthlyAiUsed}/${limit}). Vui lòng nâng cấp gói Premium (18k/Tháng) hoặc Pro (36k/Tháng) để tiếp tục sáng tạo!`
+        : effectiveTier === 'PREMIUM'
+        ? `Gói Premium giới hạn tối đa ${limit} lượt tạo ảnh AI mỗi tháng (Đã dùng ${monthlyAiUsed}/${limit}). Vui lòng nâng cấp lên gói Pro (36k/Tháng) để mở rộng lên 100 lượt/tháng!`
+        : `Bạn đã dùng hết ${monthlyAiUsed}/${limit} lượt tạo ảnh AI của gói Pro trong tháng này.`
     );
     err.statusCode = 403;
     throw err;
@@ -97,43 +137,37 @@ const enforceAiQuota = async (user) => {
 
 const enforceStudioAccess = async (user) => {
   await checkAndExpireUserMembership(user);
-  const effectiveTier = getEffectiveTier(user);
-  if (effectiveTier === 'FREE') {
-    const err = new Error(
-      'Tính năng Thiết kế 3D & Đăng bán lên sàn chỉ dành cho hội viên Premium và Pro. Vui lòng nâng cấp tài khoản!'
-    );
-    err.statusCode = 403;
-    throw err;
-  }
 };
 
 const enforcePublishQuota = async (user) => {
   await checkAndExpireUserMembership(user);
+  const isAdmin = String(user?.role || '').toUpperCase() === 'ADMIN';
+  if (isAdmin) return;
+
   const effectiveTier = getEffectiveTier(user);
-  if (effectiveTier === 'FREE') {
+  const limit = MEMBERSHIP_LIMITS[effectiveTier]?.publish ?? MEMBERSHIP_LIMITS.FREE.publish;
+  const { monthlyPublishedUsed } = await getMonthlyUsage(user._id);
+
+  if (monthlyPublishedUsed >= limit) {
     const err = new Error(
-      'Tính năng Thiết kế 3D & Đăng bán lên sàn chỉ dành cho hội viên Premium và Pro. Vui lòng nâng cấp tài khoản!'
+      effectiveTier === 'FREE'
+        ? `Gói Miễn phí giới hạn đăng bán tối đa ${limit} sản phẩm mỗi tháng (Đã dùng ${monthlyPublishedUsed}/${limit}). Vui lòng nâng cấp gói Premium (18k/Tháng) hoặc Pro (36k/Tháng) để đăng bán thêm!`
+        : effectiveTier === 'PREMIUM'
+        ? `Gói Premium giới hạn đăng bán tối đa ${limit} sản phẩm mỗi tháng (Đã dùng ${monthlyPublishedUsed}/${limit}). Hãy nâng cấp lên gói PRO (36k/Tháng) để mở rộng hạn mức!`
+        : `Gói Pro đã dùng hết ${monthlyPublishedUsed}/${limit} lượt đăng bán trong tháng này.`
     );
     err.statusCode = 403;
     throw err;
   }
-  if (effectiveTier === 'PREMIUM') {
-    const { weeklyPublishedUsed } = await getWeeklyUsage(user._id);
-    if (weeklyPublishedUsed >= 3) {
-      const err = new Error(
-        `Gói Premium giới hạn đăng tối đa 3 sản phẩm mỗi tuần (Bạn đã dùng ${weeklyPublishedUsed}/3). Hãy nâng cấp lên gói PRO để đăng bán không giới hạn!`
-      );
-      err.statusCode = 403;
-      throw err;
-    }
-  }
 };
 
 module.exports = {
+  MEMBERSHIP_LIMITS,
   getEffectiveTier,
   getDaysRemaining,
   checkAndExpireUserMembership,
   getWeeklyUsage,
+  getMonthlyUsage,
   enrichUserResponse,
   enforceAiQuota,
   enforceStudioAccess,

@@ -86,6 +86,13 @@ const UserSchema = new mongoose.Schema(
       favoriteColors: { type: [String], default: [] },
       avoidColors: { type: [String], default: [] },
     },
+    bankAccount: {
+      bankCode: { type: String, trim: true, maxlength: [30, 'Bank code cannot exceed 30 characters'], default: null },
+      bankName: { type: String, trim: true, maxlength: [100, 'Bank name cannot exceed 100 characters'], default: null },
+      accountNumber: { type: String, trim: true, maxlength: [50, 'Account number cannot exceed 50 characters'], default: null },
+      accountName: { type: String, trim: true, maxlength: [120, 'Account holder name cannot exceed 120 characters'], default: null },
+      updatedAt: { type: Date, default: null },
+    },
   },
   {
     timestamps: true,

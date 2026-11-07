@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { AxiosError } from 'axios'
+import { Eye, EyeOff } from 'lucide-react'
 
 import { AuthService } from '@/services/auth.api'
 import { useAuthStore } from '@/store/authStore'
@@ -16,8 +17,8 @@ import AuthLayout from '@/components/layout/AuthLayout'
 // ── Schema ─────────────────────────────────────────────────────────────────
 const registerSchema = z
   .object({
-    fullName: z.string().min(2, 'Họ và tên phải có ít nhất 2 ký tự'),
-    email: z.string().min(1, 'Vui lòng nhập email').email('Email không đúng định dạng'),
+    fullName: z.string().trim().min(2, 'Họ và tên phải có ít nhất 2 ký tự'),
+    email: z.string().trim().min(1, 'Vui lòng nhập email').email('Email không đúng định dạng'),
     password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự').regex(/\d/, 'Mật khẩu phải chứa ít nhất một chữ số'),
     confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu'),
   })
@@ -33,6 +34,8 @@ export function RegisterPage() {
   const navigate = useNavigate()
   const storeLogin = useAuthStore((state) => state.login)
   const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const {
     register,
@@ -51,12 +54,27 @@ export function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setIsLoading(true)
     try {
-      const response = await AuthService.register(data)
-      toast.success(response.data.message || 'Đăng ký thành công! Vui lòng đăng nhập.')
-      navigate('/auth/login')
+      const response = await AuthService.register({
+        fullName: data.fullName.trim(),
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      })
+      const authData = response.data?.data
+      if (authData?.user && authData?.token) {
+        storeLogin(authData.user, authData.token)
+        toast.success(response.data.message || 'Đăng ký tài khoản thành công!')
+        navigate(authData.user.role === 'ADMIN' ? '/admin/dashboard' : '/', { replace: true })
+      } else {
+        toast.success(response.data.message || 'Đăng ký thành công! Vui lòng đăng nhập.')
+        navigate('/auth/login')
+      }
     } catch (error) {
-      const axiosError = error as AxiosError<ApiError>
-      const errorMessage = axiosError.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.'
+      const axiosError = error as AxiosError<ApiError & { errors?: Array<{ field: string; message: string }> }>
+      const fieldError = axiosError.response?.data?.errors?.[0]?.message
+      const errorMessage =
+        fieldError ||
+        axiosError.response?.data?.message ||
+        'Đăng ký thất bại. Vui lòng thử lại.'
       toast.error(errorMessage)
     } finally {
       setIsLoading(false)
@@ -72,9 +90,10 @@ export function RegisterPage() {
 
         storeLogin(user, token)
         toast.success(response.data.message || 'Đăng nhập bằng Google thành công.')
-        navigate('/')
+        navigate(user.role === 'ADMIN' ? '/admin/dashboard' : '/', { replace: true })
       } catch (error) {
-        toast.error('Xác thực Google thất bại. Vui lòng thử lại.')
+        const axiosError = error as AxiosError<ApiError>
+        toast.error(axiosError.response?.data?.message || 'Xác thực Google thất bại. Vui lòng thử lại.')
       } finally {
         setIsLoading(false)
       }
@@ -94,7 +113,7 @@ export function RegisterPage() {
           </Link>
         </div>
 
-        <h2 className="text-[2.75rem] font-bold text-[#0011FF] mb-12 mt-12 md:mt-8 font-heading tracking-tight leading-none uppercase">Đăng ký</h2>
+        <h2 className="text-[2.75rem] font-bold text-[#0011FF] mb-12 mt-12 md:mt-8 font-heading tracking-normal leading-none uppercase">Đăng ký</h2>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col lg:flex-row gap-10 lg:gap-16 w-full" noValidate>
 
@@ -103,6 +122,7 @@ export function RegisterPage() {
             <div>
               <input
                 type="text"
+                autoComplete="name"
                 placeholder="Họ và tên"
                 {...register('fullName')}
                 className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
@@ -113,6 +133,7 @@ export function RegisterPage() {
             <div>
               <input
                 type="email"
+                autoComplete="email"
                 placeholder="Địa chỉ Email"
                 {...register('email')}
                 className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
@@ -121,22 +142,44 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <input
-                type="password"
-                placeholder="Mật khẩu"
-                {...register('password')}
-                className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Mật khẩu (tối thiểu 6 ký tự, có ít nhất 1 chữ số)"
+                  {...register('password')}
+                  className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] pl-4 pr-11 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0011FF]/60 hover:text-[#0011FF] p-1 transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.password && <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.password.message}</span>}
             </div>
 
             <div>
-              <input
-                type="password"
-                placeholder="Xác nhận mật khẩu"
-                {...register('confirmPassword')}
-                className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] px-4 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  placeholder="Xác nhận mật khẩu"
+                  {...register('confirmPassword')}
+                  className="w-full border-[1.5px] border-[#0011FF]/50 rounded-[4px] pl-4 pr-11 py-3.5 text-sm text-black outline-none focus:border-[#0011FF] transition-colors bg-white placeholder:text-black/40 font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  aria-label={showConfirmPassword ? 'Ẩn mật khẩu xác nhận' : 'Hiện mật khẩu xác nhận'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0011FF]/60 hover:text-[#0011FF] p-1 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.confirmPassword && <span className="text-red-500 text-[10px] mt-1 block font-bold">{errors.confirmPassword.message}</span>}
             </div>
           </div>
@@ -144,13 +187,13 @@ export function RegisterPage() {
           {/* Right Column: Actions */}
           <div className="flex-1 flex flex-col justify-center lg:pl-6 border-t lg:border-t-0 lg:border-l border-[#0011FF]/10 pt-8 lg:pt-0">
 
-            <button type="submit" disabled={isLoading} className="w-full bg-[#0011FF] text-white text-[14px] font-bold tracking-widest py-4 rounded-[4px] hover:opacity-90 transition-opacity mb-4">
+            <button type="submit" disabled={isLoading} className="w-full bg-[#0011FF] text-white text-[14px] font-bold tracking-widest py-4 rounded-[4px] hover:opacity-90 transition-opacity mb-4 disabled:opacity-50">
               {isLoading ? 'ĐANG ĐĂNG KÝ...' : 'ĐĂNG KÝ'}
             </button>
 
             <div className="flex justify-between items-center text-[12px] font-medium mb-12">
               <span className="text-[#0011FF]/60 font-bold">Đã có tài khoản?</span>
-              <Link to="/auth/login" className="text-[#0011FF] font-black hover:underline tracking-wide">Đăng nhập ngay</Link>
+              <Link to="/auth/login" className="text-[#0011FF] font-black hover:underline tracking-normal">Đăng nhập ngay</Link>
             </div>
 
             <div className="relative flex justify-center mb-8">
@@ -165,15 +208,15 @@ export function RegisterPage() {
                 type="button"
                 disabled={isLoading}
                 onClick={() => handleGoogleLogin()}
-                className="w-full border-[1.5px] border-[#0011FF]/30 text-[#0011FF] text-xs font-bold py-3.5 rounded-[4px] hover:bg-[#0011FF]/5 transition-colors flex items-center justify-center gap-2 tracking-wide"
+                className="w-full border-[1.5px] border-[#0011FF]/30 text-[#0011FF] text-xs font-bold py-3.5 rounded-[4px] hover:bg-[#0011FF]/5 transition-colors flex items-center justify-center gap-2 tracking-normal disabled:opacity-50"
               >
-                Đăng ký bằng Google
+                Đăng ký / Đăng nhập bằng Google
               </button>
               <button
                 type="button"
                 disabled={isLoading}
-                onClick={() => {}}
-                className="w-full border-[1.5px] border-[#0011FF]/30 text-[#0011FF] text-xs font-bold py-3.5 rounded-[4px] hover:bg-[#0011FF]/5 transition-colors flex items-center justify-center gap-2 tracking-wide"
+                onClick={() => toast.info('Tính năng đăng nhập bằng Facebook đang được nâng cấp. Vui lòng sử dụng Email hoặc Google.')}
+                className="w-full border-[1.5px] border-[#0011FF]/30 text-[#0011FF] text-xs font-bold py-3.5 rounded-[4px] hover:bg-[#0011FF]/5 transition-colors flex items-center justify-center gap-2 tracking-normal disabled:opacity-50"
               >
                 Đăng ký bằng Facebook
               </button>

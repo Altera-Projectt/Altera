@@ -7,7 +7,8 @@ import type {
   RegisterPayload, 
   UpdateProfilePayload,
   UpdateMeasurementsPayload,
-  UpdatePreferencesPayload
+  UpdatePreferencesPayload,
+  UpdateBankAccountPayload
 } from '@/types/user.types'
 
 export const AuthService = {
@@ -19,6 +20,15 @@ export const AuthService = {
 
   register: (payload: RegisterPayload) =>
     api.post<ApiResponse<AuthUser>>('/auth/register', payload),
+
+  forgotPassword: (email: string) =>
+    api.post<ApiResponse<{ devCode?: string }>>('/auth/forgot-password', { email }),
+
+  verifyResetCode: (payload: { email: string; code: string }) =>
+    api.post<ApiResponse<{ verified: boolean }>>('/auth/verify-reset-code', payload),
+
+  resetPassword: (payload: { email: string; code: string; password: string }) =>
+    api.post<ApiResponse<{ reset: boolean }>>('/auth/reset-password', payload),
 
   getMe: () =>
     api.get<ApiResponse<{ user: User }>>('/auth/me'),
@@ -48,6 +58,9 @@ export const AuthService = {
 
   updatePreferences: (payload: UpdatePreferencesPayload) =>
     api.put<ApiResponse<{ user: User }>>('/users/me/preferences', payload),
+
+  updateBankAccount: (payload: UpdateBankAccountPayload) =>
+    api.put<ApiResponse<{ user: User }>>('/users/me/bank-account', payload),
 
   deleteAccount: () =>
     api.delete<ApiResponse<void>>('/users/profile'),

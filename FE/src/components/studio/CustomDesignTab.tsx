@@ -622,20 +622,20 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
       navigate('/auth/login', { state: { from: { pathname: '/design' } } })
       return
     }
-    if (effectiveTier === 'FREE') {
-      const msg = 'Tính năng thiết kế 3D Studio và đăng bán sản phẩm chỉ dành cho hội viên Premium (18k/Tháng) và Pro (36k/Tháng). Vui lòng nâng cấp để sử dụng!'
+    if (effectiveTier === 'FREE' && !isAdmin && publishUsed >= 5) {
+      const msg = 'Gói Miễn phí tối đa đăng bán 5 sản phẩm / tháng (Đã dùng hết 5/5 lượt). Vui lòng nâng cấp lên gói Premium (18k/Tháng) hoặc Pro (36k/Tháng) để đăng bán thêm!'
       setDraftError(msg)
       toast.error(msg)
       return
     }
     if (effectiveTier === 'PREMIUM' && !isAdmin && publishUsed >= 15) {
-      const msg = 'Gói Premium tối đa đăng bán 15 sản phẩm / tháng (Đã dùng hết giới hạn tháng). Vui lòng nâng cấp gói nếu cần thêm lượt đăng bán.'
+      const msg = 'Gói Premium tối đa đăng bán 15 sản phẩm / tháng (Đã dùng hết 15/15 lượt). Vui lòng nâng cấp lên gói Pro (36k/Tháng) nếu cần thêm lượt đăng bán!'
       setDraftError(msg)
       toast.error(msg)
       return
     }
     if (effectiveTier === 'PRO' && !isAdmin && publishUsed >= 20) {
-      const msg = 'Gói Pro đã dùng hết 20 lượt đăng bán trong tháng này.'
+      const msg = 'Gói Pro đã dùng hết 20/20 lượt đăng bán trong tháng này.'
       setDraftError(msg)
       toast.error(msg)
       return
@@ -988,7 +988,7 @@ function CustomDesignEditor({ storageKey, pendingAsset, onPendingAssetConsumed }
   </section> : <div className="grid gap-6 lg:grid-cols-[290px_minmax(300px,1fr)_300px]">
     <aside className="space-y-4 rounded-xl border border-[var(--color-border)] bg-white p-4">
       <h2 className="text-sm font-semibold uppercase tracking-wide">Sản phẩm</h2>
-      <div className="flex flex-wrap gap-2"><button onClick={() => void openPublish()} className="flex flex-1 items-center justify-center gap-1 rounded border border-black bg-[#ffebb3] px-2 py-2 text-xs font-bold uppercase tracking-wide">Đăng Studio</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } if (effectiveTier === 'FREE') { const msg = 'Tính năng thiết kế 3D Studio và lưu phôi áo chỉ dành cho hội viên Premium (18k/Tháng) và Pro (36k/Tháng). Vui lòng nâng cấp để sử dụng!'; setDraftError(msg); toast.error(msg); return; } setDraftNameInput(draftName || 'Thiết kế áo của tôi'); setDraftError(''); setShowDraftName(true) }} className="flex flex-1 items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Lưu nháp</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex flex-1 items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Bản nháp</button></div>
+      <div className="flex flex-wrap gap-2"><button onClick={() => void openPublish()} className="flex flex-1 items-center justify-center gap-1 rounded border border-black bg-[#ffebb3] px-2 py-2 text-xs font-bold uppercase tracking-wide">Đăng Studio</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } setDraftNameInput(draftName || 'Thiết kế áo của tôi'); setDraftError(''); setShowDraftName(true) }} className="flex flex-1 items-center justify-center gap-1 rounded bg-black px-2 py-2 text-xs font-semibold text-white"><Save size={14}/>Lưu nháp</button><button onClick={() => { if (!isAuthenticated) { navigate('/auth/login', { state: { from: { pathname: '/design' } } }); return } void refreshDrafts(); setShowDraftGallery(true) }} className="flex flex-1 items-center justify-center gap-1 rounded border px-2 py-2 text-xs"><FolderOpen size={14}/>Bản nháp</button></div>
       <button onClick={() => { setShowTemplateGallery(true); void loadTemplates() }} className="w-full rounded-lg border border-blue-400/25 bg-[#0F172A] px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-400/60 hover:text-cyan-300 hover:bg-[#162038] flex items-center justify-center gap-1.5"><Sparkles size={14} className="text-cyan-400"/>Thư viện mẫu</button>
       {!showPublish && !showDraftName && draftError && (
         <div role="status" className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 space-y-2">
